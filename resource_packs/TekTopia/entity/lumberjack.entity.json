@@ -1,0 +1,42 @@
+{
+    "format_version": "1.10.0",
+    "minecraft:client_entity": {
+        "description": {
+            "identifier": "tektopia:lumberjack",
+            "enable_attachables": true,
+            "animations": {
+                "main": "controller.animation.tektopia_villager",
+                "walk": "animation.tektopia_villager.walk",
+                "chop": "animation.tektopia_villager.chop"
+            },
+            "scripts": {
+                "animate": [
+                    "main",
+                    {
+                        "chop": "query.property('property:animation') == 'chopping'"
+                    }
+                ]
+            },
+            "geometry": {
+                "default": "geometry.tektopia_lumberjack_male"
+            },
+            "sound_effects": {
+                "hit.wood": "hit.wood"
+            },
+            "textures": {
+                "male": "textures/entity/lumberjack_male",
+                "female": "textures/entity/lumberjack_female"
+            },
+            "materials": {
+                "default": "entity"
+            },
+            "render_controllers": [
+                "controller.render.tektopia_villager_texture_only"
+            ],
+            "spawn_egg": {
+                "base_color": "#446600",
+                "overlay_color": "#00FF44"
+            }
+        }
+    }
+}

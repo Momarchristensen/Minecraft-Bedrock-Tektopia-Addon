@@ -1,0 +1,22 @@
+{
+    "format_version": "1.26.50",
+    "minecraft:item": {
+        "description": {
+            "identifier": "tektopia:profession_guard",
+            "menu_category": {
+                "category": "items"
+            }
+        },
+        "components": {
+            "minecraft:display_name": {
+                "value": "Profession Guard"
+            },
+            "minecraft:enchantable": {
+                "slot": "flintsteel",
+                "value": 0
+            },
+            "minecraft:icon": "profession_guard",
+            "minecraft:max_stack_size": 1
+        }
+    }
+}

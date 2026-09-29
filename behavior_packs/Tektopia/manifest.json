@@ -1,0 +1,50 @@
+{
+    "format_version": 2,
+    "header": {
+        "name": "Tektopia",
+        "description": "Created with Visual Studio Code",
+        "min_engine_version": [
+            1,
+            18,
+            30
+        ],
+        "uuid": "73c471e6-a763-4d00-8864-9826484ba82b",
+        "version": [
+            1,
+            0,
+            0
+        ]
+    },
+    "modules": [
+        {
+            "type": "data",
+            "uuid": "a5ed5390-8478-4218-8637-01343d43ef4f",
+            "version": [
+                1,
+                0,
+                0
+            ]
+        },
+        {
+            "type": "script",
+            "language": "javascript",
+            "uuid": "05f4c355-2b00-458f-9380-30629cb0e788",
+            "version": [
+                1,
+                0,
+                0
+            ],
+            "entry": "scripts/main.js"
+        }
+    ],
+    "dependencies": [
+        {
+            "module_name": "@minecraft/server",
+            "version": "beta"
+        },
+        {
+            "module_name": "@minecraft/server-ui",
+            "version": "beta"
+        }
+    ]
+}

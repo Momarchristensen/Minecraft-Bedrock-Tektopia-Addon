@@ -1,0 +1,29 @@
+{
+  "name": "tektopia",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "build": "node build.mjs",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "@stylistic/eslint-plugin-js": "^4.4.1",
+    "esbuild": "^0.28.2",
+    "eslint": "^10.11.0",
+    "eslint-plugin-import-newlines": "^2.0.0",
+    "prettier": "^3.9.9",
+    "tinyglobby": "^0.2.17",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.71.0"
+  },
+  "dependencies": {
+    "@minecraft/server": "^2.11.0-beta.1.26.52-stable",
+    "@minecraft/server-ui": "^2.3.0-beta.1.26.52-stable",
+    "lz-string": "^1.5.0"
+  }
+}

@@ -1,0 +1,108 @@
+{
+    "resource_pack_name": "vanilla",
+    "texture_name": "atlas.items",
+    "texture_data": {
+        "profession_bard": {
+            "textures": "textures/items/profession_bard"
+        },
+        "profession_blacksmith": {
+            "textures": "textures/items/profession_blacksmith"
+        },
+        "profession_butcher": {
+            "textures": "textures/items/profession_butcher"
+        },
+        "profession_captain": {
+            "textures": "textures/items/profession_captain"
+        },
+        "profession_chef": {
+            "textures": "textures/items/profession_chef"
+        },
+        "profession_cleric": {
+            "textures": "textures/items/profession_cleric"
+        },
+        "profession_druid": {
+            "textures": "textures/items/profession_druid"
+        },
+        "profession_enchanter": {
+            "textures": "textures/items/profession_enchanter"
+        },
+        "profession_farmer": {
+            "textures": "textures/items/profession_farmer"
+        },
+        "profession_guard": {
+            "textures": "textures/items/profession_guard"
+        },
+        "profession_lumberjack": {
+            "textures": "textures/items/profession_lumberjack"
+        },
+        "profession_miner": {
+            "textures": "textures/items/profession_miner"
+        },
+        "profession_rancher": {
+            "textures": "textures/items/profession_rancher"
+        },
+        "profession_teacher": {
+            "textures": "textures/items/profession_teacher"
+        },
+        "structure_barracks": {
+            "textures": "textures/items/structure_barracks"
+        },
+        "structure_blacksmith": {
+            "textures": "textures/items/structure_blacksmith"
+        },
+        "structure_butcher": {
+            "textures": "textures/items/structure_butcher"
+        },
+        "structure_chicken_coop": {
+            "textures": "textures/items/structure_chicken_coop"
+        },
+        "structure_cow_pen": {
+            "textures": "textures/items/structure_cow_pen"
+        },
+        "structure_guard_post": {
+            "textures": "textures/items/structure_guard_post"
+        },
+        "structure_home": {
+            "textures": "textures/items/structure_home"
+        },
+        "structure_home_2": {
+            "textures": "textures/items/structure_home_2"
+        },
+        "structure_home_4": {
+            "textures": "textures/items/structure_home_4"
+        },
+        "structure_home_6": {
+            "textures": "textures/items/structure_home_6"
+        },
+        "structure_kitchen": {
+            "textures": "textures/items/structure_kitchen"
+        },
+        "structure_library": {
+            "textures": "textures/items/structure_library"
+        },
+        "structure_merchant_stall": {
+            "textures": "textures/items/structure_merchant_stall"
+        },
+        "structure_mineshaft": {
+            "textures": "textures/items/structure_mineshaft"
+        },
+        "structure_pig_pen": {
+            "textures": "textures/items/structure_pig_pen"
+        },
+        "structure_school": {
+            "textures": "textures/items/structure_school"
+        },
+        "structure_sheep_pen": {
+            "textures": "textures/items/structure_sheep_pen"
+        },
+        "structure_storage": {
+            "textures": "textures/items/structure_storage"
+        },
+        "structure_tavern": {
+            "textures": "textures/items/structure_tavern"
+        },
+        "structure_townhall": {
+            "textures": "textures/items/structure_townhall"
+        }
+    }
+}

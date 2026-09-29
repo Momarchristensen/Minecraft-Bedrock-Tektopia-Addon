@@ -1,0 +1,22 @@
+{
+    "compilerOptions": {
+        "target": "ES2022",
+        "module": "ES2022",
+        "moduleResolution": "Bundler",
+        "allowSyntheticDefaultImports": true,
+        "strict": true,
+
+        "noLib": true,
+        "types": [
+            "@bedrock-apis/env-types"
+        ],
+
+        "rootDir": "./src",
+        "outDir": "./behavior_packs/Tektopia/scripts",
+
+        "sourceMap": true
+    },
+    "include": [
+        "src/**/*.ts"
+    ]
+}

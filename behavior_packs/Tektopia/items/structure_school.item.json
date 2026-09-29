@@ -1,0 +1,22 @@
+{
+    "format_version": "1.26.50",
+    "minecraft:item": {
+        "description": {
+            "identifier": "tektopia:structure_school",
+            "menu_category": {
+                "category": "items"
+            }
+        },
+        "components": {
+            "minecraft:display_name": {
+                "value": "Structure School"
+            },
+            "minecraft:enchantable": {
+                "slot": "flintsteel",
+                "value": 0
+            },
+            "minecraft:icon": "structure_school",
+            "minecraft:max_stack_size": 1
+        }
+    }
+}

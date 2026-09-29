@@ -1,0 +1,37 @@
+{
+    "format_version": "1.10.0",
+    "minecraft:client_entity": {
+        "description": {
+            "identifier": "tektopia:farmer",
+            "enable_attachables": true,
+            "animations": {
+                "walk": "animation.tektopia_villager.walk"
+            },
+            "scripts": {
+                "animate": [
+                    {
+                        "walk": "query.property('property:animation') == 'walking'"
+                    }
+                ]
+            },
+            "geometry": {
+                "male": "geometry.tektopia_farmer_male",
+                "female": "geometry.tektopia_farmer_female"
+            },
+            "textures": {
+                "male": "textures/entity/farmer_male",
+                "female": "textures/entity/farmer_female"
+            },
+            "materials": {
+                "default": "entity"
+            },
+            "render_controllers": [
+                "controller.render.tektopia_villager"
+            ],
+            "spawn_egg": {
+                "base_color": "#446600",
+                "overlay_color": "#00FF44"
+            }
+        }
+    }
+}

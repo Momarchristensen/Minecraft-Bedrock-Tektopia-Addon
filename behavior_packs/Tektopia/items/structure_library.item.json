@@ -1,0 +1,22 @@
+{
+    "format_version": "1.26.50",
+    "minecraft:item": {
+        "description": {
+            "identifier": "tektopia:structure_library",
+            "menu_category": {
+                "category": "items"
+            }
+        },
+        "components": {
+            "minecraft:display_name": {
+                "value": "Structure Library"
+            },
+            "minecraft:enchantable": {
+                "slot": "flintsteel",
+                "value": 0
+            },
+            "minecraft:icon": "structure_library",
+            "minecraft:max_stack_size": 1
+        }
+    }
+}

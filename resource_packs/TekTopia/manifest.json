@@ -1,0 +1,19 @@
+{
+    "format_version": 2,
+    "header": {
+        "description": "Created using Visual Studio Code",
+        "name": "Tektopia",
+        "uuid": "639397ca-8974-41ea-9984-c8b68f0a6035",
+        "version": [1, 0, 0],
+        "min_engine_version": [ 1, 18, 30 ]
+    },
+    "modules": [
+        {
+            "description": "Created using Visual Studio Code",
+            "type": "resources",
+            "uuid": "e9ca2d27-9fde-4805-b1b4-e69469cea8bd",
+            "version": [1, 0, 0]
+        }
+    ]
+}
+            
