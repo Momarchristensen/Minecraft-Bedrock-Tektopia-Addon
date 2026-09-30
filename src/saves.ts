@@ -3,6 +3,7 @@ import {
     World,
     world
 } from "@minecraft/server"
+
 import LZString from "lz-string"
 
 import {
@@ -14,6 +15,7 @@ import {
     Village,
     type VillageSaveData
 } from "./village"
+
 import type { CompressedVillage } from "./village_serialization"
 
 export const worldSaveDataList = [

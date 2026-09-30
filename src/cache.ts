@@ -10,19 +10,49 @@ import {
 
 import { snap } from "./utils"
 
+function getGetter<T extends object, K extends keyof T>(prototype: T, property: K) {
+    const descriptor = Object.getOwnPropertyDescriptor(prototype, property)
+
+    if (descriptor?.get === undefined) {
+        throw new Error(`Getter "${String(property)}" not found`)
+    }
+
+    return descriptor.get
+}
+
+function getSetter<T extends object, K extends keyof T>(prototype: T, property: K) {
+    const descriptor = Object.getOwnPropertyDescriptor(prototype, property)
+
+    if (descriptor?.set === undefined) {
+        throw new Error(`Setter "${String(property)}" not found`)
+    }
+
+    return descriptor.set
+}
+
 const originalFunctions = {
     worldGetDimension: World.prototype.getDimension,
     getAllPlayers: World.prototype.getAllPlayers,
-    getName: Object.getOwnPropertyDescriptor(Player.prototype, "name")!.get!,
+
+    getName: getGetter(Player.prototype, "name"),
     getGameMode: Player.prototype.getGameMode,
-    getCommandPermissionLevel: Object.getOwnPropertyDescriptor(Player.prototype, "commandPermissionLevel")!.get!,
-    setCommandPermissionLevel: Object.getOwnPropertyDescriptor(Player.prototype, "commandPermissionLevel")!.set!,
+    getCommandPermissionLevel: getGetter(
+        Player.prototype,
+        "commandPermissionLevel"
+    ),
+    setCommandPermissionLevel: getSetter(
+        Player.prototype,
+        "commandPermissionLevel"
+    ),
+
     setGameMode: Player.prototype.setGameMode,
-    getCurrentTick: Object.getOwnPropertyDescriptor(System.prototype, "currentTick")!.get!,
-    getLocation: Object.getOwnPropertyDescriptor(Entity.prototype, "location")!.get!,
+
+    getCurrentTick: getGetter(System.prototype, "currentTick"),
+
+    getLocation: getGetter(Entity.prototype, "location"),
     teleport: Entity.prototype.teleport,
     getPing: Player.prototype.getPing,
-    getDimension: Object.getOwnPropertyDescriptor(Entity.prototype, "dimension")!.get!
+    getDimension: getGetter(Entity.prototype, "dimension")
 }
 
 const dimensionCache = new Map()
@@ -236,6 +266,11 @@ Object.defineProperty(System.prototype, "currentTick", {
     }
 })
 
+/**
+ * @type {Map<string, Player>}
+ */
+const playersCache = new Map()
+
 World.prototype.getAllPlayers = function () {
     return Array.from(playersCache.values())
 }
@@ -243,11 +278,6 @@ World.prototype.getAllPlayers = function () {
 World.prototype.getPlayerById = function (playerId) {
     return playersCache.get(playerId)
 }
-
-/**
- * @type {Map<string, Player>}
- */
-const playersCache = new Map()
 
 world.afterEvents.playerSpawn.subscribe(event => {
     const player = event.player
@@ -274,8 +304,7 @@ Player.prototype.resetCache = function () {
 world.afterEvents.worldLoad.subscribe(() => {
     const players = originalFunctions.getAllPlayers.call(world)
 
-    for (let i = 0; i < players.length; i++) {
-        const player = players[i]
+    for (const player of players) {
 
         playersCache.set(player.id, player)
     }

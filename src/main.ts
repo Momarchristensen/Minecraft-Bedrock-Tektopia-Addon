@@ -6,11 +6,15 @@ import {
 } from "@minecraft/server"
 
 import "./block_extensions"
+
 import "./array_extensions"
+
 import "./villager_extensions"
 
 import "./saves"
+
 import "./item_frames"
+
 import "./performance"
 
 import "./debug"

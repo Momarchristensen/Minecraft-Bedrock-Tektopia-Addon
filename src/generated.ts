@@ -1,3 +1,5 @@
+import type { UndefinedRecord } from "."
+
 interface SoundEvent {
     pitch?: [number, number] | number
     sound: string
@@ -7,7 +9,7 @@ interface SoundEvent {
 type SoundEventEntry = SoundEvent | string | null
 
 //Auto Generated Variables
-export const blockSounds: Record<string, {
+export const blockSounds: UndefinedRecord<string, {
     break: SoundEventEntry
     place: SoundEventEntry
 }> = {

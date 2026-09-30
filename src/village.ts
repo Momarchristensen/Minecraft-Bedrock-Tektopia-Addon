@@ -8,6 +8,7 @@ import {
 } from "@minecraft/server"
 
 import { Registry } from "./registry"
+
 import {
     addVector,
     calculateDistance,
@@ -30,8 +31,10 @@ import {
     compressVillage,
     decompressVillage
 } from "./village_serialization"
+
 import type {
     PathNode,
+    UndefinedRecord,
     VillageBounds
 } from "."
 
@@ -41,7 +44,7 @@ export interface VillageSaveData {
     center: Vector3
     dimensionId: string
     doorLocation: Vector3
-    pathNodes: Record<string, PathNode>
+    pathNodes: UndefinedRecord<string, PathNode>
     sugarCaneLocations: string[]
     saplingLocations: string[]
     farmLocations: string[]
@@ -69,7 +72,7 @@ export class Village {
 
     static from(data: VillageSaveData): Village {
         let village = Village.cache.get(data)
-        if (!village) {
+        if (village === undefined) {
             village = new Village(data)
             Village.cache.set(data, village)
         }
@@ -140,7 +143,7 @@ export class Village {
         }
         const node1 = village.pathNodes[aKey]
         const node2 = village.pathNodes[bKey]
-        if (!node1 || !node2) {
+        if (node1 === undefined || node2 === undefined) {
             return
         }
         if (!node1.neighbors.includes(bKey)) {
@@ -155,10 +158,10 @@ export class Village {
         const village = this
         const node1 = village.pathNodes[aKey]
         const node2 = village.pathNodes[bKey]
-        if (node1) {
+        if (node1 !== undefined) {
             node1.neighbors = node1.neighbors.filter(k => k !== bKey)
         }
-        if (node2) {
+        if (node2 !== undefined) {
             node2.neighbors = node2.neighbors.filter(k => k !== aKey)
         }
     }
@@ -166,7 +169,7 @@ export class Village {
     public removeNode(key: string) {
         const village = this
         const node = village.pathNodes[key]
-        if (!node) {
+        if (node === undefined) {
             return
         }
         for (const neighborKey of [...node.neighbors]) {
@@ -190,7 +193,7 @@ export class Village {
             const alreadyCheckedLocations = new Set([startingBlockLocationString])
             const villageBounds = village.bounds
             const dimension = world.getDimension(village.dimensionId)
-            const pathCache = new Map()
+            const pathCache = new Map<string, boolean>()
             while (checkBlockList.length > 0) {
                 if (!village.isValid) {
                     return
@@ -248,7 +251,7 @@ export class Village {
                     village.unlink(key, oldKey)
                     if (!overwrite && !alreadyCheckedLocations.has(oldKey)) {
                         const neighbor = dimension.getBlockSafe(stringToVector(oldKey))
-                        if (neighbor !== undefined && neighbor.isValidPath(villageBounds)) {
+                        if (neighbor?.isValidPath(villageBounds)) {
                             alreadyCheckedLocations.add(oldKey)
                             checkBlockList.push(neighbor)
                         }
@@ -269,7 +272,7 @@ export class Village {
         const dimension = world.getDimension(village.dimensionId)
         const block = dimension.getBlockSafe(stringToVector(pathNodeLocation))
         const pathNode = village.pathNodes[pathNodeLocation]
-        if (!block || !pathNode) {
+        if (block === undefined || pathNode === undefined) {
             return
         }
 
@@ -280,7 +283,7 @@ export class Village {
 
         for (const neighborKey of [...pathNode.neighbors]) {
             const neighborBlock = dimension.getBlockSafe(stringToVector(neighborKey))
-            if (neighborBlock && !isValidConnection(block, neighborBlock)) {
+            if (neighborBlock !== undefined && !isValidConnection(block, neighborBlock)) {
                 village.unlink(pathNodeLocation, neighborKey)
                 console.warn("Node Deleted: ", pathNodeLocation)
             }
@@ -307,7 +310,7 @@ Block.prototype.getNodeRequirement = function () {
         return { whiteList: false, types: ["tektopia:lumberjack"] }
     }
 
-    if (Registry.leafTypes.includesFast(block.typeId) || above !== undefined && Registry.leafTypes.includesFast(above.typeId)) {
+    if (Registry.leafTypes.includesFast(block.typeId) || (above !== undefined && Registry.leafTypes.includesFast(above.typeId))) {
         return { whiteList: true, types: ["tektopia:lumberjack"] }
     }
 
@@ -321,11 +324,11 @@ Object.defineProperty(Block.prototype, "isTree", {
         if (!Registry.logTypes.includesFast(block.typeId)) {
             return false
         }
-        if (aboveBlock === undefined || aboveBlock.typeId !== block.typeId) {
+        if (aboveBlock?.typeId !== block.typeId) {
             return false
         }
         const aboveAboveBlock = aboveBlock.aboveSafe()
-        if (aboveAboveBlock === undefined || aboveAboveBlock.typeId !== block.typeId) {
+        if (aboveAboveBlock?.typeId !== block.typeId) {
             return false
         }
         const belowBlock = block.belowSafe()
@@ -357,17 +360,17 @@ function tickScanVillage() {
 
 system.run(tickScanVillage)
 
-function* scanVillageBlocks(callback: () => void) {
+function* scanVillageBlocks(callback?: () => void) {
     try {
         if (!world.loadedData) {
             return
         }
         const villageList = world.getVillages()
         for (const village of villageList) {
-            const locationString = randomItem(Object.keys(village.pathNodes))
-            const locationStringList = [locationString]
+            const randomLocationString = randomItem(Object.keys(village.pathNodes))
+            const locationStringList = [randomLocationString]
             const alreadyCheckedLocations = new Set()
-            while (locationStringList.length) {
+            while (locationStringList.length > 0) {
                 const locationString = locationStringList.pop()
                 if (alreadyCheckedLocations.has(locationString) || locationString === undefined) {
                     continue
@@ -396,8 +399,7 @@ function* scanVillageBlocks(callback: () => void) {
                         block.westSafe(),
                         block.belowSafe()
                     ]
-                    for (let i = 0; i < checkBlockList.length; i++) {
-                        const checkBlock = checkBlockList[i]
+                    for (const checkBlock of checkBlockList) {
                         if (checkBlock === undefined) {
                             continue
                         }
@@ -441,7 +443,7 @@ function* scanVillageBlocks(callback: () => void) {
         }
     }
     finally {
-        if (callback) {
+        if (callback !== undefined) {
             callback()
         }
     }
@@ -453,7 +455,7 @@ function tickUpdateVillage() {
 
 system.run(tickUpdateVillage)
 
-function* updateVillageBlocks(callback: () => void) {
+function* updateVillageBlocks(callback?: () => void) {
     try {
         if (!world.loadedData) {
             return
@@ -497,13 +499,12 @@ system.runInterval(() => {
         return
     }
     const villageList = world.getVillages()
-    for (let i = 0; i < villageList.length; i++) {
-        const village = villageList[i]
+    for (const village of villageList) {
 
         const dimension = world.getDimension(village.dimensionId)
         if (!village.searchingBlocks) {
             const doorBlock = dimension.getBlockSafe(village.doorLocation)
-            if (doorBlock) {
+            if (doorBlock !== undefined) {
                 village.searchingBlocks = true
                 system.runJob(
                     village.searchBlocks(doorBlock, true, () => {
@@ -520,11 +521,10 @@ system.runInterval(() => {
             function* deleteInvalidPathNodes() {
                 const allVillagePathNodes = Object.keys(village.pathNodes)
                 try {
-                    for (let j = 0; j < allVillagePathNodes.length; j++) {
+                    for (const pathNodeLocation of allVillagePathNodes) {
                         if (!village.isValid) {
                             return
                         }
-                        const pathNodeLocation = allVillagePathNodes[j]
                         village.checkNodeValidity(pathNodeLocation)
                         yield
                     }
@@ -591,13 +591,11 @@ system.runInterval(() => { //not debug
     }
 
     const players = world.getAllPlayers()
-    for (let i = 0; i < players.length; i++) {
-        const player = players[i]
+    for (const player of players) {
         const playerLocation = player.location
 
         const villageList = world.getVillages()
-        for (let i = 0; i < villageList.length; i++) {
-            const village = villageList[i]
+        for (const village of villageList) {
             const boundaryLocationList = getBoundaryLocations(
                 village.bounds.start,
                 village.bounds.end,
@@ -637,15 +635,11 @@ function isValidConnection(currentBlock: Block, neighborBlock: Block) {
             const dirX = offset.x === 1 ? "eastSafe" : "westSafe"
             const dirZ = offset.z === 1 ? "southSafe" : "northSafe"
             const checkBlockX = block1[dirX]()
-            if (
-                checkBlockX && (!checkBlockX.canWalkThrough() || !checkBlockX.aboveSafe()?.canWalkThrough() || !checkBlockX.isValidPath())
-            ) {
+            if (checkBlockX !== undefined && (!checkBlockX.canWalkThrough() || !checkBlockX.aboveSafe()?.canWalkThrough() || !checkBlockX.isValidPath())) {
                 return false
             }
             const checkBlockZ = block1[dirZ]()
-            if (
-                checkBlockZ && (!checkBlockZ.canWalkThrough() || !checkBlockZ.aboveSafe()?.canWalkThrough() || !checkBlockZ.isValidPath())
-            ) {
+            if (checkBlockZ !== undefined && (!checkBlockZ.canWalkThrough() || !checkBlockZ.aboveSafe()?.canWalkThrough() || !checkBlockZ.isValidPath())) {
                 return false
             }
         }

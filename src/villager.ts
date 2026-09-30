@@ -10,13 +10,17 @@ import {
 } from "@minecraft/server"
 
 import { blockSounds } from "./generated"
+
 import {
     generatePath,
     getCheckPathEntities,
     updatePathNodes
 } from "./path"
+
 import { Registry } from "./registry"
+
 import { destroyTree } from "./tree"
+
 import {
     addVectors,
     calculateDistance,

@@ -4,6 +4,7 @@ import {
 } from "@minecraft/server"
 
 import { updatePathNodes } from "./path"
+
 import {
     areVectorsEqual,
     calculateDistance,

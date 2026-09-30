@@ -3,7 +3,7 @@ const setCache = new WeakMap()
 Array.prototype.includesFast = function (value) {
     let set = setCache.get(this)
 
-    if (!set) {
+    if (set === undefined) {
         set = new Set(this)
         setCache.set(this, set)
     }

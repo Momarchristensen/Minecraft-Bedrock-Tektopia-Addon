@@ -6,7 +6,9 @@ import {
     type Vector3,
     world
 } from "@minecraft/server"
+
 import { Registry } from "./registry"
+
 import {
     addVector,
     addVectors,
@@ -18,6 +20,7 @@ import {
     rotationToStructureRotation,
     vectorToString
 } from "./utils"
+
 import { Village } from "./village"
 
 const itemFrameRotations: Record<string, string> = {
@@ -35,11 +38,10 @@ function tickScanItemFrames() {
 
 system.run(tickScanItemFrames)
 
-function* scanItemFrames(callback: () => void) {
+function* scanItemFrames(callback?: () => void) {
     try {
         const villageItemFrameLocations = []
-        for (let i = 0; i < world.itemFrameList.length; i++) {
-            const itemFrame = world.itemFrameList[i]
+        for (const itemFrame of world.itemFrameList) {
             const dimension = world.getDimension(itemFrame.dimensionId)
             const itemFrameBlock = dimension.getBlockSafe(itemFrame.location)
             if (itemFrameBlock !== undefined) {
@@ -47,7 +49,7 @@ function* scanItemFrames(callback: () => void) {
                 const item = block.getFrameItem()
                 const blockCenter = block.center()
                 const blockCenterString = vectorToString(blockCenter)
-                if (item !== undefined && item.typeId.startsWith("tektopia:structure_")) {
+                if (item?.typeId.startsWith("tektopia:structure_")) {
                     const facingDirection = block.permutation.getState("facing_direction")
                     if (facingDirection === undefined || !(facingDirection in itemFrameRotations)) {
                         if (item.typeId === "tektopia:structure_townhall") {
@@ -67,11 +69,11 @@ function* scanItemFrames(callback: () => void) {
                         const itemFrameOnBlock = block.offsetSafe(
                             directionToVector(rotation)
                         )
-                        if (!itemFrameOnBlock) {
+                        if (itemFrameOnBlock === undefined) {
                             return false
                         }
                         const oppositeRotation = getOppositeDirection(rotation)
-                        const offsetList = [{ x: 0, y: -1, z: 0 }].concat(
+                        const itemFrameOffsetList = [{ x: 0, y: -1, z: 0 }].concat(
                             cardinalDirectionList
                                 .filter(
                                     direction =>
@@ -80,17 +82,16 @@ function* scanItemFrames(callback: () => void) {
                                 .map(direction => directionToVector(direction))
                         )
                         let foundDoor
-                        for (let i = 0; i < offsetList.length; i++) {
-                            const offset = offsetList[i]
+                        for (const offset of itemFrameOffsetList) {
                             const checkBlock = itemFrameOnBlock.offsetSafe(offset)
-                            if (!checkBlock) {
+                            if (checkBlock === undefined) {
                                 return false
                             }
                             if (Registry.doorTypes.includes(checkBlock.typeId)) {
                                 foundDoor = checkBlock
                             }
                         }
-                        if (!foundDoor) {
+                        if (foundDoor === undefined) {
                             return false
                         }
                         doorLocation = addVector(foundDoor.location, "y", -1)
@@ -125,10 +126,10 @@ function* scanItemFrames(callback: () => void) {
                         const alreadyCheckedLocations = new Set([vectorToString(addVector(doorLocation, "y", -1))])
 
                         let steps = 0
-                        while (checkLocationList.length) {
+                        while (checkLocationList.length > 0) {
                             const currentLocation = checkLocationList.shift()
                             if (currentLocation !== undefined) {
-                                if (currentLocation.ceiling && currentLocation.floor) {
+                                if (currentLocation.ceiling !== undefined && currentLocation.floor !== undefined) {
                                     if (currentLocation.ceiling.y - currentLocation.floor.y > 2) {
                                         const floorLocationString = vectorToString(
                                             currentLocation.floor
@@ -138,31 +139,23 @@ function* scanItemFrames(callback: () => void) {
 
                                             floorBlockList.push(currentLocation.floor.aboveSafe())
 
-                                            const offsetList = [
+                                            const floorOffsetList = [
                                                 { x: 1, y: 0, z: 0 },
                                                 { x: -1, y: 0, z: 0 },
                                                 { x: 0, y: 0, z: 1 },
                                                 { x: 0, y: 0, z: -1 }
                                             ]
 
-                                            for (let i = 0; i < offsetList.length; i++) {
-                                                const offset = offsetList[i]
-                                                const offsetLocation = addVectors(
-                                                    currentLocation.floor,
-                                                    offset
-                                                )
-                                                if (
-                                                    !alreadyCheckedLocations.has(
-                                                        vectorToString(offsetLocation)
-                                                    )
-                                                ) {
+                                            for (const offset of floorOffsetList) {
+                                                const offsetLocation = addVectors(currentLocation.floor, offset)
+                                                if (!alreadyCheckedLocations.has(vectorToString(offsetLocation))) {
                                                     const checkLocation = addVector(offsetLocation, "y", 1)
 
                                                     let floorBlock = getFloorBlock(checkLocation)?.aboveSafe()
                                                     while (floorBlock?.isSolid) {
                                                         floorBlock = floorBlock.aboveSafe()
                                                     }
-                                                    if (!floorBlock) {
+                                                    if (floorBlock === undefined) {
                                                         return undefined
                                                     }
 
@@ -171,9 +164,7 @@ function* scanItemFrames(callback: () => void) {
                                                     )
 
                                                     floorBlock = floorBlock.belowSafe()
-                                                    if (
-                                                        floorBlock && ceilingBlock && ceilingBlock.y - floorBlock.y > 2 && currentLocation.ceiling.y - floorBlock.y > 2 && ceilingBlock.y - checkLocation.y >= 2
-                                                    ) {
+                                                    if (floorBlock !== undefined && ceilingBlock !== undefined && ceilingBlock.y - floorBlock.y > 2 && currentLocation.ceiling.y - floorBlock.y > 2 && ceilingBlock.y - checkLocation.y >= 2) {
                                                         checkLocationList.push({
                                                             floor: floorBlock,
                                                             ceiling: ceilingBlock
@@ -270,23 +261,16 @@ function* scanItemFrames(callback: () => void) {
     }
 }
 
-Dimension.prototype.placeStructureFrame = function (
-    location,
-    structureType,
-    isEnchanted,
-    rotation = "north"
-) {
+Dimension.prototype.placeStructureFrame = function (location, structureType, isEnchanted, rotation = "north") {
     const structureManager = world.structureManager
     const block = this.getBlockSafe(location)
-    if (block) {
+    if (block !== undefined) {
         const item = block.getFrameItem()
         const itemIsEnchanted = item !== undefined && Boolean(
             item.getComponent(ItemComponentTypes.Enchantable)?.getEnchantments()
                 .length
         )
-        if (
-            !item || item.typeId.replace("tektopia:structure_", "") !== structureType || itemIsEnchanted !== isEnchanted
-        ) {
+        if (item?.typeId.replace("tektopia:structure_", "") !== structureType || itemIsEnchanted !== isEnchanted) {
             const structureRotation = rotationToStructureRotation(rotation)
             structureManager.place(
                 `mystructure:structure_${structureType}${isEnchanted ? "_enchanted" : ""}`,
@@ -362,6 +346,6 @@ system.runInterval(() => {
     world.itemFrameList = world.itemFrameList.filter(itemFrame => {
         const dimension = world.getDimension(itemFrame.dimensionId)
         const block = dimension.getBlockSafe(itemFrame.location)
-        return !block || minecraftFrameTypes.includes(block.typeId)
+        return block === undefined || minecraftFrameTypes.includes(block.typeId)
     })
 }, 20)

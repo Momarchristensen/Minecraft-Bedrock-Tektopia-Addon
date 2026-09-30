@@ -63,7 +63,7 @@ module.exports = [
       "@stylistic/quotes": ["warn", "double"],
       "@stylistic/semi": ["warn", "never"],
       "@stylistic/comma-dangle": ["warn", "never"],
-      "@stylistic/operator-linebreak": ["warn", "before"],
+      "@stylistic/operator-linebreak": ["warn", "after"],
 
       "@stylistic/brace-style": [
         "warn",
@@ -79,7 +79,7 @@ module.exports = [
       "@stylistic/padding-line-between-statements": [
         "warn",
         { blankLine: "always", prev: "import", next: "*" },
-        { blankLine: "any", prev: "import", next: "import" },
+        { blankLine: "always", prev: "import", next: "import" },
 
         { blankLine: "always", prev: "*", next: ["function", "class"] },
         { blankLine: "always", prev: ["function", "class"], next: "*" },
@@ -97,11 +97,21 @@ module.exports = [
       "@typescript-eslint/no-misused-promises": "warn",
       "@typescript-eslint/await-thenable": "warn",
       "@typescript-eslint/switch-exhaustiveness-check": "warn",
-      "@typescript-eslint/no-unnecessary-condition": "warn",
+      "@typescript-eslint/no-unnecessary-condition": ["warn", {
+        allowConstantLoopConditions: "only-allowed-literals"
+      }],
       "@typescript-eslint/no-unnecessary-type-assertion": "warn",
       "@typescript-eslint/prefer-nullish-coalescing": "warn",
       "@typescript-eslint/prefer-optional-chain": "warn",
-      "@typescript-eslint/only-throw-error": "warn",
+      "@typescript-eslint/only-throw-error": ["warn", {
+        allow: [
+          {
+            from: "package",
+            package: "@bedrock-apis/env-types",
+            name: ["Error", "TypeError", "RangeError"]
+          }
+        ]
+      }],
 
 
 
@@ -159,7 +169,6 @@ module.exports = [
 
 
       "import-x/no-unresolved": "warn",
-      "import-x/named": "off", // TS handles this
       "import-x/first": "warn",
       "import-x/no-self-import": "warn",
       "import-x/no-useless-path-segments": "warn",
@@ -175,6 +184,22 @@ module.exports = [
       }],
 
       "@stylistic/no-mixed-operators": "warn",
+
+
+      "@typescript-eslint/strict-boolean-expressions": ["warn", {
+        allowString: false,
+        allowNumber: false,
+        allowNullableObject: false,
+        allowNullableBoolean: true,
+        allowNullableString: false,
+        allowNullableNumber: false,
+        allowNullableEnum: false,
+        allowAny: false
+      }],
+
+      "@typescript-eslint/prefer-for-of": "warn",
+
+      "@stylistic/max-statements-per-line": ["warn", { max: 1 }],
     }
   },
 ]

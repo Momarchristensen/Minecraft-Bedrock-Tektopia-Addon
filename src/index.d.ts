@@ -13,6 +13,8 @@ import type {
     VillageSaveData
 } from "./village"
 
+export type UndefinedRecord<K extends PropertyKey, V> = Record<K, V | undefined>
+
 export interface ItemStackFilter {
     typeId?: string
     amount?: number

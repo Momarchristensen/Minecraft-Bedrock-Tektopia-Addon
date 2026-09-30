@@ -4,7 +4,9 @@ import {
 } from "./utils"
 
 import type { PathNode } from "."
+
 import type { VillageSaveData } from "./village"
+
 import type { Vector3 } from "@minecraft/server"
 
 const SAVE_PATH_NODES = true

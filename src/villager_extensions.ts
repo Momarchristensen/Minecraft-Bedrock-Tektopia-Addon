@@ -4,6 +4,7 @@ import {
 } from "@minecraft/server"
 
 import { Registry } from "./registry"
+
 import { Villager } from "./villager"
 
 const originalFunctions = {
@@ -23,7 +24,6 @@ World.prototype.getEntity = function (entityId: string) {
     }
     return entity
 }
-
 
 Object.defineProperty(Entity.prototype, "isVillager", {
     get(this: Entity) {

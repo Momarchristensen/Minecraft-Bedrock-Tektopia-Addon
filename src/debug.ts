@@ -22,10 +22,12 @@ function _tickDrawDebug() {
 
 system.run(_tickDrawDebug)
 
-function* drawDebug(callback: () => void) {
+function* drawDebug(callback?: () => void) {
     try {
         if (!world.loadedData) {
-            callback()
+            if (callback !== undefined) {
+                callback()
+            }
             return
         }
         const players = world.getAllPlayers()
@@ -77,13 +79,13 @@ function* drawDebug(callback: () => void) {
                             if (node.requirement !== undefined) {
                                 color = requirementColor(node.requirement)
                             }
-                            if (color === undefined) {
-                                color = {
-                                    red: 122 / 255,
-                                    green: 122 / 255,
-                                    blue: 122 / 255
-                                }
+
+                            color ??= {
+                                red: 122 / 255,
+                                green: 122 / 255,
+                                blue: 122 / 255
                             }
+
                             colorMap.setColorRGB("color", color)
 
                             player.spawnParticle("tektopia:path_node", particlePos, colorMap)
@@ -180,8 +182,8 @@ function* drawDebug(callback: () => void) {
     }
 }
 
-function requirementColor(requirement: NodeRequirement) {
-    if (!requirement?.types?.length) {
+function requirementColor(requirement?: NodeRequirement) {
+    if (requirement === undefined || requirement.types.length === 0) {
         return { red: 0, green: 0, blue: 0 }
     }
 
@@ -201,11 +203,11 @@ function requirementColor(requirement: NodeRequirement) {
     return { red: red / 255, green: green / 255, blue: blue / 255 }
 
     function hashString(str: string) {
-        let hash = 0
+        let hashStr = 0
         for (let i = 0; i < str.length; i++) {
-            hash = hash * 31 + str.charCodeAt(i) | 0
+            hashStr = (hashStr * 31) + str.charCodeAt(i) | 0
         }
-        return hash >>> 0
+        return hashStr >>> 0
     }
 }
 
