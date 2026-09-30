@@ -8,37 +8,33 @@ import {
     World
 } from "@minecraft/server"
 
-import {
-    snap
-} from "./utils"
+import { snap } from "./utils"
 
 const originalFunctions = {
-    "worldGetDimension": World.prototype.getDimension,
-    "getAllPlayers": World.prototype.getAllPlayers,
-    "getName": Object.getOwnPropertyDescriptor(Player.prototype, "name")!.get!,
-    "getGameMode": Player.prototype.getGameMode,
-    "getCommandPermissionLevel": Object.getOwnPropertyDescriptor(Player.prototype, "commandPermissionLevel")!.get!,
-    "setCommandPermissionLevel": Object.getOwnPropertyDescriptor(Player.prototype, "commandPermissionLevel")!.set!,
-    "setGameMode": Player.prototype.setGameMode,
-    "getCurrentTick": Object.getOwnPropertyDescriptor(System.prototype, "currentTick")!.get!,
-    "getLocation": Object.getOwnPropertyDescriptor(Entity.prototype, "location")!.get!,
-    "teleport": Entity.prototype.teleport,
-    "getPing": Player.prototype.getPing,
-    "getDimension": Object.getOwnPropertyDescriptor(Entity.prototype, "dimension")!.get!
+    worldGetDimension: World.prototype.getDimension,
+    getAllPlayers: World.prototype.getAllPlayers,
+    getName: Object.getOwnPropertyDescriptor(Player.prototype, "name")!.get!,
+    getGameMode: Player.prototype.getGameMode,
+    getCommandPermissionLevel: Object.getOwnPropertyDescriptor(Player.prototype, "commandPermissionLevel")!.get!,
+    setCommandPermissionLevel: Object.getOwnPropertyDescriptor(Player.prototype, "commandPermissionLevel")!.set!,
+    setGameMode: Player.prototype.setGameMode,
+    getCurrentTick: Object.getOwnPropertyDescriptor(System.prototype, "currentTick")!.get!,
+    getLocation: Object.getOwnPropertyDescriptor(Entity.prototype, "location")!.get!,
+    teleport: Entity.prototype.teleport,
+    getPing: Player.prototype.getPing,
+    getDimension: Object.getOwnPropertyDescriptor(Entity.prototype, "dimension")!.get!
 }
 
 const dimensionCache = new Map()
 World.prototype.getDimension = function (dimensionId) {
     if (!dimensionCache.has(dimensionId)) {
-        const dimension = originalFunctions["worldGetDimension"].call(this, dimensionId)
+        const dimension = originalFunctions.worldGetDimension.call(this, dimensionId)
         dimensionCache.set(dimensionId, dimension)
     }
     return dimensionCache.get(dimensionId)
 }
 
-
 const entityCacheMap = new Map()
-
 
 function getEntityCache(entity: Entity) {
     let entityCache = entityCacheMap.get(entity.id)
@@ -48,8 +44,6 @@ function getEntityCache(entity: Entity) {
     }
     return entityCache
 }
-
-
 
 function getEntityTickCache(entity: Entity) {
     const cache = getEntityCache(entity)
@@ -67,7 +61,6 @@ function getEntityTickCache(entity: Entity) {
 
     return cache.tickCache.data
 }
-
 
 Player.prototype.getPing = function () {
     const cache = getEntityCache(this)
@@ -142,7 +135,7 @@ Object.defineProperty(Entity.prototype, "dimension", {
             return entityCache.dimension
         }
 
-        const dimension = originalFunctions["getDimension"].call(this)
+        const dimension = originalFunctions.getDimension.call(this)
         entityCache.dimension = dimension
 
         return dimension
@@ -170,7 +163,7 @@ Object.defineProperty(Entity.prototype, "location", {
             return playerTickCache.location
         }
 
-        const location = originalFunctions["getLocation"].call(this)
+        const location = originalFunctions.getLocation.call(this)
         location.y = snap(location.y, 1)
         playerTickCache.location = location
         return location
@@ -193,7 +186,6 @@ Entity.prototype.teleport = function (location, teleportOptions) {
 
     return originalFunctions.teleport.call(this, location, teleportOptions)
 }
-
 
 world.afterEvents.playerGameModeChange.subscribe(event => {
     const playerCache = getEntityCache(event.player)
@@ -225,16 +217,15 @@ Player.prototype.setGameMode = function (gameMode) {
     }
 }
 
-world.afterEvents.playerLeave.subscribe((event) => {
+world.afterEvents.playerLeave.subscribe(event => {
     entityCacheMap.delete(event.playerId)
 })
 
-let currentTick = originalFunctions["getCurrentTick"].call(system)
+let currentTick = originalFunctions.getCurrentTick.call(system)
 
 system.runInterval(() => {
     currentTick++
 })
-
 
 Object.defineProperty(System.prototype, "currentTick", {
     /**
@@ -244,9 +235,6 @@ Object.defineProperty(System.prototype, "currentTick", {
         return currentTick
     }
 })
-
-
-
 
 World.prototype.getAllPlayers = function () {
     return Array.from(playersCache.values())
@@ -284,7 +272,7 @@ Player.prototype.resetCache = function () {
 }
 
 world.afterEvents.worldLoad.subscribe(() => {
-    const players = originalFunctions["getAllPlayers"].call(world)
+    const players = originalFunctions.getAllPlayers.call(world)
 
     for (let i = 0; i < players.length; i++) {
         const player = players[i]

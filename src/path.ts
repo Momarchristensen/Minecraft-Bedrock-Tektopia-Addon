@@ -3,47 +3,41 @@ import {
     GameMode,
     Player,
     system,
-    Vector3,
+    type Vector3,
     world
 } from "@minecraft/server"
 
 import {
+    pathCancelEntityTypes,
+    pathIgnoreEntityTypes
+} from "./path_constants"
+import { Registry } from "./registry"
+import {
     addVectors,
-    calculateDistance,
     calculateSquareDistance,
     centerVector,
     floorVector,
     isVectorBetween,
-    multiplyVector,
     stringToVector,
-    subtractVectors,
     vectorToString
 } from "./utils"
 
-import { Villager } from "./villager"
-
 import {
+    minecraftDangerousBlockTypes,
+    minecraftNonSolidBlocks
+} from "./variables"
+import type {
     CheckEntityData,
     NodeRequirement,
     PathNode,
     VillageBounds
 } from "."
-
-import {
-    pathCancelEntityTypes,
-    pathIgnoreEntityTypes
-} from "./variables"
-
-import { Village } from "./village"
-
-import { Registry } from "./registry"
-
+import type { Villager } from "./villager"
 
 type PathResult = "no_path" | "no_village" | "timeout" | "cancelled" | "error" | Vector3[]
 
-
 export function generatePath(entity: Villager, startLocation: Vector3, targetLocation: Vector3, token: { cancelled: boolean }) {
-    return new Promise<PathResult>((resolve) => {
+    return new Promise<PathResult>(resolve => {
         const village = entity.getVillage()
         if (!village) {
             resolve("no_village")
@@ -58,7 +52,7 @@ export function generatePath(entity: Villager, startLocation: Vector3, targetLoc
         targetLocation = floorVector(targetLocation)
 
         const endBlock = dimension.getBlockSafe(targetLocation)
-        if (endBlock !== undefined && !isValidPath(endBlock, villageBounds)) {
+        if (endBlock !== undefined && !endBlock.isValidPath(villageBounds)) {
             const checkBlocks = [
                 endBlock.northSafe(),
                 endBlock.eastSafe(),
@@ -67,7 +61,7 @@ export function generatePath(entity: Villager, startLocation: Vector3, targetLoc
             ]
             for (let i = 0; i < checkBlocks.length; i++) {
                 const block = checkBlocks[i]
-                if (block !== undefined && isValidPath(block, villageBounds)) {
+                if (block !== undefined && block.isValidPath(villageBounds)) {
                     targetLocation = block.location
                     break
                 }
@@ -79,7 +73,6 @@ export function generatePath(entity: Villager, startLocation: Vector3, targetLoc
                 Math.abs(vector1.x - vector2.x) + Math.abs(vector1.y - vector2.y) + Math.abs(vector1.z - vector2.z)
             )
         }
-
 
         system.runJob(safeTickGeneratePath())
 
@@ -119,7 +112,6 @@ export function generatePath(entity: Villager, startLocation: Vector3, targetLoc
                 resolve([startVec])
                 return
             }
-
 
             const HEURISTIC_WEIGHT = 1
             const MAX_EXPANSIONS = 20000
@@ -220,7 +212,6 @@ export function generatePath(entity: Villager, startLocation: Vector3, targetLoc
     })
 }
 
-
 function findNearestNodeLocation(nodeList: Record<string, PathNode>, location: Vector3, maxRadius = 6) {
     if (nodeList[vectorToString(location)]) {
         return location
@@ -253,9 +244,8 @@ function findNearestNodeLocation(nodeList: Record<string, PathNode>, location: V
     return undefined
 }
 
-
-
 export function getCheckPathEntities(dimensionId: string, villager: Villager) {
+    const VillagerClass = villager.constructor as typeof Villager
     const result = []
     const entityList = pathCheckEntities[dimensionId] ?? []
     for (let i = 0; i < entityList.length; i++) {
@@ -269,14 +259,13 @@ export function getCheckPathEntities(dimensionId: string, villager: Villager) {
         }
         result.push({
             ...checkEntityObject,
-            isBlocked: checkEntity instanceof Villager && (checkEntity.isBlocked || !checkEntity.isPathing)
+            isBlocked: checkEntity instanceof VillagerClass && (checkEntity.isBlocked || !checkEntity.isPathing)
         })
     }
     return result
 }
 
-let pathCheckEntities: Record<string, CheckEntityData[]> = {}
-
+const pathCheckEntities: Record<string, CheckEntityData[]> = {}
 
 system.runInterval(() => {
     for (let i = 0; i < Registry.dimensionTypes.length; i++) {
@@ -302,7 +291,6 @@ system.runInterval(() => {
     }
 })
 
-
 function checkRequirement(villagerType: string, requirement?: NodeRequirement) {
     if (!requirement) {
         return true
@@ -315,9 +303,8 @@ function checkRequirement(villagerType: string, requirement?: NodeRequirement) {
     return !typeSet.has(villagerType)
 }
 
-
 class PriorityQueue<T> {
-    private heap: { element: T; priority: number }[] = []
+    private heap: Array<{ element: T, priority: number }> = []
 
     enqueue(element: T, priority: number): void {
         const node = { element, priority }
@@ -401,60 +388,55 @@ class PriorityQueue<T> {
     }
 }
 
-
-
 const updatePathNodeList: Block[][] = []
 
 export function updatePathNodes(blockList: Block[]) {
     updatePathNodeList.push(blockList)
 }
 
-
-world.afterEvents.playerInteractWithBlock.subscribe((event) => {
+world.afterEvents.playerInteractWithBlock.subscribe(event => {
     const block = event.block
 
     updatePathNodes(
         [block, block.aboveSafe(), block.belowSafe()].filter(
-            (block) => block !== undefined
+            block => block !== undefined
         )
     )
 })
 
-
-world.afterEvents.playerPlaceBlock.subscribe((event) => {
+world.afterEvents.playerPlaceBlock.subscribe(event => {
     const block = event.block
 
-    updatePathNodes([block, block.aboveSafe(), block.belowSafe()].filter((block) => block !== undefined))
+    updatePathNodes([block, block.aboveSafe(), block.belowSafe()].filter(block => block !== undefined))
 })
 
-
-
-world.afterEvents.playerBreakBlock.subscribe((event) => {
+world.afterEvents.playerBreakBlock.subscribe(event => {
     const block = event.block
 
     updatePathNodes(
         [block, block.aboveSafe(), block.belowSafe()].filter(
-            (block) => block !== undefined
+            block => block !== undefined
         )
     )
 })
 
-world.afterEvents.explosion.subscribe((event) => {
+world.afterEvents.explosion.subscribe(event => {
     const impactedBlocks = event.getImpactedBlocks()
     updatePathNodes(
-        impactedBlocks.flatMap((block) =>
+        impactedBlocks.flatMap(block =>
             [block, block.aboveSafe(), block.belowSafe()].filter(
-                (block) => block !== undefined
+                block => block !== undefined
             )
         )
     )
 })
 
-
 function tickUpdateNodes() {
     system.runJob(updateNodesBlocks(tickUpdateNodes))
 }
+
 system.run(tickUpdateNodes)
+
 function* updateNodesBlocks(callback: () => void) {
     try {
         if (!world.loadedData) {
@@ -468,7 +450,7 @@ function* updateNodesBlocks(callback: () => void) {
                 if (!checkBlock.isValid) {
                     continue
                 }
-                const neighborList = getNodeNeighbors(checkBlock)
+                const neighborList = checkBlock.getNodeNeighbors()
                 const checkBlockStringLocation = vectorToString(checkBlock)
                 const villageList = world.getVillages()
                 for (let j = 0; j < villageList.length; j++) {
@@ -484,10 +466,8 @@ function* updateNodesBlocks(callback: () => void) {
                         const neighborLocationString = vectorToString(neighborBlock)
                         if (!alreadyCheckedLocations.has(neighborLocationString)) {
                             alreadyCheckedLocations.add(neighborLocationString)
-                            if (
-                                village.pathNodes[neighborLocationString] && isValidPath(neighborBlock, villageBounds)
-                            ) {
-                                system.runJob(searchBlocks(village, neighborBlock))
+                            if (village.pathNodes[neighborLocationString] && neighborBlock.isValidPath(villageBounds)) {
+                                system.runJob(village.searchBlocks(neighborBlock))
                             }
                         }
                     }
@@ -510,66 +490,9 @@ function* updateNodesBlocks(callback: () => void) {
     }
 }
 
-
-export function checkNodeValidity(village: Village, pathNodeLocation: string) {
-    const dimension = world.getDimension(village.dimensionId)
-    const block = dimension.getBlockSafe(stringToVector(pathNodeLocation))
-    const pathNode = village.pathNodes[pathNodeLocation]
-    if (!block || !pathNode) {
-        return
-    }
-
-    if (!isValidPath(block, village.bounds)) {
-        village.removeNode(pathNodeLocation)
-        return
-    }
-
-    for (const neighborKey of [...pathNode.neighbors]) {
-        const neighborBlock = dimension.getBlockSafe(stringToVector(neighborKey))
-        if (neighborBlock && !isValidConnection(block, neighborBlock)) {
-            village.unlink(pathNodeLocation, neighborKey)
-            console.warn("Node Deleted: ", pathNodeLocation)
-        }
-    }
-}
-
-
-function isValidConnection(currentBlock: Block, neighborBlock: Block) {
-    function checkValidConnection(block1: Block, block2: Block) {
-        const offset = subtractVectors(block2, block1)
-        if (offset.y === 1) {
-            const aboveAbove = block1.aboveSafe()?.aboveSafe()
-            if (aboveAbove === undefined || !aboveAbove.canWalkThrough()) {
-                return false
-            }
-        }
-        if (offset.x !== 0 && offset.z !== 0) {
-            const block2Above = block2.aboveSafe() //fix
-            if (block2Above === undefined || !block2.canWalkThrough() || !block2Above.canWalkThrough()) {
-                return false
-            }
-            const dirX = offset.x === 1 ? "eastSafe" : "westSafe"
-            const dirZ = offset.z === 1 ? "southSafe" : "northSafe"
-            const checkBlockX = block1[dirX]()
-            if (
-                checkBlockX && (!checkBlockX.canWalkThrough() || !checkBlockX.aboveSafe()?.canWalkThrough() || !isValidPath(checkBlockX))
-            ) {
-                return false
-            }
-            const checkBlockZ = block1[dirZ]()
-            if (
-                checkBlockZ && (!checkBlockZ.canWalkThrough() || !checkBlockZ.aboveSafe()?.canWalkThrough() || !isValidPath(checkBlockZ))
-            ) {
-                return false
-            }
-        }
-        return true
-    }
-    return checkValidConnection(currentBlock, neighborBlock) && checkValidConnection(neighborBlock, currentBlock)
-}
-
-function isValidPath(block: Block, villageBounds?: VillageBounds) {
-    const below = block.belowSafe()//fix
+Block.prototype.isValidPath = function ( villageBounds?: VillageBounds) {
+    const block = this
+    const below = block.belowSafe()
     if (below === undefined) {
         return false
     }
@@ -601,113 +524,8 @@ function isValidPath(block: Block, villageBounds?: VillageBounds) {
     return true
 }
 
-
-export function* searchBlocks(
-    village: Village,
-    startingBlock: Block,
-    overwrite = false,
-    callback?: () => void
-) {
-    try {
-        const checkBlockList = [startingBlock]
-        if (!isValidPath(startingBlock, village.bounds)) {
-            return
-        }
-        const startingBlockLocationString = vectorToString(startingBlock)
-        const alreadyCheckedLocations = new Set([startingBlockLocationString])
-        const villageBounds = village.bounds
-        const dimension = world.getDimension(village.dimensionId)
-        const pathCache = new Map()
-        while (checkBlockList.length > 0) {
-            if (!village.isValid) {
-                return
-            }
-            const checkBlock = checkBlockList.shift()
-            if (checkBlock === undefined || !checkBlock.isValid) {
-                continue
-            }
-
-            const key = vectorToString(checkBlock)
-            village.pathNodes[key] ??= { neighbors: [] }
-            const node = village.pathNodes[key]
-
-            const requirement = getNodeRequirement(checkBlock)
-            if (requirement) {
-                node.requirement = requirement
-            }
-            else {
-                delete node.requirement
-            }
-
-            const before = new Set(node.neighbors)
-            const after = new Set<string>()
-
-            for (const block of getNodeNeighbors(checkBlock)) {
-                const blockString = vectorToString(block)
-                let isValid = pathCache.get(blockString)
-                if (isValid === undefined) {
-                    isValid = isValidPath(block, villageBounds)
-                    pathCache.set(blockString, isValid)
-                }
-                if (!isValid || !isValidConnection(checkBlock, block)) {
-                    continue
-                }
-
-                after.add(blockString)
-
-                const existed = village.pathNodes[blockString] !== undefined
-                village.pathNodes[blockString] ??= { neighbors: [] }
-                village.link(key, blockString)
-
-
-                if (!alreadyCheckedLocations.has(blockString)) {
-                    alreadyCheckedLocations.add(blockString)
-                    if (overwrite || !existed) {
-                        checkBlockList.push(block)
-                    }
-                }
-            }
-
-            for (const oldKey of before) {
-                if (after.has(oldKey)) {
-                    continue
-                }
-                village.unlink(key, oldKey)
-                if (!overwrite && !alreadyCheckedLocations.has(oldKey)) {
-                    const neighbor = dimension.getBlockSafe(stringToVector(oldKey))
-                    if (neighbor && isValidPath(neighbor, villageBounds)) {
-                        alreadyCheckedLocations.add(oldKey)
-                        checkBlockList.push(neighbor)
-                    }
-                }
-            }
-            yield
-        }
-    }
-    finally {
-        if (callback !== undefined) {
-            callback()
-        }
-    }
-}
-
-function getNodeRequirement(block: Block): NodeRequirement | undefined {
-    const below = block.belowSafe()
-    const above = block.aboveSafe()
-
-    if (below?.destroyableLeaf()) {
-        return { whiteList: false, types: ["tektopia:lumberjack"] }
-    }
-
-    if (Registry.leafTypes.includesFast(block.typeId) || above !== undefined && Registry.leafTypes.includesFast(above.typeId)) {
-        return { whiteList: true, types: ["tektopia:lumberjack"] }
-    }
-
-    return undefined
-}
-
-
-function getNodeNeighbors(nodeBlock: Block) {
+Block.prototype.getNodeNeighbors = function () {
+    const nodeBlock = this
     const north = nodeBlock.northSafe()
     const east = nodeBlock.eastSafe()
     const south = nodeBlock.southSafe()
@@ -751,233 +569,28 @@ function getNodeNeighbors(nodeBlock: Block) {
     return neighborList
 }
 
-export function pathFindTo(villager: Villager, targetLocation: Vector3) {
-    if (villager.isPathing) {
-        return
-    }
-
-    const village = villager.getVillage()
-    if (village === undefined) {
-        return
-    }
-
-    villager.isPathing = true
-    const token = { cancelled: false }
-    let finished = false
-
-    function cancelPath() {
-        if (finished) {
-            return
-        }
-        finished = true
-        system.clearRun(timeoutId)
-        token.cancelled = true
-        villager.blockedTimer = 0
-        villager.setAnimation(undefined)
-        villager.isPathing = false
-        if (villager.pathTickId !== undefined) {
-            system.clearRun(villager.pathTickId)
-        }
-        villager.pathTickId = undefined
-        villager.stopPath = () => { }
-    }
-    villager.stopPath = cancelPath
-
-    const timeoutId = system.runTimeout(() => {
-        if (!finished) {
-            cancelPath()
-        }
-    }, 1200)
-
-    try {
-        let startLocation = floorVector(villager.location)
-
-        if (village.pathNodes[vectorToString(startLocation)] === undefined) {
-            const entityStandingOnBlocks = villager.getAllBlocksStandingOn()
-            for (let i = 0; i < entityStandingOnBlocks.length; i++) {
-                const blockAbove = entityStandingOnBlocks[i].aboveSafe()
-                if (blockAbove === undefined) {
-                    continue
-                }
-                const blockAboveLocationString = vectorToString(blockAbove)
-                if (village.pathNodes[blockAboveLocationString]) {
-                    startLocation = blockAbove.location
-                    break
-                }
-            }
-        }
-
-
-        generatePath(villager, startLocation, targetLocation, token).then((result) => {
-            if (finished) {
-                return
-            }
-            if (typeof result === "string") {
-                if (result !== "cancelled") {
-                    villager.pathError = result
-                }
-                cancelPath()
-                return
-            }
-            if (result.length === 0) {
-                cancelPath()
-                return
-            }
-            startFollowing(villager, result, targetLocation, cancelPath, () => finished)
-        }).catch((error) => {
-            console.warn("pathFindTo failed: ", error)
-            cancelPath()
-        })
-    }
-    catch (error) {
-        console.warn("pathFindTo setup failed: ", error)
-        cancelPath()
-    }
+Block.prototype.getIsSolid = function () {
+    return this.isSolid || Registry.solidBlocksSet.has(this.typeId)
 }
 
-function startFollowing(
-    villager: Villager,
-    pathNodeList: Vector3[],
-    targetLocation: Vector3,
-    cancelPath: () => void,
-    isFinished: () => boolean
-) {
-    const village = villager.getVillage()
-    if (village === undefined) {
-        cancelPath()
-        return
-    }
+Block.prototype.canPathThrough = function () {
+    return this.canWalkThrough() || Registry.doorTypes.includesFast(this.typeId)
+}
 
+Block.prototype.destroyableLeaf = function () {
+    return (
+        Registry.leafTypes.includesFast(this.typeId) && !this.permutation.getState("persistent_bit")
+    )
+}
 
-    const dimension = villager.dimension
-    const dimensionId = dimension.id
-    const villageBounds = village.bounds
+const minecraftNonSolidBlocksSet = new Set(minecraftNonSolidBlocks)
 
-    function tickFollowPath() {
-        if (isFinished()) {
-            return
-        }
+Block.prototype.canWalkThrough = function () {
+    return (
+        (this.isAir || minecraftNonSolidBlocksSet.has(this.typeId) || this.destroyableLeaf()) && !this.isDangerous() && !this.isLiquid && !this.isWaterlogged
+    )
+}
 
-        try {
-            if (!villager.isValid || !villager.isPathing) {
-                cancelPath()
-                return
-            }
-            const targetBlock = dimension.getBlockSafe(targetLocation)
-            if (targetBlock && !isValidPath(targetBlock, villageBounds) && calculateDistance(centerVector(targetLocation), villager.location) <= 1.25) {
-                cancelPath()
-                return
-            }
-            villager.pathTickId = system.run(tickFollowPath)
-            if (pathNodeList.length === 0) {
-                cancelPath()
-                return
-            }
-            if (system.currentTick % 20 === 0) {
-                pathNodeList.forEach((pathNode) => {
-                    try {
-                        dimension.spawnParticle(
-                            "minecraft:villager_angry",
-                            centerVector(pathNode)
-                        )
-                    }
-                    catch { }
-                })
-            }
-            const currentPathNode = centerVector(pathNodeList[0], true)
-            const entityLocation = villager.location
-            if (villager.isOnGround) {
-                villager.lookAt(currentPathNode, true)
-            }
-            const direction = villager.getViewDirection()
-            const speed = villager.isOnGround ? 0.2 : 0.015
-            const moveVector = multiplyVector(direction, "xyz", speed)
-            const checkEntityList = getCheckPathEntities(dimensionId, villager)
-            const pathNodeBlock = dimension.getBlockSafe(currentPathNode)
-            if (pathNodeBlock !== undefined) {
-                if (!isValidPath(pathNodeBlock, villageBounds)) {
-                    checkNodeValidity(village!, vectorToString(pathNodeBlock))
-                    cancelPath()
-                    return
-                }
-                const pathNodeBlockBelowTypeId = pathNodeBlock.belowSafe()?.typeId
-                if (pathNodeBlockBelowTypeId !== undefined && (Registry.slabTypes.includesFast(pathNodeBlockBelowTypeId) || Registry.stairTypes.includesFast(pathNodeBlockBelowTypeId))) {
-                    currentPathNode.y -= 0.5
-                }
-            }
-            if (calculateDistance(currentPathNode, entityLocation) >= 2) {
-                cancelPath()
-                return
-            }
-            let isBlocked = false
-            let blockedByTektopiaVillager = false
-            for (let i = 0; i < checkEntityList.length; i++) {
-                const checkEntity = checkEntityList[i]
-                if (checkEntity.isBlocked === undefined || !checkEntity.isBlocked) {
-                    const checkEntityLocation = checkEntity.location
-                    const checkEntityIsTektopiaVillager = checkEntity.typeId.startsWith("tektopia:")
-                    if (
-                        calculateSquareDistance(checkEntityLocation, currentPathNode) < 1.75
-                    ) {
-                        if (checkEntity.cancelPath) {
-                            cancelPath()
-                            return
-                        }
-                        blockedByTektopiaVillager = checkEntityIsTektopiaVillager
-                        isBlocked = true
-                        break
-                    }
-                }
-            }
-
-            villager.unblockTimer ??= 0
-
-            if (blockedByTektopiaVillager) {
-                villager.unblockTimer = 20
-            }
-            else if (!isBlocked && villager.unblockTimer > 0) {
-                villager.unblockTimer--
-                isBlocked = true
-            }
-
-            villager.isBlocked = isBlocked
-
-            const isMoving = villager.getMoveSpeed(true) > 0.0001
-            if (!isMoving || isBlocked) {
-                villager.blockedTimer = (villager.blockedTimer | 0) + 1
-            }
-            else {
-                villager.blockedTimer = 0
-            }
-            if (isBlocked) {
-                if (!isMoving) {
-                    villager.setAnimation(undefined)
-                }
-            }
-            else {
-                villager.setAnimation("walking")
-                if (villager.isOnGround) {
-                    villager.applyKnockback(moveVector, 0)
-                    if (currentPathNode.y - villager.location.y > 0.55) {
-                        villager.applyImpulse({ x: 0, y: 0.44, z: 0 })
-                    }
-                }
-                else {
-                    villager.applyImpulse({ x: moveVector.x, y: 0, z: moveVector.z })
-                }
-            }
-            if (villager.blockedTimer > 40) {
-                cancelPath()
-                return
-            }
-            if (calculateSquareDistance(currentPathNode, villager.location) <= 0.5) {
-                pathNodeList.shift()
-            }
-        }
-        catch (error) {
-            console.warn("Path follow failed: ", error)
-            cancelPath()
-        }
-    }
-    villager.pathTickId = system.run(tickFollowPath)
+Block.prototype.isDangerous = function () {
+    return minecraftDangerousBlockTypes.includesFast(this.typeId)
 }

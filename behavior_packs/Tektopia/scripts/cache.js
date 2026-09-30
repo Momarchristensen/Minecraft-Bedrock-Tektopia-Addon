@@ -42,23 +42,23 @@ var require_cache = __commonJS({
   "src/cache.ts"() {
     init_utils();
     var originalFunctions = {
-      "worldGetDimension": World.prototype.getDimension,
-      "getAllPlayers": World.prototype.getAllPlayers,
-      "getName": Object.getOwnPropertyDescriptor(Player.prototype, "name").get,
-      "getGameMode": Player.prototype.getGameMode,
-      "getCommandPermissionLevel": Object.getOwnPropertyDescriptor(Player.prototype, "commandPermissionLevel").get,
-      "setCommandPermissionLevel": Object.getOwnPropertyDescriptor(Player.prototype, "commandPermissionLevel").set,
-      "setGameMode": Player.prototype.setGameMode,
-      "getCurrentTick": Object.getOwnPropertyDescriptor(System.prototype, "currentTick").get,
-      "getLocation": Object.getOwnPropertyDescriptor(Entity.prototype, "location").get,
-      "teleport": Entity.prototype.teleport,
-      "getPing": Player.prototype.getPing,
-      "getDimension": Object.getOwnPropertyDescriptor(Entity.prototype, "dimension").get
+      worldGetDimension: World.prototype.getDimension,
+      getAllPlayers: World.prototype.getAllPlayers,
+      getName: Object.getOwnPropertyDescriptor(Player.prototype, "name").get,
+      getGameMode: Player.prototype.getGameMode,
+      getCommandPermissionLevel: Object.getOwnPropertyDescriptor(Player.prototype, "commandPermissionLevel").get,
+      setCommandPermissionLevel: Object.getOwnPropertyDescriptor(Player.prototype, "commandPermissionLevel").set,
+      setGameMode: Player.prototype.setGameMode,
+      getCurrentTick: Object.getOwnPropertyDescriptor(System.prototype, "currentTick").get,
+      getLocation: Object.getOwnPropertyDescriptor(Entity.prototype, "location").get,
+      teleport: Entity.prototype.teleport,
+      getPing: Player.prototype.getPing,
+      getDimension: Object.getOwnPropertyDescriptor(Entity.prototype, "dimension").get
     };
     var dimensionCache = /* @__PURE__ */ new Map();
     World.prototype.getDimension = function(dimensionId) {
       if (!dimensionCache.has(dimensionId)) {
-        const dimension = originalFunctions["worldGetDimension"].call(this, dimensionId);
+        const dimension = originalFunctions.worldGetDimension.call(this, dimensionId);
         dimensionCache.set(dimensionId, dimension);
       }
       return dimensionCache.get(dimensionId);
@@ -141,7 +141,7 @@ var require_cache = __commonJS({
         if (entityCache.dimension !== void 0) {
           return entityCache.dimension;
         }
-        const dimension = originalFunctions["getDimension"].call(this);
+        const dimension = originalFunctions.getDimension.call(this);
         entityCache.dimension = dimension;
         return dimension;
       }
@@ -162,7 +162,7 @@ var require_cache = __commonJS({
         if (playerTickCache.location !== void 0) {
           return playerTickCache.location;
         }
-        const location = originalFunctions["getLocation"].call(this);
+        const location = originalFunctions.getLocation.call(this);
         location.y = snap(location.y, 1);
         playerTickCache.location = location;
         return location;
@@ -207,7 +207,7 @@ var require_cache = __commonJS({
     world.afterEvents.playerLeave.subscribe((event) => {
       entityCacheMap.delete(event.playerId);
     });
-    var currentTick = originalFunctions["getCurrentTick"].call(system);
+    var currentTick = originalFunctions.getCurrentTick.call(system);
     system.runInterval(() => {
       currentTick++;
     });
@@ -242,7 +242,7 @@ var require_cache = __commonJS({
       playersCache.delete(this.id);
     };
     world.afterEvents.worldLoad.subscribe(() => {
-      const players = originalFunctions["getAllPlayers"].call(world);
+      const players = originalFunctions.getAllPlayers.call(world);
       for (let i = 0; i < players.length; i++) {
         const player = players[i];
         playersCache.set(player.id, player);

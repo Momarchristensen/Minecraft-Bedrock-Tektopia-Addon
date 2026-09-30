@@ -6,15 +6,12 @@ import {
     EntityQueryOptions
 } from "@minecraft/server"
 
-import { Villager } from "./villager"
+import type { Villager } from "./villager"
 
-import {
+import type {
     Village,
     VillageSaveData
 } from "./village"
-
-
-
 
 export interface ItemStackFilter {
     typeId?: string
@@ -63,8 +60,7 @@ declare module "@minecraft/server" {
     interface Entity {
         isDead: boolean
         unreachable: number
-        isVillager: boolean
-        lookAt(location: Vector3, ignoreY?: boolean): void
+        readonly isVillager: boolean
     }
 
     interface Block {
@@ -85,6 +81,11 @@ declare module "@minecraft/server" {
         playSound(soundId: string, soundOptions?: WorldSoundOptions): void
         soundEvent(eventId: SoundEvents, soundOptions?: WorldSoundOptions): void
         replace(blockType: string | BlockType): void
+        getNodeNeighbors(): Block[]
+        isValidPath(villageBounds?: VillageBounds): boolean
+        getNodeRequirement(): NodeRequirement | undefined
+        readonly isTree: boolean
+        readonly isFarm: boolean
     }
 
     interface Container {
@@ -101,20 +102,6 @@ declare module "@minecraft/server" {
     }
 }
 
-export interface VillagerConfig {
-    customTasks: Task[]
-    pickupItems: string[] | (() => string[])
-}
-
-export interface Task {
-    id: string
-    name: string
-    required: boolean
-    condition: (villager: Villager, village: Village) => boolean
-    canInterrupt?: boolean
-    tick?: (villager: Villager, village: Village) => void
-}
-
 export interface CheckEntityData {
     location: Vector3
     id: string
@@ -128,8 +115,6 @@ export interface NodeRequirement {
     whiteList: boolean
     types: string[]
 }
-
-
 
 export interface PathNode {
     neighbors: string[]
@@ -148,6 +133,4 @@ declare global {
     }
 }
 
-
 export { }
-

@@ -1,0 +1,352 @@
+import {
+    stringToVector,
+    vectorToString
+} from "./utils"
+
+import type { PathNode } from "."
+import type { VillageSaveData } from "./village"
+import type { Vector3 } from "@minecraft/server"
+
+const SAVE_PATH_NODES = true
+
+const SAVE_RESOURCE_LOCATIONS = true
+
+const NAMESPACE = "minecraft:"
+
+type Triple = [number, number, number]
+
+export type CompressedRequirement = [
+    whiteList: 0 | 1,
+    types: string[],
+    nodeIndexDeltas: string
+]
+
+export type CompressedVillage = [
+    dimensionId: string,
+    center: Triple,
+    doorLocation: Triple,
+    sugarCaneLocations: string,
+    saplingLocations: string,
+    farmLocations: string,
+    treeLocations: string,
+    nodeLocations: string,
+    neighborMaskPalette: string,
+    neighborMaskIndices: string,
+    nodeRequirements: CompressedRequirement[]
+]
+
+const DIGITS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
+const DIGIT_VALUES: Record<string, number> = {}
+for (let i = 0; i < DIGITS.length; i++) {
+    DIGIT_VALUES[DIGITS[i]] = i
+}
+
+function packUnsigned(values: number[]): string {
+    let result = ""
+    for (let i = 0; i < values.length; i++) {
+        let value = values[i]
+        while (value >= 32) {
+            result += DIGITS[value % 32 + 32]
+            value = Math.floor(value / 32)
+        }
+        result += DIGITS[value]
+    }
+    return result
+}
+
+function unpackUnsigned(text: string): number[] {
+    const result: number[] = []
+    let value = 0
+    let scale = 1
+    for (let i = 0; i < text.length; i++) {
+        const digit = DIGIT_VALUES[text[i]]
+        value += (digit & 31) * scale
+        if (digit >= 32) {
+            scale *= 32
+        }
+        else {
+            result.push(value)
+            value = 0
+            scale = 1
+        }
+    }
+    return result
+}
+
+function zigzag(value: number) {
+    return value >= 0 ? value * 2 : -value * 2 - 1
+}
+
+function unzigzag(value: number) {
+    return value % 2 === 0 ? value / 2 : -(value + 1) / 2
+}
+
+function packSigned(values: number[]): string {
+    return packUnsigned(values.map(value => zigzag(value)))
+}
+
+function unpackSigned(text: string): number[] {
+    return unpackUnsigned(text).map(value => unzigzag(value))
+}
+
+function comparePoints(vector1: Vector3, vector2: Vector3) {
+    return vector1.x - vector2.x || vector1.z - vector2.z || vector1.y - vector2.y
+}
+
+function packPoints(sortedPoints: Vector3[], origin: Vector3): string {
+    if (sortedPoints.length === 0) {
+        return ""
+    }
+    const dx: number[] = new Array(sortedPoints.length)
+    const dy: number[] = new Array(sortedPoints.length)
+    const dz: number[] = new Array(sortedPoints.length)
+    let px = origin.x
+    let py = origin.y
+    let pz = origin.z
+    for (let i = 0; i < sortedPoints.length; i++) {
+        const point = sortedPoints[i]
+        dx[i] = point.x - px
+        dy[i] = point.y - py
+        dz[i] = point.z - pz
+        px = point.x
+        py = point.y
+        pz = point.z
+    }
+    return `${packSigned(dx) }.${ packSigned(dz) }.${ packSigned(dy)}`
+}
+
+function unpackPoints(text: string, origin: Vector3): Vector3[] {
+    if (text === "") {
+        return []
+    }
+    const [xText, zText, yText] = text.split(".")
+    const dx = unpackSigned(xText)
+    const dz = unpackSigned(zText)
+    const dy = unpackSigned(yText)
+    const points: Vector3[] = new Array(dx.length)
+    let x = origin.x
+    let y = origin.y
+    let z = origin.z
+    for (let i = 0; i < dx.length; i++) {
+        x += dx[i]
+        y += dy[i]
+        z += dz[i]
+        points[i] = { x, y, z }
+    }
+    return points
+}
+
+function packLocations(locationList: string[], origin: Vector3): string {
+    const points = locationList.map(location => stringToVector(location))
+    points.sort(comparePoints)
+    return packPoints(points, origin)
+}
+
+function unpackLocations(text: string, origin: Vector3): string[] {
+    return unpackPoints(text, origin).map(point => vectorToString(point))
+}
+
+function originOf(center: Vector3): Vector3 {
+    return { x: Math.floor(center.x), y: Math.floor(center.y), z: Math.floor(center.z) }
+}
+
+const NEIGHBOR_OFFSETS: Vector3[] = []
+for (let dx = -1; dx <= 1; dx++) {
+    for (let dz = -1; dz <= 1; dz++) {
+        for (let dy = -1; dy <= 1; dy++) {
+            if (dx !== 0 || dy !== 0 || dz !== 0) {
+                NEIGHBOR_OFFSETS.push({ x: dx, y: dy, z: dz })
+            }
+        }
+    }
+}
+const FORWARD_START = 13
+
+function offsetIndex(dx: number, dy: number, dz: number) {
+    const index = (dx + 1) * 9 + (dz + 1) * 3 + (dy + 1)
+    return index > 13 ? index - 1 : index
+}
+
+function offsetKey(location: Vector3, offset: Vector3) {
+    return vectorToString({
+        x: location.x + offset.x,
+        y: location.y + offset.y,
+        z: location.z + offset.z
+    })
+}
+
+export function compressVillage(data: VillageSaveData): CompressedVillage {
+    const center = data.center
+    const origin = originOf(center)
+    const nodeEntries = SAVE_PATH_NODES ? Object.keys(data.pathNodes).map(key => ({ key, location: stringToVector(key) })) : []
+    nodeEntries.sort((a, b) => comparePoints(a.location, b.location))
+
+    const indexByKey = new Map<string, number>()
+    for (let i = 0; i < nodeEntries.length; i++) {
+        indexByKey.set(nodeEntries[i].key, i)
+    }
+    const forwardMasks: number[] = new Array(nodeEntries.length).fill(0)
+
+    const requirementGroups = new Map<string, {
+        whiteList: 0 | 1
+        types: string[]
+        deltas: number[]
+        last: number
+    }>()
+
+    for (let i = 0; i < nodeEntries.length; i++) {
+        const { key, location } = nodeEntries[i]
+        const node = data.pathNodes[key]
+
+        for (let j = 0; j < node.neighbors.length; j++) {
+            const neighborKey = node.neighbors[j]
+            const neighborIndex = indexByKey.get(neighborKey)
+            if (neighborIndex === undefined) {
+                continue
+            }
+            const neighbor = nodeEntries[neighborIndex].location
+            const dx = neighbor.x - location.x
+            const dy = neighbor.y - location.y
+            const dz = neighbor.z - location.z
+            if (Math.abs(dx) > 1 || Math.abs(dy) > 1 || Math.abs(dz) > 1) {
+                continue
+            }
+            if (dx === 0 && dy === 0 && dz === 0) {
+                continue
+            }
+            const bit = offsetIndex(dx, dy, dz)
+            if (bit >= FORWARD_START) {
+                forwardMasks[i] |= 1 << bit - FORWARD_START
+            }
+            else if (!data.pathNodes[neighborKey].neighbors.includes(key)) {
+                forwardMasks[neighborIndex] |= 1 << offsetIndex(-dx, -dy, -dz) - FORWARD_START
+            }
+        }
+
+        const requirement = node.requirement
+        if (requirement !== undefined) {
+            const types = requirement.types.slice().sort()
+            const groupKey = (requirement.whiteList ? "1" : "0") + types.join(",")
+            let group = requirementGroups.get(groupKey)
+            if (group === undefined) {
+                group = { whiteList: requirement.whiteList ? 1 : 0, types, deltas: [], last: 0 }
+                requirementGroups.set(groupKey, group)
+            }
+            group.deltas.push(i - group.last)
+            group.last = i
+        }
+    }
+
+    const maskCounts = new Map<number, number>()
+    for (let i = 0; i < forwardMasks.length; i++) {
+        maskCounts.set(forwardMasks[i], (maskCounts.get(forwardMasks[i]) ?? 0) + 1)
+    }
+    const palette = [...maskCounts.keys()].sort(
+        (a, b) => maskCounts.get(b)! - maskCounts.get(a)! || a - b
+    )
+    const paletteIndexByMask = new Map<number, number>()
+    for (let i = 0; i < palette.length; i++) {
+        paletteIndexByMask.set(palette[i], i)
+    }
+    const maskIndices = forwardMasks.map(mask => paletteIndexByMask.get(mask)!)
+
+    const nodeRequirements: CompressedRequirement[] = []
+    for (const group of requirementGroups.values()) {
+        nodeRequirements.push([group.whiteList, group.types, packUnsigned(group.deltas)])
+    }
+
+    const dimensionId = data.dimensionId
+    const door = data.doorLocation
+    return [
+        dimensionId.startsWith(NAMESPACE) ? dimensionId.slice(NAMESPACE.length) : dimensionId,
+        [center.x, center.y, center.z],
+        [door.x - origin.x, door.y - origin.y, door.z - origin.z],
+        SAVE_RESOURCE_LOCATIONS ? packLocations(data.sugarCaneLocations, origin) : "",
+        SAVE_RESOURCE_LOCATIONS ? packLocations(data.saplingLocations, origin) : "",
+        SAVE_RESOURCE_LOCATIONS ? packLocations(data.farmLocations, origin) : "",
+        SAVE_RESOURCE_LOCATIONS ? packLocations(data.treeLocations, origin) : "",
+        packPoints(nodeEntries.map(entry => entry.location), origin),
+        packUnsigned(palette),
+        packUnsigned(maskIndices),
+        nodeRequirements
+    ]
+}
+
+export function decompressVillage(
+    compressed: CompressedVillage
+): VillageSaveData {
+    const [
+        dimensionId,
+        centerTriple,
+        doorTriple,
+        sugarCaneText,
+        saplingText,
+        farmText,
+        treeText,
+        nodeText,
+        paletteText,
+        maskIndexText
+    ] = compressed
+
+    const nodeRequirements = compressed[compressed.length - 1] as CompressedRequirement[]
+
+    const center: Vector3 = { x: centerTriple[0], y: centerTriple[1], z: centerTriple[2] }
+    const origin = originOf(center)
+
+    const points = unpackPoints(nodeText, origin)
+    const keys = points.map(point => vectorToString(point))
+    const pathNodes: Record<string, PathNode> = {}
+    for (let i = 0; i < keys.length; i++) {
+        pathNodes[keys[i]] = { neighbors: [] }
+    }
+
+    const palette = unpackUnsigned(paletteText)
+    const maskIndices = unpackUnsigned(maskIndexText)
+    for (let i = 0; i < points.length; i++) {
+        const mask = palette[maskIndices[i]]
+        if (!mask) {
+            continue
+        }
+        const node = pathNodes[keys[i]]
+        for (let bit = 0; bit < 13; bit++) {
+            if (!(mask & 1 << bit)) {
+                continue
+            }
+            const neighborKey = offsetKey(points[i], NEIGHBOR_OFFSETS[FORWARD_START + bit])
+            const neighborNode = pathNodes[neighborKey]
+            if (neighborNode === undefined) {
+                continue
+            }
+            node.neighbors.push(neighborKey)
+            neighborNode.neighbors.push(keys[i])
+        }
+    }
+
+    for (let i = 0; i < nodeRequirements.length; i++) {
+        const [whiteList, types, deltaText] = nodeRequirements[i]
+        const deltas = unpackUnsigned(deltaText)
+        let index = 0
+        for (let j = 0; j < deltas.length; j++) {
+            index += deltas[j]
+            const node = pathNodes[keys[index]]
+            if (node !== undefined) {
+                node.requirement = { whiteList: whiteList === 1, types: types.slice() }
+            }
+        }
+    }
+
+    return {
+        dimensionId: dimensionId.includes(":") ? dimensionId : NAMESPACE + dimensionId,
+        center,
+        doorLocation: {
+            x: doorTriple[0] + origin.x,
+            y: doorTriple[1] + origin.y,
+            z: doorTriple[2] + origin.z
+        },
+        pathNodes,
+        sugarCaneLocations: unpackLocations(sugarCaneText, origin),
+        saplingLocations: unpackLocations(saplingText, origin),
+        farmLocations: unpackLocations(farmText, origin),
+        treeLocations: unpackLocations(treeText, origin)
+    }
+}

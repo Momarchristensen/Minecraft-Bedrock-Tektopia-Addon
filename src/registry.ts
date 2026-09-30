@@ -35,24 +35,24 @@ const blocks = (test: (id: string) => boolean) => (): string[] => Registry.block
 const entities = (test: (id: string) => boolean) => (): string[] => Registry.entityTypes.filter(test)
 
 export const Registry = defineRegistry({
-    blockTypes: (): string[] => BlockTypes.getAll().map((b) => b.id),
-    entityTypes: (): string[] => EntityTypes.getAll().map((e) => e.id),
+    blockTypes: (): string[] => BlockTypes.getAll().map(b => b.id),
+    entityTypes: (): string[] => EntityTypes.getAll().map(e => e.id),
 
-    trapdoorTypes: blocks((id) => id.includes("trapdoor")),
-    doorTypes: blocks((id) => id.includes("_door") || id.includes("_fence_gate")),
-    slabTypes: blocks((id) => id.includes("_slab") && !id.includes("_double_slab")),
-    stairTypes: blocks((id) => id.includes("_stair")),
-    fenceTypes: blocks((id) => id.includes("_fence") || id.includes("_wall") && !id.includes("_sign") && !id.includes("_fan")),
-    saplingTypes: blocks((id) => id.includes("_sapling")),
-    logTypes: blocks((id) => id.includes("_log") && !id.includes("stripped_")),
-    leafTypes: blocks((id) => id.includes("_leaves")),
+    trapdoorTypes: blocks(id => id.includes("trapdoor")),
+    doorTypes: blocks(id => id.includes("_door") || id.includes("_fence_gate")),
+    slabTypes: blocks(id => id.includes("_slab") && !id.includes("_double_slab")),
+    stairTypes: blocks(id => id.includes("_stair")),
+    fenceTypes: blocks(id => id.includes("_fence") || id.includes("_wall") && !id.includes("_sign") && !id.includes("_fan")),
+    saplingTypes: blocks(id => id.includes("_sapling")),
+    logTypes: blocks(id => id.includes("_log") && !id.includes("stripped_")),
+    leafTypes: blocks(id => id.includes("_leaves")),
 
-    villagerTypes: entities((id) => id.startsWith("tektopia:")),
+    villagerTypes: entities(id => id.startsWith("tektopia:")),
 
     noWalkBlocks: (): string[] => [...Registry.fenceTypes, ...Registry.doorTypes, ...Registry.trapdoorTypes],
     solidBlocks: (): string[] => subtractLists(subtractLists(Registry.blockTypes, minecraftNonSolidBlocks), Registry.noWalkBlocks),
     solidBlocksSet: (): Set<string> => new Set(Registry.solidBlocks),
     lumberjackPickups: (): string[] => ["minecraft:apple", ...Registry.saplingTypes, ...Registry.logTypes],
 
-    dimensionTypes: (): string[] => DimensionTypes.getAll().map((dimensionType) => dimensionType.typeId)
+    dimensionTypes: (): string[] => DimensionTypes.getAll().map(dimensionType => dimensionType.typeId)
 })

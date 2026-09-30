@@ -1,80 +1,3 @@
-import {
-    CompressedVillage,
-    Village,
-    VillageSaveData
-} from "./village"
-
-export const worldSaveDataList = [
-    {
-        property: "itemFrameList",
-        default: [],
-        compression: undefined
-    },
-    {
-        property: "villageList",
-        default: [],
-        compression: {
-            compress: (value: VillageSaveData[]) => value.map((v) => Village.compress(v)),
-            decompress: (value: CompressedVillage[]) => {
-                const villages: VillageSaveData[] = []
-                for (const compressed of value) {
-                    try {
-                        villages.push(Village.decompress(compressed))
-                    }
-                    catch (error) {
-                        console.error("Skipping unreadable village:", error)
-                    }
-                }
-                return villages
-            }
-        }
-    }
-] as const
-
-export const pathCancelEntityTypes = [
-    "minecraft:chest_boat",
-    "minecraft:boat",
-    "minecraft:minecart",
-    "minecraft:command_block_minecart",
-    "minecraft:chest_minecart",
-    "minecraft:tnt_minecart",
-    "minecraft:hopper_minecart"
-]
-
-export const pathIgnoreEntityTypes = [
-    "minecraft:fishing_hook",
-    "minecraft:ice_bomb",
-    "minecraft:balloon",
-    "minecraft:wind_charge_projectile",
-    "minecraft:egg",
-    "minecraft:small_fireball",
-    "minecraft:ender_crystal",
-    "minecraft:wither_skull_dangerous",
-    "minecraft:wither_skull",
-    "minecraft:thrown_trident",
-    "minecraft:fireball",
-    "minecraft:dragon_fireball",
-    "minecraft:breeze_wind_charge_projectile",
-    "minecraft:arrow",
-    "minecraft:ominous_item_spawner",
-    "minecraft:llama_spit",
-    "minecraft:xp_orb",
-    "minecraft:shulker_bullet",
-    "minecraft:xp_bottle",
-    "minecraft:tnt",
-    "minecraft:splash_potion",
-    "minecraft:lingering_potion",
-    "minecraft:snowball",
-    "minecraft:ender_pearl",
-    "minecraft:armor_stand",
-    "minecraft:lightning_bolt",
-    "minecraft:tripod_camera",
-    "minecraft:fireworks_rocket",
-    "minecraft:eye_of_ender_signal",
-    "minecraft:area_effect_cloud",
-    "minecraft:item"
-]
-
 export const minecraftDirtTypes = [
     "minecraft:mycelium",
     "minecraft:pale_moss_block",
@@ -88,7 +11,6 @@ export const minecraftDirtTypes = [
     "minecraft:moss_block",
     "minecraft:mud"
 ]
-
 
 export const minecraftDangerousBlockTypes = [
     "minecraft:lava",
@@ -104,7 +26,6 @@ export const minecraftDangerousBlockTypes = [
     "minecraft:soul_campfire",
     "minecraft:sweet_berry_bush"
 ]
-
 
 export const minecraftNonSolidBlocks = [
     "minecraft:glow_lichen",
@@ -376,7 +297,3 @@ export const minecraftNonSolidBlocks = [
     "minecraft:torch",
     "minecraft:soul_torch"
 ]
-
-
-
-

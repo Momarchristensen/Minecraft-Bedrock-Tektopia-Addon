@@ -1,6 +1,6 @@
 import {
     StructureRotation,
-    Vector3
+    type Vector3
 } from "@minecraft/server"
 
 export type Direction = "north" | "south" | "east" | "west" | "up" | "down"
@@ -27,7 +27,7 @@ export function capitalizeEveryWord(sentence: string) {
     return capitalizedSentence
 }
 
-export function fix(number: number, decimalPlaces=0): number {
+export function fix(number: number, decimalPlaces = 0): number {
     return Number(number.toFixed(decimalPlaces))
 }
 
@@ -241,7 +241,7 @@ const directionMap: Record<string, string> = {
     "0,-1,-1": "northdown",
     "1,-1,0": "eastdown",
     "0,-1,1": "southdown",
-    "-1,-1,0": "westdown",
+    "-1,-1,0": "westdown"
 }
 
 export function vectorToDirection(vector: Vector3): string | undefined {
