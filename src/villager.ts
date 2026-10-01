@@ -112,8 +112,8 @@ export class Villager {
         const dx = location.x - entityLocation.x
         const dy = location.y - entityLocation.y
         const dz = location.z - entityLocation.z
-        const yaw = Math.atan2(dz, dx) * (180 / Math.PI) - 90
-        const pitch = -Math.atan2(dy, Math.sqrt(dx * dx + dz * dz)) * (180 / Math.PI)
+        const yaw = (Math.atan2(dz, dx) * (180 / Math.PI)) - 90
+        const pitch = -Math.atan2(dy, Math.sqrt((dx * dx) + (dz * dz))) * (180 / Math.PI)
         entity.setRotation({ x: ignoreY ? entity.getRotation().x : pitch, y: yaw })
     }
 
@@ -134,14 +134,13 @@ export class Villager {
     getMoveSpeed(ignoreY = false) {
         const entityVelocity = this.entity.getVelocity()
         const { x, y, z } = entityVelocity
-        return Math.sqrt(x * x + z * z + (ignoreY ? 0 : y * y))
+        return Math.sqrt((x * x) + (z * z) + (ignoreY ? 0 : y * y))
     }
 
     getVillage() {
         const entityLocation = this.location
         const villages = world.getVillages()
-        for (let i = 0; i < villages.length; i++) {
-            const village = villages[i]
+        for (const village of villages) {
             if (isVectorBetween(entityLocation, village.bounds.start, village.bounds.end, true)) {
                 return village
             }
@@ -152,12 +151,12 @@ export class Villager {
     findTree(village: Village): Vector3 | undefined {
         const takenTrees = new Set<string>()
         const villagers = world.getVillagers()
-        for (let i = 0; i < villagers.length; i++) {
-            if (villagers[i].id === this.id) {
+        for (const villager of villagers) {
+            if (villager.id === this.id) {
                 continue
             }
-            const tree = villagers[i].foundTree
-            if (tree) {
+            const tree = villager.foundTree
+            if (tree !== undefined) {
                 takenTrees.add(vectorToString(tree))
             }
         }
@@ -165,8 +164,7 @@ export class Villager {
         const villagerLoc = this.location
         let closestTree: Vector3 | undefined
         let minDist = Infinity
-        for (let i = 0; i < village.treeLocations.length; i++) {
-            const treeStr = village.treeLocations[i]
+        for (const treeStr of village.treeLocations) {
             if (takenTrees.has(treeStr)) {
                 continue
             }
@@ -202,9 +200,8 @@ export class Villager {
 
         let closestItem: Entity | undefined
         let bestDist = Infinity
-        for (let i = 0; i < nearbyItems.length; i++) {
-            const item = nearbyItems[i]
-            if (!item.isOnGround || item.unreachable) {
+        for (const item of nearbyItems) {
+            if (!item.isOnGround || item.unreachable > 0) {
                 continue
             }
             if (Math.abs(item.location.y - villagerLoc.y) > 1.1) {
@@ -243,6 +240,12 @@ export class Villager {
         const token = { cancelled: false }
         let finished = false
 
+        const timeoutId = system.runTimeout(() => {
+            if (!finished) {
+                cancelPath()
+            }
+        }, 1200)
+
         function cancelPath() {
             if (finished) {
                 return
@@ -262,24 +265,18 @@ export class Villager {
 
         villager.stopPath = cancelPath
 
-        const timeoutId = system.runTimeout(() => {
-            if (!finished) {
-                cancelPath()
-            }
-        }, 1200)
-
         try {
             let startLocation = floorVector(villager.location)
 
             if (village.pathNodes[vectorToString(startLocation)] === undefined) {
                 const entityStandingOnBlocks = villager.getAllBlocksStandingOn()
-                for (let i = 0; i < entityStandingOnBlocks.length; i++) {
-                    const blockAbove = entityStandingOnBlocks[i].aboveSafe()
+                for (const block of entityStandingOnBlocks) {
+                    const blockAbove = block.aboveSafe()
                     if (blockAbove === undefined) {
                         continue
                     }
                     const blockAboveLocationString = vectorToString(blockAbove)
-                    if (village.pathNodes[blockAboveLocationString]) {
+                    if (village.pathNodes[blockAboveLocationString] !== undefined) {
                         startLocation = blockAbove.location
                         break
                     }
@@ -327,8 +324,8 @@ export class Villager {
         }
         const pathError = villager.pathError
 
-        if (villager.waiting && pathError === undefined) {
-            let nameTag = `Waiting${".".repeat(Math.floor(system.currentTick / 5) % 3 + 1)}`
+        if (villager.isWaiting && pathError === undefined) {
+            let nameTag = `Waiting${".".repeat((Math.floor(system.currentTick / 5) % 3) + 1)}`
             if (typeof villager.waiting === "number") {
                 villager.waiting--
                 if (villager.waiting === 0) {
@@ -349,6 +346,10 @@ export class Villager {
         villager.updateAnimation()
     }
 
+    get isWaiting() {
+        return typeof this.waiting === "number" ? this.waiting > 0 : this.waiting
+    }
+
     tickTasks(village: Village) {
         const villager = this
 
@@ -360,14 +361,13 @@ export class Villager {
 
         const villagerLocation = villager.location
         const allTaskList = globalTasks.concat(villagerProps.customTasks)
-        const taskList = villager.currentTask ? allTaskList.filter(task => task.canInterrupt) : allTaskList
-        villager.taskProgress ??= 0
-        if (!villager.currentTask) {
+        const taskList = villager.currentTask !== undefined ? allTaskList.filter(task => task.canInterrupt) : allTaskList
+
+        if (villager.currentTask === undefined) {
             villager.foundTree = undefined
             villager.foundItem = undefined
 
-            for (let i = 0; i < taskList.length; i++) {
-                const task = taskList[i]
+            for (const task of taskList) {
                 if (task.condition(villager, village)) {
                     villager.currentTask = task.id
                     villager.stopPath()
@@ -376,16 +376,16 @@ export class Villager {
                 }
             }
 
-            if (!villager.currentTask) {
+            if (villager.currentTask === undefined) {
                 villager.foundTree = undefined
                 villager.foundItem = undefined
             }
         }
         if (villager.currentTask !== undefined) {
-            const task = allTaskList.find(task => task.id === villager.currentTask)
+            const task = allTaskList.find(checkTask => checkTask.id === villager.currentTask)
             task?.tick?.(villager, village)
 
-            if (!villager.currentTask && !villager.waiting) {
+            if (!villager.hasTask && !villager.isWaiting) {
                 if (villager.animation !== "walking") {
                     villager.animation = undefined
                 }
@@ -394,10 +394,9 @@ export class Villager {
                 villager.taskProgress = 0
                 villager.foundTree = undefined
             }
-            for (let i = 0; i < allTaskList.length; i++) {
-                const task = allTaskList[i]
-                if (task.id === villager.currentTask) {
-                    villager.nameTag = `${task.name}\n${villager.blockedTimer}`
+            for (const checkTask of allTaskList) {
+                if (checkTask.id === villager.currentTask) {
+                    villager.nameTag = `${checkTask.name}\n${villager.blockedTimer}`
                     break
                 }
             }
@@ -415,14 +414,14 @@ export class Villager {
             else {
                 let block = dimension.getBlockSafe(randomLocation)
                 if (block !== undefined) {
-                    while (block !== undefined && block.isAir) {
+                    while (block?.isAir) {
                         block = block.belowSafe()
                     }
                     while (block !== undefined && !block.isAir) {
                         block = block.aboveSafe()
                     }
                     if (block !== undefined) {
-                        if (village.pathNodes[vectorToString(block)]) {
+                        if (village.pathNodes[vectorToString(block)] !== undefined) {
                             villager.pathFindTo(block.location)
                             villager.taskProgress = randomInt(20, 200)
                         }
@@ -442,7 +441,7 @@ export class Villager {
                 for (let y = minVector.y; y <= maxVector.y; y++) {
                     for (let z = minVector.z; z <= maxVector.z; z++) {
                         const block = dimension.getBlockSafe({ x, y, z })
-                        if (!block) {
+                        if (block === undefined) {
                             continue
                         }
                         if (block.permutation.getState("persistent_bit") === false) {
@@ -466,6 +465,10 @@ export class Villager {
         }
     }
 
+    get hasTask() {
+        return this.currentTask !== undefined
+    }
+
     tickChop(village: Village) {
         const villager = this
 
@@ -474,7 +477,7 @@ export class Villager {
 
         if (foundTree !== undefined) {
             const treeBlock = dimension.getBlockSafe(foundTree)
-            if (treeBlock !== undefined && treeBlock.isTree) {
+            if (treeBlock?.isTree) {
                 const treeDist = calculateDistance(foundTree, villager.location)
                 if (treeDist <= 5) {
                     villager.holdingItem = "wooden_axe"
@@ -482,11 +485,11 @@ export class Villager {
                 else {
                     villager.holdingItem = undefined
                 }
-                if (treeDist < 0.5 || !villager.isPathing && treeDist < 3) {
+                if (treeDist < 0.5 || (!villager.isPathing && treeDist < 3)) {
                     villager.animation = "chopping"
                     villager.lookAt(centerVector(foundTree))
                     villager.taskProgress++
-                    if (villager.taskProgress > 100 && !villager.waiting) {
+                    if (villager.taskProgress > 100 && !villager.isWaiting) {
                         const saplingTypeId = treeBlock.typeId.replace(
                             "_log",
                             "_sapling"
@@ -522,7 +525,7 @@ export class Villager {
         const villager = this
         const foundItem = villager.foundItem
         const pathError = villager.pathError
-        if (foundItem !== undefined && foundItem.isValid) {
+        if (foundItem?.isValid) {
             if (calculateDistance(foundItem.location, villager.location) < 1.75) {
                 if (villager.getMoveSpeed() < 0.01) {
                     const item = foundItem.getComponent(EntityComponentTypes.Item)?.itemStack
@@ -564,7 +567,7 @@ export class Villager {
         if (this.lastHoldingItem !== this.holdingItem) {
             this.lastHoldingItem = this.holdingItem
             this.entity.runCommand(
-                this.holdingItem ? `replaceitem entity @s slot.weapon.offhand 0 ${this.holdingItem}` : "replaceitem entity @s slot.weapon.offhand 0 air"
+                this.holdingItem !== undefined ? `replaceitem entity @s slot.weapon.offhand 0 ${this.holdingItem}` : "replaceitem entity @s slot.weapon.offhand 0 air"
             )
         }
     }
@@ -593,12 +596,12 @@ export class Villager {
             }
 
             try {
-                if (!villager.isValid || !villager.isPathing) {
+                if (!villager.isValid || !villager.isPathing || village === undefined) {
                     cancelPath()
                     return
                 }
                 const targetBlock = dimension.getBlockSafe(targetLocation)
-                if (targetBlock && !targetBlock.isValidPath(villageBounds) && calculateDistance(centerVector(targetLocation), villager.location) <= 1.25) {
+                if (targetBlock !== undefined && !targetBlock.isValidPath(villageBounds) && calculateDistance(centerVector(targetLocation), villager.location) <= 1.25) {
                     cancelPath()
                     return
                 }
@@ -630,7 +633,7 @@ export class Villager {
                 const pathNodeBlock = dimension.getBlockSafe(currentPathNode)
                 if (pathNodeBlock !== undefined) {
                     if (!pathNodeBlock.isValidPath(villageBounds)) {
-                        village!.checkNodeValidity(vectorToString(pathNodeBlock))
+                        village.checkNodeValidity(vectorToString(pathNodeBlock))
                         cancelPath()
                         return
                     }
@@ -645,14 +648,11 @@ export class Villager {
                 }
                 let isBlocked = false
                 let blockedByTektopiaVillager = false
-                for (let i = 0; i < checkEntityList.length; i++) {
-                    const checkEntity = checkEntityList[i]
-                    if (checkEntity.isBlocked === undefined || !checkEntity.isBlocked) {
+                for (const checkEntity of checkEntityList) {
+                    if (!checkEntity.isBlocked) {
                         const checkEntityLocation = checkEntity.location
                         const checkEntityIsTektopiaVillager = checkEntity.typeId.startsWith("tektopia:")
-                        if (
-                            calculateSquareDistance(checkEntityLocation, currentPathNode) < 1.75
-                        ) {
+                        if (calculateSquareDistance(checkEntityLocation, currentPathNode) < 1.75) {
                             if (checkEntity.cancelPath) {
                                 cancelPath()
                                 return
@@ -663,8 +663,6 @@ export class Villager {
                         }
                     }
                 }
-
-                villager.unblockTimer ??= 0
 
                 if (blockedByTektopiaVillager) {
                     villager.unblockTimer = 20
@@ -728,8 +726,7 @@ system.runInterval(() => {
     }
 
     const villagers = world.getVillagers()
-    for (let i = 0; i < villagers.length; i++) {
-        const villager = villagers[i]
+    for (const villager of villagers) {
         try {
             villager.tickAI()
         }
@@ -741,9 +738,8 @@ system.runInterval(() => {
 
 system.runInterval(() => {
     const itemEntities = world.getEntities({ type: "item" })
-    for (let i = 0; i < itemEntities.length; i++) {
-        const entity = itemEntities[i]
-        if (entity.unreachable) {
+    for (const entity of itemEntities) {
+        if (entity.unreachable > 0) {
             entity.unreachable--
         }
     }
@@ -756,8 +752,7 @@ Block.prototype.destroy = function () {
     const lootTableManager = world.getLootTableManager()
     const itemList = lootTableManager.generateLootFromBlock(this) ?? []
     const dimension = this.dimension
-    for (let i = 0; i < itemList.length; i++) {
-        const item = itemList[i]
+    for (const item of itemList) {
         item.makeVillageItem()
         dimension.spawnItem(item, this.center())
     }
@@ -776,6 +771,7 @@ ItemStack.prototype.makeVillageItem = function () {
 }
 
 Block.prototype.soundEvent = function (eventId, soundOptions) {
+    let options = soundOptions !== undefined ? { ...soundOptions } : undefined
     if (this.isAir) {
         return
     }
@@ -784,10 +780,13 @@ Block.prototype.soundEvent = function (eventId, soundOptions) {
         console.warn(`Missing sound: ${this.typeId}`)
         return
     }
-    if (soundOptions === undefined && typeof sound === "object" && sound !== null) {
-        soundOptions = {}
-        soundOptions.pitch = sound.pitch !== undefined ? resolveValue(sound.pitch) : 1
-        soundOptions.volume = sound.volume !== undefined ? resolveValue(sound.volume) : 1
+
+    if (typeof sound === "object" && sound !== null) {
+        options = {
+            pitch: resolveValue(sound.pitch ?? 1),
+            volume: resolveValue(sound.volume ?? 1),
+            ...options
+        }
     }
 
     function resolveValue(value: number | [number, number]) {
@@ -798,7 +797,7 @@ Block.prototype.soundEvent = function (eventId, soundOptions) {
     }
 
     if (sound !== null) {
-        this.playSound(typeof sound === "string" ? sound : sound.sound, soundOptions)
+        this.playSound(typeof sound === "string" ? sound : sound.sound, options)
     }
 }
 

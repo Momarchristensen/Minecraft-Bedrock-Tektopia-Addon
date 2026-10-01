@@ -67,9 +67,9 @@ World.prototype.loadData = function () {
         const raw = readRaw(property.property)
         const json = raw === undefined ? null : LZString.decompressFromBase64(raw)
 
-        let value = json !== undefined && json !== null && json !== "null" ? JSON.parse(json) : copy(property.default)
+        let value = json !== null && json !== "null" ? JSON.parse(json) : copy(property.default)
 
-        if (property.compression) {
+        if (property.compression !== undefined) {
             value = property.compression.decompress(value)
         }
 
@@ -86,8 +86,7 @@ World.prototype.saveData = function () {
     const worldSaveDataIdList = this.getDynamicPropertyIds()
     const propertiesToDelete = []
 
-    for (let i = 0; i < worldSaveDataList.length; i++) {
-        const property = worldSaveDataList[i]
+    for (const property of worldSaveDataList) {
         let value: any = this[property.property]
 
         if (property.compression !== undefined) {
@@ -124,8 +123,7 @@ World.prototype.saveData = function () {
         }
     }
 
-    for (let i = 0; i < propertiesToDelete.length; i++) {
-        const propertyId = propertiesToDelete[i]
+    for (const propertyId of propertiesToDelete) {
         if (worldSaveDataIdList.includes(propertyId)) {
             this.setDynamicProperty(propertyId)
         }

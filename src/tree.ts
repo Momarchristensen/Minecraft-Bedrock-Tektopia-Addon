@@ -1,6 +1,7 @@
 import {
     type Block,
-    system
+    system,
+    type Vector3
 } from "@minecraft/server"
 
 import { updatePathNodes } from "./path"
@@ -12,7 +13,7 @@ import {
     vectorToString
 } from "./utils"
 
-export function destroyTree(startingBlock: Block, callback: () => void) {
+export function destroyTree(startingBlock: Block, callback?: () => void) {
     system.runJob(destroyTreeGenerator())
 
     function* destroyTreeGenerator() {
@@ -24,10 +25,9 @@ export function destroyTree(startingBlock: Block, callback: () => void) {
 
             const logBlocks = [startingBlock]
             const checkLogBlocks = []
-            const y = 0
             for (let x = -1; x <= 1; x++) {
                 for (let z = -1; z <= 1; z++) {
-                    checkLogBlocks.push(startingBlock.offsetSafe({ x, y, z }))
+                    checkLogBlocks.push(startingBlock.offsetSafe({ x, y: 0, z }))
                 }
             }
             const checkLeafBlocks = []
@@ -35,7 +35,7 @@ export function destroyTree(startingBlock: Block, callback: () => void) {
             let logChecks = 0
             while (true) {
                 currentBlock = currentBlock.aboveSafe()
-                if (currentBlock === undefined || currentBlock.typeId !== logTypeId) {
+                if (currentBlock?.typeId !== logTypeId) {
                     break
                 }
                 if (currentBlock.permutation.getState("pillar_axis") !== "y") {
@@ -54,7 +54,7 @@ export function destroyTree(startingBlock: Block, callback: () => void) {
 
                 for (let x = -1; x <= 1; x++) {
                     for (let z = -1; z <= 1; z++) {
-                        checkLogBlocks.push(currentBlock.offsetSafe({ x, y, z }))
+                        checkLogBlocks.push(currentBlock.offsetSafe({ x, y: 0, z }))
                     }
                 }
 
@@ -129,7 +129,7 @@ export function destroyTree(startingBlock: Block, callback: () => void) {
                     continue
                 }
 
-                let closestLogLocation
+                let closestLogLocation: Vector3 | undefined
                 const maxDistance = 4
                 let closestDistance = maxDistance + 1
 
@@ -141,7 +141,7 @@ export function destroyTree(startingBlock: Block, callback: () => void) {
                             }
 
                             const block = checkBlock.offsetSafe({ x: dx, y: dy, z: dz })
-                            if (!block) {
+                            if (block === undefined) {
                                 continue
                             }
 
@@ -157,14 +157,11 @@ export function destroyTree(startingBlock: Block, callback: () => void) {
                     }
                 }
 
-                if (!closestLogLocation) {
+                if (closestLogLocation === undefined) {
                     continue
                 }
-                if (
-                    !logBlockLocations.some(location =>
-                        areVectorsEqual(closestLogLocation, location)
-                    )
-                ) {
+
+                if (!logBlockLocations.some(location => areVectorsEqual(closestLogLocation, location))) {
                     continue
                 }
 
@@ -192,21 +189,19 @@ export function destroyTree(startingBlock: Block, callback: () => void) {
                 block.destroy()
 
                 const updateBlockList = [block, block.aboveSafe(), block.belowSafe()]
-                for (let j = 0; j < updateBlockList.length; j++) {
-                    const block = updateBlockList[j]
-                    if (block === undefined) {
+                for (const updateBlock of updateBlockList) {
+                    if (updateBlock === undefined) {
                         continue
                     }
-                    const list = [block, block.aboveSafe()]
-                    for (let k = 0; k < list.length; k++) {
-                        const block = list[k]
-                        if (block === undefined) {
+                    const neighborBlockList = [updateBlock, updateBlock.aboveSafe()]
+                    for (const neighborBlock of neighborBlockList) {
+                        if (neighborBlock === undefined) {
                             continue
                         }
-                        const blockString = vectorToString(block)
+                        const blockString = vectorToString(neighborBlock)
                         if (!checkedBlocks.has(blockString)) {
                             checkedBlocks.add(blockString)
-                            blocksToUpdate.push(block, block.aboveSafe())
+                            blocksToUpdate.push(neighborBlock, neighborBlock.aboveSafe())
                         }
                     }
                 }

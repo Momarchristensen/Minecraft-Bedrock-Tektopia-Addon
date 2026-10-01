@@ -6,11 +6,11 @@ import {
 export type Direction = "north" | "south" | "east" | "west" | "up" | "down"
 
 export function isVectorBetween(vector: Vector3, vector1: Vector3, vector2: Vector3, ignoreY = false): boolean {
-    vector = centerVector(vector)
+    const centeredVector = centerVector(vector)
     const startingVector = floorVector(minVectors(vector1, vector2))
     const endingVector = ceilVector(maxVectors(vector1, vector2))
     return (
-        vector.x >= startingVector.x && vector.x <= endingVector.x && (ignoreY || vector.y >= startingVector.y && vector.y <= endingVector.y) && vector.z >= startingVector.z && vector.z <= endingVector.z
+        centeredVector.x >= startingVector.x && centeredVector.x <= endingVector.x && (ignoreY || (centeredVector.y >= startingVector.y && centeredVector.y <= endingVector.y)) && centeredVector.z >= startingVector.z && centeredVector.z <= endingVector.z
     )
 }
 
@@ -67,7 +67,7 @@ export function calculateDistance(v1: Vector3, v2: Vector3, ignoreY = false): nu
     const dx = v1.x - v2.x
     const dy = ignoreY ? 0 : v1.y - v2.y
     const dz = v1.z - v2.z
-    return Math.sqrt(dx * dx + dy * dy + dz * dz)
+    return Math.sqrt((dx * dx) + (dy * dy) + (dz * dz))
 }
 
 export function calculateSquareDistance(v1: Vector3, v2: Vector3, ignoreY = false): number {
@@ -115,9 +115,7 @@ export function addVector(vector: Vector3, axises: string | string[], value: num
         y: vector.y,
         z: vector.z
     }
-    if (typeof axises === "string") {
-        axises = axises.split("")
-    }
+
     for (const axis of axises) {
         if (axis in result) {
             (result as unknown as Record<string, number>)[axis] += value
@@ -132,9 +130,7 @@ export function multiplyVector(vector: Vector3, axises: string | string[], value
         y: vector.y,
         z: vector.z
     }
-    if (typeof axises === "string") {
-        axises = axises.split("")
-    }
+
     for (const axis of axises) {
         if (axis in result) {
             (result as unknown as Record<string, number>)[axis] *= value
@@ -285,7 +281,7 @@ export function exclusiveValues<T>(...lists: T[][]): T[] {
     const freq = new Map<T, number>()
     for (const lst of lists) {
         for (const val of new Set(lst)) {
-            freq.set(val, (freq.get(val) || 0) + 1)
+            freq.set(val, (freq.get(val) ?? 0) + 1)
         }
     }
     const result: T[] = []

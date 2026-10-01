@@ -439,7 +439,7 @@ function tickUpdateNodes() {
 
 system.run(tickUpdateNodes)
 
-function* updateNodesBlocks(callback: () => void) {
+function* updateNodesBlocks(callback?: () => void) {
     try {
         if (!world.loadedData) {
             return
@@ -459,15 +459,11 @@ function* updateNodesBlocks(callback: () => void) {
                     const alreadyCheckedLocations = new Set()
                     const villageBounds = village.bounds
                     village.removeNode(checkBlockStringLocation)
-                    for (let k = 0; k < neighborList.length; k++) {
-                        const neighborBlock = neighborList[k]
-                        if (neighborBlock === undefined) {
-                            continue
-                        }
+                    for (const neighborBlock of neighborList) {
                         const neighborLocationString = vectorToString(neighborBlock)
                         if (!alreadyCheckedLocations.has(neighborLocationString)) {
                             alreadyCheckedLocations.add(neighborLocationString)
-                            if (village.pathNodes[neighborLocationString] && neighborBlock.isValidPath(villageBounds)) {
+                            if (village.pathNodes[neighborLocationString] !== undefined && neighborBlock.isValidPath(villageBounds)) {
                                 system.runJob(village.searchBlocks(neighborBlock))
                             }
                         }
