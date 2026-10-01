@@ -2,6 +2,7 @@ import {
     StructureRotation,
     type Vector3
 } from "@minecraft/server"
+import { VectorString } from ".";
 
 export type Direction = "north" | "south" | "east" | "west" | "up" | "down"
 
@@ -81,12 +82,12 @@ export function randomInt(min: number, max: number): number {
     return Math.floor(Math.random() * (max - min + 1)) + min
 }
 
-export function randomItem<T>(list: T[]): T {
+export function randomItem<T>(list: T[]): T | undefined {
     return list[randomInt(0, list.length - 1)]
 }
 
-export function vectorToString(vector: Vector3): string {
-    return `${vector.x},${vector.y},${vector.z}`
+export function vectorToString(vector: Vector3): VectorString {
+    return `${vector.x},${vector.y},${vector.z}` as VectorString
 }
 
 export function centerVector(vector: Vector3, floorY = false): Vector3 {
@@ -155,7 +156,7 @@ export function rotationToStructureRotation(rotation: string): StructureRotation
     return undefined
 }
 
-export function stringToVector(string: string): Vector3 {
+export function stringToVector(string: VectorString): Vector3 {
     const index1 = string.indexOf(",")
     const index2 = string.indexOf(",", index1 + 1)
     return {

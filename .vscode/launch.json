@@ -1,0 +1,15 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "minecraft-js",
+            "request": "attach",
+            "name": "Debug Tektopia",
+            "mode": "listen",
+            "localRoot": "${workspaceFolder}/behavior_packs/Tektopia/scripts/",
+            "generatedSourceRoot": "${workspaceFolder}/behavior_packs/Tektopia/scripts/",
+            "sourceMapRoot": "${workspaceFolder}/behavior_packs/Tektopia/scripts/",
+            "port": 19144
+        }
+    ]
+}

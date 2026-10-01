@@ -3,10 +3,10 @@ import {
   StructureRotation
 } from "@minecraft/server";
 function isVectorBetween(vector, vector1, vector2, ignoreY = false) {
-  vector = centerVector(vector);
+  const centeredVector = centerVector(vector);
   const startingVector = floorVector(minVectors(vector1, vector2));
   const endingVector = ceilVector(maxVectors(vector1, vector2));
-  return vector.x >= startingVector.x && vector.x <= endingVector.x && (ignoreY || vector.y >= startingVector.y && vector.y <= endingVector.y) && vector.z >= startingVector.z && vector.z <= endingVector.z;
+  return centeredVector.x >= startingVector.x && centeredVector.x <= endingVector.x && (ignoreY || centeredVector.y >= startingVector.y && centeredVector.y <= endingVector.y) && centeredVector.z >= startingVector.z && centeredVector.z <= endingVector.z;
 }
 function formatTypeId(itemTypeId) {
   return capitalizeEveryWord(removeIdentifier(itemTypeId).replace(/_/g, " "));
@@ -95,9 +95,6 @@ function addVector(vector, axises, value) {
     y: vector.y,
     z: vector.z
   };
-  if (typeof axises === "string") {
-    axises = axises.split("");
-  }
   for (const axis of axises) {
     if (axis in result) {
       result[axis] += value;
@@ -111,9 +108,6 @@ function multiplyVector(vector, axises, value) {
     y: vector.y,
     z: vector.z
   };
-  if (typeof axises === "string") {
-    axises = axises.split("");
-  }
   for (const axis of axises) {
     if (axis in result) {
       result[axis] *= value;
@@ -248,7 +242,7 @@ function exclusiveValues(...lists) {
   const freq = /* @__PURE__ */ new Map();
   for (const lst of lists) {
     for (const val of new Set(lst)) {
-      freq.set(val, (freq.get(val) || 0) + 1);
+      freq.set(val, (freq.get(val) ?? 0) + 1);
     }
   }
   const result = [];

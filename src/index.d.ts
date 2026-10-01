@@ -13,6 +13,10 @@ import type {
     VillageSaveData
 } from "./village"
 
+export type VectorString = string & {
+    readonly __vectorString: unique symbol
+}
+
 export type UndefinedRecord<K extends PropertyKey, V> = Record<K, V | undefined>
 
 export interface ItemStackFilter {
@@ -57,6 +61,7 @@ declare module "@minecraft/server" {
     interface Dimension {
         getBlockSafe(location: Vector3): Block | undefined
         placeStructureFrame(location: Vector3, structureId: string, isEnchanted: boolean, rotation: string): void
+        getVillage(location: Vector3): Village | undefined
     }
 
     interface Entity {
@@ -86,6 +91,7 @@ declare module "@minecraft/server" {
         getNodeNeighbors(): Block[]
         isValidPath(villageBounds?: VillageBounds): boolean
         getNodeRequirement(): NodeRequirement | undefined
+        scanBlock(village: Village): boolean
         readonly isTree: boolean
         readonly isFarm: boolean
     }
@@ -119,7 +125,7 @@ export interface NodeRequirement {
 }
 
 export interface PathNode {
-    neighbors: string[]
+    neighbors: VectorString[]
     requirement?: NodeRequirement
 }
 

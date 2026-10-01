@@ -1,3 +1,8 @@
+// src/tree.ts
+import {
+  system as system2
+} from "@minecraft/server";
+
 // src/path.ts
 import {
   Block,
@@ -96,11 +101,11 @@ function ceilVector(vector) {
     z: Math.ceil(vector.z)
   };
 }
-function calculateSquareDistance(v1, v2, ignoreY = false) {
-  const dx = Math.abs(v1.x - v2.x);
-  const dy = ignoreY ? 0 : Math.abs(v1.y - v2.y);
-  const dz = Math.abs(v1.z - v2.z);
-  return Math.max(dx, dy, dz);
+function calculateDistance(v1, v2, ignoreY = false) {
+  const dx = v1.x - v2.x;
+  const dy = ignoreY ? 0 : v1.y - v2.y;
+  const dz = v1.z - v2.z;
+  return Math.sqrt(dx * dx + dy * dy + dz * dz);
 }
 function vectorToString(vector) {
   return `${vector.x},${vector.y},${vector.z}`;
@@ -110,26 +115,6 @@ function centerVector(vector, floorY = false) {
     x: Math.floor(vector.x) + 0.5,
     y: Math.floor(vector.y) + (floorY ? 0 : 0.5),
     z: Math.floor(vector.z) + 0.5
-  };
-}
-function addVectors(...vectors) {
-  let x = 0, y = 0, z = 0;
-  const len = vectors.length;
-  for (let i = 0; i < len; i++) {
-    const v = vectors[i];
-    x += v.x;
-    y += v.y;
-    z += v.z;
-  }
-  return { x, y, z };
-}
-function stringToVector(string) {
-  const index1 = string.indexOf(",");
-  const index2 = string.indexOf(",", index1 + 1);
-  return {
-    x: Number(string.substring(0, index1)),
-    y: Number(string.substring(index1 + 1, index2)),
-    z: Number(string.substring(index2 + 1))
   };
 }
 function subtractLists(list1, list2) {
@@ -144,6 +129,12 @@ function subtractLists(list1, list2) {
     }
   }
   return result;
+}
+function areVectorsEqual(vector1, vector2) {
+  return vector1.x === vector2.x && vector1.y === vector2.y && vector1.z === vector2.z;
+}
+function removeIdentifier(string) {
+  return string.includes(":") ? string.split(":")[1] : string;
 }
 
 // src/variables.ts
@@ -476,270 +467,7 @@ var Registry = defineRegistry({
 });
 
 // src/path.ts
-var PriorityQueue = class {
-  heap = [];
-  enqueue(element, priority) {
-    const node = { element, priority };
-    this.heap.push(node);
-    this.bubbleUp();
-  }
-  dequeue() {
-    const min = this.heap[0];
-    const end = this.heap.pop();
-    if (end === void 0) {
-      return void 0;
-    }
-    if (this.heap.length > 0) {
-      this.heap[0] = end;
-      this.bubbleDown();
-    }
-    return min.element;
-  }
-  bubbleUp() {
-    let index = this.heap.length - 1;
-    const element = this.heap[index];
-    while (index > 0) {
-      const parentIndex = Math.floor((index - 1) / 2);
-      const parent = this.heap[parentIndex];
-      if (element.priority >= parent.priority) {
-        break;
-      }
-      this.heap[index] = parent;
-      index = parentIndex;
-    }
-    this.heap[index] = element;
-  }
-  bubbleDown() {
-    let index = 0;
-    const length = this.heap.length;
-    const element = this.heap[0];
-    while (true) {
-      const leftChildIndex = 2 * index + 1;
-      const rightChildIndex = 2 * index + 2;
-      let swap = null;
-      if (leftChildIndex < length) {
-        const leftChild = this.heap[leftChildIndex];
-        if (leftChild.priority < element.priority) {
-          swap = leftChildIndex;
-        }
-      }
-      if (rightChildIndex < length) {
-        const rightChild = this.heap[rightChildIndex];
-        if (swap === null && rightChild.priority < element.priority || swap !== null && rightChild.priority < this.heap[swap].priority) {
-          swap = rightChildIndex;
-        }
-      }
-      if (swap === null) {
-        break;
-      }
-      this.heap[index] = this.heap[swap];
-      index = swap;
-    }
-    this.heap[index] = element;
-  }
-  isEmpty() {
-    return this.heap.length === 0;
-  }
-};
-function generatePath(entity, start, end, token) {
-  return new Promise((resolve) => {
-    const village = entity.getVillage();
-    if (village === void 0) {
-      resolve("no_village");
-      return;
-    }
-    const villageBounds = village.bounds;
-    const dimensionId = village.dimensionId;
-    const dimension = world.getDimension(dimensionId);
-    const nodeList = village.pathNodes;
-    const startLocation = floorVector(start);
-    let endLocation = floorVector(end);
-    const endBlock = dimension.getBlockSafe(endLocation);
-    if (endBlock !== void 0 && !endBlock.isValidPath(villageBounds)) {
-      const checkBlocks = [
-        endBlock.northSafe(),
-        endBlock.eastSafe(),
-        endBlock.southSafe(),
-        endBlock.westSafe()
-      ];
-      for (const block of checkBlocks) {
-        if (block?.isValidPath(villageBounds)) {
-          endLocation = block.location;
-          break;
-        }
-      }
-    }
-    function heuristic(vector1, vector2) {
-      return Math.abs(vector1.x - vector2.x) + Math.abs(vector1.y - vector2.y) + Math.abs(vector1.z - vector2.z);
-    }
-    system.runJob(safeTickGeneratePath());
-    function* safeTickGeneratePath() {
-      try {
-        yield* tickGeneratePath();
-      } catch (error) {
-        console.warn("Pathfinding failed: ", error);
-        resolve("error");
-      }
-    }
-    function* tickGeneratePath() {
-      let startKey = vectorToString(startLocation);
-      let endKey = vectorToString(endLocation);
-      if (nodeList[startKey] === void 0) {
-        const nearestStart = findNearestNodeLocation(nodeList, startLocation);
-        if (nearestStart === void 0) {
-          resolve("no_path");
-          return;
-        }
-        startKey = vectorToString(nearestStart);
-      }
-      if (nodeList[endKey] === void 0) {
-        const nearestEnd = findNearestNodeLocation(nodeList, endLocation);
-        if (nearestEnd === void 0) {
-          resolve("no_path");
-          return;
-        }
-        endKey = vectorToString(nearestEnd);
-      }
-      const startVec = stringToVector(startKey);
-      const endVec = stringToVector(endKey);
-      if (startKey === endKey) {
-        resolve([startVec]);
-        return;
-      }
-      const HEURISTIC_WEIGHT = 1;
-      const MAX_EXPANSIONS = 2e4;
-      const YIELD_EVERY = 20;
-      const closedSet = /* @__PURE__ */ new Set();
-      const gScore = /* @__PURE__ */ new Map([[startKey, 0]]);
-      const cameFrom = /* @__PURE__ */ new Map();
-      const openSet = new PriorityQueue();
-      openSet.enqueue(startKey, heuristic(startVec, endVec) * HEURISTIC_WEIGHT);
-      const checkEntityList = getCheckPathEntities(dimensionId, entity);
-      let expansions = 0;
-      while (!openSet.isEmpty()) {
-        const currentKey = openSet.dequeue();
-        if (currentKey === void 0 || closedSet.has(currentKey)) {
-          continue;
-        }
-        closedSet.add(currentKey);
-        if (currentKey === endKey) {
-          const path = [];
-          let k = currentKey;
-          while (k !== void 0) {
-            path.push(stringToVector(k));
-            k = cameFrom.get(k);
-          }
-          path.reverse();
-          resolve(path);
-          return;
-        }
-        if (token.cancelled) {
-          resolve("cancelled");
-          return;
-        }
-        if (++expansions > MAX_EXPANSIONS) {
-          resolve("timeout");
-          return;
-        }
-        const currentVec = stringToVector(currentKey);
-        const currentNode = nodeList[currentKey];
-        if (currentNode === void 0) {
-          continue;
-        }
-        const currentG = gScore.get(currentKey) ?? 0;
-        outerLoop: for (const neighborKey of currentNode.neighbors) {
-          if (closedSet.has(neighborKey)) {
-            continue;
-          }
-          const neighborNode = nodeList[neighborKey];
-          if (neighborNode === void 0) {
-            continue;
-          }
-          if (neighborNode.requirement !== void 0 && !checkRequirement(entity.typeId, neighborNode.requirement)) {
-            continue;
-          }
-          const neighborLocation = stringToVector(neighborKey);
-          const neighborCenter = centerVector(neighborLocation, true);
-          let isBlocked = false;
-          for (const other of checkEntityList) {
-            if (calculateSquareDistance(other.location, neighborCenter) < 1.75) {
-              if (other.cancelPath) {
-                continue outerLoop;
-              }
-              isBlocked = true;
-              break;
-            }
-          }
-          const moveCost = heuristic(currentVec, neighborLocation) + (neighborLocation.y !== currentVec.y ? 10 : 0) + (isBlocked ? 50 : 0);
-          const tentativeG = currentG + moveCost;
-          if (tentativeG < (gScore.get(neighborKey) ?? Infinity)) {
-            cameFrom.set(neighborKey, currentKey);
-            gScore.set(neighborKey, tentativeG);
-            openSet.enqueue(
-              neighborKey,
-              tentativeG + heuristic(neighborLocation, endVec) * HEURISTIC_WEIGHT
-            );
-          }
-        }
-        if (expansions % YIELD_EVERY === 0) {
-          yield;
-        }
-      }
-      resolve("no_path");
-    }
-  });
-}
-function findNearestNodeLocation(nodeList, location, maxRadius = 6) {
-  if (nodeList[vectorToString(location)] !== void 0) {
-    return location;
-  }
-  for (let radius = 1; radius <= maxRadius; radius++) {
-    let closest;
-    let closestDist = Infinity;
-    for (let dx = -radius; dx <= radius; dx++) {
-      for (let dy = -radius; dy <= radius; dy++) {
-        for (let dz = -radius; dz <= radius; dz++) {
-          if (Math.max(Math.abs(dx), Math.abs(dy), Math.abs(dz)) !== radius) {
-            continue;
-          }
-          const candidate = addVectors(location, { x: dx, y: dy, z: dz });
-          if (nodeList[vectorToString(candidate)] === void 0) {
-            continue;
-          }
-          const dist = calculateSquareDistance(candidate, location);
-          if (dist < closestDist) {
-            closestDist = dist;
-            closest = candidate;
-          }
-        }
-      }
-    }
-    if (closest !== void 0) {
-      return closest;
-    }
-  }
-  return void 0;
-}
 var pathCheckEntities = {};
-function getCheckPathEntities(dimensionId, villager) {
-  const VillagerClass = villager.constructor;
-  const result = [];
-  const entityList = pathCheckEntities[dimensionId] ?? [];
-  for (const checkEntityObject of entityList) {
-    if (checkEntityObject.id === villager.id) {
-      continue;
-    }
-    const checkEntity = world.getEntity(checkEntityObject.id);
-    if (checkEntity === void 0) {
-      continue;
-    }
-    result.push({
-      ...checkEntityObject,
-      isBlocked: checkEntity instanceof VillagerClass && (checkEntity.isBlocked || !checkEntity.isPathing)
-    });
-  }
-  return result;
-}
 system.runInterval(() => {
   for (const dimensionId of Registry.dimensionTypes) {
     const dimension = world.getDimension(dimensionId);
@@ -760,17 +488,6 @@ system.runInterval(() => {
     }
   }
 });
-function checkRequirement(villagerType, requirement) {
-  if (requirement === void 0) {
-    return true;
-  }
-  const { whiteList, types } = requirement;
-  const typeSet = new Set(types);
-  if (whiteList) {
-    return typeSet.has(villagerType);
-  }
-  return !typeSet.has(villagerType);
-}
 var updatePathNodeList = [];
 function updatePathNodes(blockList) {
   updatePathNodeList.push(blockList);
@@ -933,9 +650,188 @@ Block.prototype.canWalkThrough = function() {
 Block.prototype.isDangerous = function() {
   return minecraftDangerousBlockTypes.includesFast(this.typeId);
 };
+
+// src/tree.ts
+function destroyTree(startingBlock, callback) {
+  system2.runJob(destroyTreeGenerator());
+  function* destroyTreeGenerator() {
+    try {
+      let currentBlock = startingBlock;
+      const logType = removeIdentifier(startingBlock.typeId).replace("_log", "");
+      const logTypeId = `minecraft:${logType}_log`;
+      const leafTypeId = `minecraft:${logType}_leaves`;
+      const logBlocks = [startingBlock];
+      const checkLogBlocks = [];
+      for (let x = -1; x <= 1; x++) {
+        for (let z = -1; z <= 1; z++) {
+          checkLogBlocks.push(startingBlock.offsetSafe({ x, y: 0, z }));
+        }
+      }
+      const checkLeafBlocks = [];
+      let logChecks = 0;
+      while (true) {
+        currentBlock = currentBlock.aboveSafe();
+        if (currentBlock?.typeId !== logTypeId) {
+          break;
+        }
+        if (currentBlock.permutation.getState("pillar_axis") !== "y") {
+          break;
+        }
+        logBlocks.push(currentBlock);
+        checkLeafBlocks.push(
+          currentBlock.aboveSafe(),
+          currentBlock.belowSafe(),
+          currentBlock.northSafe(),
+          currentBlock.eastSafe(),
+          currentBlock.southSafe(),
+          currentBlock.westSafe()
+        );
+        for (let x = -1; x <= 1; x++) {
+          for (let z = -1; z <= 1; z++) {
+            checkLogBlocks.push(currentBlock.offsetSafe({ x, y: 0, z }));
+          }
+        }
+        if (++logChecks % 10 === 0) {
+          yield;
+        }
+      }
+      let alreadyCheckedLocations = /* @__PURE__ */ new Set();
+      let sideLogChecks = 0;
+      while (checkLogBlocks.length > 0) {
+        const checkBlock = checkLogBlocks.pop();
+        if (checkBlock === void 0) {
+          continue;
+        }
+        const checkBlockString = vectorToString(checkBlock);
+        if (alreadyCheckedLocations.has(checkBlockString)) {
+          continue;
+        }
+        alreadyCheckedLocations.add(checkBlockString);
+        if (checkBlock.typeId !== logTypeId) {
+          continue;
+        }
+        if (checkBlock.permutation.getState("pillar_axis") === "y") {
+          continue;
+        }
+        logBlocks.push(checkBlock);
+        checkLeafBlocks.push(
+          checkBlock.aboveSafe(),
+          checkBlock.belowSafe(),
+          checkBlock.northSafe(),
+          checkBlock.eastSafe(),
+          checkBlock.southSafe(),
+          checkBlock.westSafe()
+        );
+        for (let x = -1; x <= 1; x++) {
+          for (let y = 0; y <= 1; y++) {
+            for (let z = -1; z <= 1; z++) {
+              checkLogBlocks.push(checkBlock.offsetSafe({ x, y, z }));
+            }
+          }
+        }
+        if (++sideLogChecks % 10 === 0) {
+          yield;
+        }
+      }
+      alreadyCheckedLocations = /* @__PURE__ */ new Set();
+      const leafBlocks = [];
+      const logBlockLocations = logBlocks.map((block) => block.location);
+      let leafChecks = 0;
+      while (checkLeafBlocks.length > 0) {
+        const checkBlock = checkLeafBlocks.pop();
+        if (checkBlock === void 0) {
+          continue;
+        }
+        const checkBlockString = vectorToString(checkBlock);
+        if (alreadyCheckedLocations.has(checkBlockString)) {
+          continue;
+        }
+        alreadyCheckedLocations.add(checkBlockString);
+        if (checkBlock.typeId !== leafTypeId) {
+          continue;
+        }
+        if (checkBlock.permutation.getState("persistent_bit")) {
+          continue;
+        }
+        let closestLogLocation;
+        const maxDistance = 4;
+        let closestDistance = maxDistance + 1;
+        outer: for (let dx = -maxDistance; dx <= maxDistance; dx++) {
+          for (let dy = -maxDistance; dy <= maxDistance; dy++) {
+            for (let dz = -maxDistance; dz <= maxDistance; dz++) {
+              if (Math.abs(dx) + Math.abs(dy) + Math.abs(dz) > maxDistance) {
+                continue;
+              }
+              const block = checkBlock.offsetSafe({ x: dx, y: dy, z: dz });
+              if (block === void 0) {
+                continue;
+              }
+              const distance = calculateDistance(block, checkBlock);
+              if (block.typeId === logTypeId && distance < closestDistance) {
+                closestLogLocation = block.location;
+                closestDistance = distance;
+                if (closestDistance === 1) {
+                  break outer;
+                }
+              }
+            }
+          }
+        }
+        if (closestLogLocation === void 0) {
+          continue;
+        }
+        if (!logBlockLocations.some((location) => areVectorsEqual(closestLogLocation, location))) {
+          continue;
+        }
+        leafBlocks.push(checkBlock);
+        checkLeafBlocks.push(
+          checkBlock.aboveSafe(),
+          checkBlock.belowSafe(),
+          checkBlock.northSafe(),
+          checkBlock.eastSafe(),
+          checkBlock.southSafe(),
+          checkBlock.westSafe()
+        );
+        if (++leafChecks % 3 === 0) {
+          yield;
+        }
+      }
+      const blockList = logBlocks.concat(leafBlocks);
+      const blocksToUpdate = [];
+      const checkedBlocks = /* @__PURE__ */ new Set();
+      for (let i = 0; i < blockList.length; i++) {
+        const block = blockList[i];
+        block.destroy();
+        const updateBlockList = [block, block.aboveSafe(), block.belowSafe()];
+        for (const updateBlock of updateBlockList) {
+          if (updateBlock === void 0) {
+            continue;
+          }
+          const neighborBlockList = [updateBlock, updateBlock.aboveSafe()];
+          for (const neighborBlock of neighborBlockList) {
+            if (neighborBlock === void 0) {
+              continue;
+            }
+            const blockString = vectorToString(neighborBlock);
+            if (!checkedBlocks.has(blockString)) {
+              checkedBlocks.add(blockString);
+              blocksToUpdate.push(neighborBlock, neighborBlock.aboveSafe());
+            }
+          }
+        }
+        if (i % 3 === 0) {
+          yield;
+        }
+      }
+      updatePathNodes(blocksToUpdate.filter((block) => block !== void 0));
+    } finally {
+      if (callback !== void 0) {
+        callback();
+      }
+    }
+  }
+}
 export {
-  generatePath,
-  getCheckPathEntities,
-  updatePathNodes
+  destroyTree
 };
-//# sourceMappingURL=path.js.map
+//# sourceMappingURL=tree.js.map

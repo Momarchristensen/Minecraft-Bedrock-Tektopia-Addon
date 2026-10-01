@@ -41,19 +41,39 @@ import {
 var require_cache = __commonJS({
   "src/cache.ts"() {
     init_utils();
+    function getGetter(prototype, property) {
+      const descriptor = Object.getOwnPropertyDescriptor(prototype, property);
+      if (descriptor?.get === void 0) {
+        throw new Error(`Getter "${String(property)}" not found`);
+      }
+      return descriptor.get;
+    }
+    function getSetter(prototype, property) {
+      const descriptor = Object.getOwnPropertyDescriptor(prototype, property);
+      if (descriptor?.set === void 0) {
+        throw new Error(`Setter "${String(property)}" not found`);
+      }
+      return descriptor.set;
+    }
     var originalFunctions = {
       worldGetDimension: World.prototype.getDimension,
       getAllPlayers: World.prototype.getAllPlayers,
-      getName: Object.getOwnPropertyDescriptor(Player.prototype, "name").get,
+      getName: getGetter(Player.prototype, "name"),
       getGameMode: Player.prototype.getGameMode,
-      getCommandPermissionLevel: Object.getOwnPropertyDescriptor(Player.prototype, "commandPermissionLevel").get,
-      setCommandPermissionLevel: Object.getOwnPropertyDescriptor(Player.prototype, "commandPermissionLevel").set,
+      getCommandPermissionLevel: getGetter(
+        Player.prototype,
+        "commandPermissionLevel"
+      ),
+      setCommandPermissionLevel: getSetter(
+        Player.prototype,
+        "commandPermissionLevel"
+      ),
       setGameMode: Player.prototype.setGameMode,
-      getCurrentTick: Object.getOwnPropertyDescriptor(System.prototype, "currentTick").get,
-      getLocation: Object.getOwnPropertyDescriptor(Entity.prototype, "location").get,
+      getCurrentTick: getGetter(System.prototype, "currentTick"),
+      getLocation: getGetter(Entity.prototype, "location"),
       teleport: Entity.prototype.teleport,
       getPing: Player.prototype.getPing,
-      getDimension: Object.getOwnPropertyDescriptor(Entity.prototype, "dimension").get
+      getDimension: getGetter(Entity.prototype, "dimension")
     };
     var dimensionCache = /* @__PURE__ */ new Map();
     World.prototype.getDimension = function(dimensionId) {
@@ -219,13 +239,13 @@ var require_cache = __commonJS({
         return currentTick;
       }
     });
+    var playersCache = /* @__PURE__ */ new Map();
     World.prototype.getAllPlayers = function() {
       return Array.from(playersCache.values());
     };
     World.prototype.getPlayerById = function(playerId) {
       return playersCache.get(playerId);
     };
-    var playersCache = /* @__PURE__ */ new Map();
     world.afterEvents.playerSpawn.subscribe((event) => {
       const player = event.player;
       playersCache.set(player.id, player);
@@ -243,8 +263,7 @@ var require_cache = __commonJS({
     };
     world.afterEvents.worldLoad.subscribe(() => {
       const players = originalFunctions.getAllPlayers.call(world);
-      for (let i = 0; i < players.length; i++) {
-        const player = players[i];
+      for (const player of players) {
         playersCache.set(player.id, player);
       }
     });

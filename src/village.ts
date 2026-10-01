@@ -1,6 +1,10 @@
 import {
     Block,
-    type Dimension,
+    CommandPermissionLevel,
+    CustomCommandParamType,
+    CustomCommandStatus,
+    Dimension,
+    Player,
     system,
     type Vector3,
     World,
@@ -15,6 +19,7 @@ import {
     ceilVector,
     centerVector,
     floorVector,
+    isVectorBetween,
     maxVectors,
     minVectors,
     randomInt,
@@ -35,8 +40,48 @@ import {
 import type {
     PathNode,
     UndefinedRecord,
+    VectorString,
     VillageBounds
 } from "."
+
+system.beforeEvents.startup.subscribe(event => {
+    const customCommandRegistry = event.customCommandRegistry
+
+    customCommandRegistry.registerCommand({
+        name: "tektopia:scan",
+        cheatsRequired: false,
+        description: "Scan a block at a specified location",
+        mandatoryParameters: [{ type: CustomCommandParamType.Location, name: "location" }],
+        permissionLevel: CommandPermissionLevel.Admin
+    }, (origin, blockLocation: Vector3) => {
+        const player = origin.sourceEntity instanceof Player ? origin.sourceEntity : undefined
+
+        if (player === undefined) {
+            return {
+                status: CustomCommandStatus.Failure,
+                message: "This command can only be run by a player."
+            }
+        }
+
+        const dimension = player.dimension
+
+        const village = dimension.getVillage(blockLocation)
+
+        if (village === undefined) {
+            return {
+                status: CustomCommandStatus.Failure,
+                message: "No village was found at the specified location."
+            }
+        }
+
+        system.runJob(village.scanLocation(blockLocation))
+
+        return {
+            status: CustomCommandStatus.Success,
+            message: "Block scanned successfully."
+        }
+    })
+})
 
 export const VILLAGE_RADIUS = 100
 
@@ -44,11 +89,12 @@ export interface VillageSaveData {
     center: Vector3
     dimensionId: string
     doorLocation: Vector3
-    pathNodes: UndefinedRecord<string, PathNode>
-    sugarCaneLocations: string[]
-    saplingLocations: string[]
-    farmLocations: string[]
-    treeLocations: string[]
+    pathNodes: UndefinedRecord<VectorString, PathNode>
+    sugarCaneLocations: VectorString[]
+    saplingLocations: VectorString[]
+    farmLocations: VectorString[]
+    cropLocations: VectorString[]
+    treeLocations: VectorString[]
 }
 
 export class Village {
@@ -88,6 +134,7 @@ export class Village {
             sugarCaneLocations: [],
             saplingLocations: [],
             farmLocations: [],
+            cropLocations: [],
             treeLocations: []
         }
     }
@@ -124,6 +171,10 @@ export class Village {
         return this.data.farmLocations
     }
 
+    get cropLocations() {
+        return this.data.cropLocations
+    }
+
     get treeLocations() {
         return this.data.treeLocations
     }
@@ -136,7 +187,7 @@ export class Village {
         return world.villageList.includes(this.data)
     }
 
-    public link(aKey: string, bKey: string) {
+    public link(aKey: VectorString, bKey: VectorString) {
         const village = this
         if (aKey === bKey) {
             return
@@ -154,7 +205,7 @@ export class Village {
         }
     }
 
-    public unlink(aKey: string, bKey: string) {
+    public unlink(aKey: VectorString, bKey: VectorString) {
         const village = this
         const node1 = village.pathNodes[aKey]
         const node2 = village.pathNodes[bKey]
@@ -166,7 +217,7 @@ export class Village {
         }
     }
 
-    public removeNode(key: string) {
+    public removeNode(key: VectorString) {
         const village = this
         const node = village.pathNodes[key]
         if (node === undefined) {
@@ -267,7 +318,77 @@ export class Village {
         }
     }
 
-    checkNodeValidity(pathNodeLocation: string) {
+    *scanLocation(location: Vector3) {
+        const flooredLocation = floorVector(location)
+        const village = this
+        const dimension = world.getDimension(village.dimensionId)
+        const locationStringList = [vectorToString(flooredLocation)]
+        const alreadyCheckedLocations = new Set()
+        while (locationStringList.length > 0) {
+            const locationString = locationStringList.pop()
+            if (alreadyCheckedLocations.has(locationString) || locationString === undefined) {
+                continue
+            }
+            alreadyCheckedLocations.add(locationString)
+            const node = village.pathNodes[locationString]
+            const currentLocation = stringToVector(locationString)
+            const block = dimension.getBlockSafe(currentLocation)
+
+            if (block === undefined || node === undefined) {
+                continue
+            }
+            dimension.spawnParticle("minecraft:basic_flame_particle", centerVector(block.location))
+            try {
+                const checkBlockList = [
+                    block,
+                    block.northSafe(),
+                    block.eastSafe(),
+                    block.southSafe(),
+                    block.westSafe(),
+                    block.belowSafe()
+                ]
+                for (const checkBlock of checkBlockList) {
+                    if (checkBlock === undefined) {
+                        continue
+                    }
+                    let checkNearbyNodes = false
+                    const checkBlockString = vectorToString(checkBlock)
+                    if (checkBlock.isFarm) {
+                        checkNearbyNodes = true
+                        if (!village.farmLocations.includes(checkBlockString)) {
+                            village.farmLocations.push(checkBlockString)
+                        }
+                    }
+                    else if (checkBlock.typeId === "minecraft:reeds") {
+                        checkNearbyNodes = true
+                        if (!village.sugarCaneLocations.includes(checkBlockString)) {
+                            village.sugarCaneLocations.push(checkBlockString)
+                        }
+                    }
+                    else if (Registry.saplingTypes.includesFast(checkBlock.typeId)) {
+                        checkNearbyNodes = true
+                        if (!village.saplingLocations.includes(checkBlockString)) {
+                            village.saplingLocations.push(checkBlockString)
+                        }
+                    }
+                    else if (checkBlock.isTree) {
+                        checkNearbyNodes = true
+                        if (!village.treeLocations.includes(checkBlockString)) {
+                            village.treeLocations.push(checkBlockString)
+                        }
+                    }
+                    if (checkNearbyNodes) {
+                        locationStringList.push(...node.neighbors)
+                    }
+                }
+            }
+            catch { }
+
+            yield
+        }
+    }
+
+    checkNodeValidity(pathNodeLocation: VectorString) {
         const village = this
         const dimension = world.getDimension(village.dimensionId)
         const block = dimension.getBlockSafe(stringToVector(pathNodeLocation))
@@ -285,7 +406,7 @@ export class Village {
             const neighborBlock = dimension.getBlockSafe(stringToVector(neighborKey))
             if (neighborBlock !== undefined && !isValidConnection(block, neighborBlock)) {
                 village.unlink(pathNodeLocation, neighborKey)
-                console.warn("Node Deleted: ", pathNodeLocation)
+                //console.warn("Node Deleted: ", pathNodeLocation)
             }
         }
     }
@@ -367,85 +488,38 @@ function* scanVillageBlocks(callback?: () => void) {
         }
         const villageList = world.getVillages()
         for (const village of villageList) {
-            const randomLocationString = randomItem(Object.keys(village.pathNodes))
-            const locationStringList = [randomLocationString]
-            const alreadyCheckedLocations = new Set()
-            while (locationStringList.length > 0) {
-                const locationString = locationStringList.pop()
-                if (alreadyCheckedLocations.has(locationString) || locationString === undefined) {
-                    continue
-                }
-                alreadyCheckedLocations.add(locationString)
-                const node = village.pathNodes[locationString]
-                const location = stringToVector(locationString)
-                const dimension = world.getDimension(village.dimensionId)
-                const block = dimension.getBlockSafe(location)
-                if (block === undefined || node === undefined) {
-                    continue
-                }
-                try {
-                    dimension.spawnParticle(
-                        "minecraft:basic_flame_particle",
-                        centerVector(block)
-                    )
-                }
-                catch { }
-                try {
-                    const checkBlockList = [
-                        block,
-                        block.northSafe(),
-                        block.eastSafe(),
-                        block.southSafe(),
-                        block.westSafe(),
-                        block.belowSafe()
-                    ]
-                    for (const checkBlock of checkBlockList) {
-                        if (checkBlock === undefined) {
-                            continue
-                        }
-                        let checkNearbyNodes = false
-                        const checkBlockString = vectorToString(checkBlock)
-                        if (checkBlock.isFarm) {
-                            checkNearbyNodes = true
-                            if (!village.farmLocations.includes(checkBlockString)) {
-                                village.farmLocations.push(checkBlockString)
-                            }
-                        }
-                        else if (checkBlock.typeId === "minecraft:reeds") {
-                            checkNearbyNodes = true
-                            if (!village.sugarCaneLocations.includes(checkBlockString)) {
-                                village.sugarCaneLocations.push(checkBlockString)
-                            }
-                        }
-                        else if (Registry.saplingTypes.includesFast(checkBlock.typeId)) {
-                            checkNearbyNodes = true
-                            if (!village.saplingLocations.includes(checkBlockString)) {
-                                village.saplingLocations.push(checkBlockString)
-                            }
-                        }
-                        else if (checkBlock.isTree) {
-                            checkNearbyNodes = true
-                            if (!village.treeLocations.includes(checkBlockString)) {
-                                village.treeLocations.push(checkBlockString)
-                            }
-                        }
-                        if (checkNearbyNodes) {
-                            locationStringList.push(...node.neighbors)
-                        }
-                    }
-                }
-                catch { }
-
-                yield
+            const randomLocationString = randomItem(Object.keys(village.pathNodes) as VectorString[])
+            if (randomLocationString === undefined) {
+                continue
             }
 
-            yield
+            const randomLocation = stringToVector(randomLocationString)
+
+            yield* village.scanLocation(randomLocation)
         }
     }
     finally {
         if (callback !== undefined) {
             callback()
         }
+    }
+}
+
+function* pruneLocations(dimension: Dimension, locations: VectorString[], shouldRemove: (block: Block, locationString: VectorString) => boolean) {
+    for (let i = locations.length - 1; i >= 0; i--) {
+        if (i >= locations.length) {
+            i = locations.length
+            continue
+        }
+
+        const locationString = locations[i]
+        const block = dimension.getBlockSafe(stringToVector(locationString))
+
+        if (block !== undefined && shouldRemove(block, locationString)) {
+            locations[i] = locations[locations.length - 1]
+            locations.pop()
+        }
+        yield
     }
 }
 
@@ -466,24 +540,18 @@ function* updateVillageBlocks(callback?: () => void) {
                 continue
             }
             const dimension = world.getDimension(village.dimensionId)
-            for (let i = 0; i < village.saplingLocations.length; i++) {
-                const locationString = village.saplingLocations[i]
-                const location = stringToVector(locationString)
-                const block = dimension.getBlockSafe(location)
-                if (block === undefined) {
-                    continue
-                }
+
+            yield* pruneLocations(dimension, village.saplingLocations, (block, locationString) => {
                 if (Registry.logTypes.includesFast(block.typeId)) {
-                    village.saplingLocations.splice(i, 1)
-                    i--
-                    village.treeLocations.push(locationString)
+                    if (!village.treeLocations.includes(locationString)) {
+                        village.treeLocations.push(locationString)
+                    }
+                    return true
                 }
-                else if (!Registry.saplingTypes.includesFast(block.typeId)) {
-                    village.saplingLocations.splice(i, 1)
-                    i--
-                }
-                yield
-            }
+                return !Registry.saplingTypes.includesFast(block.typeId)
+            })
+
+            yield* pruneLocations(dimension, village.farmLocations, block => !block.isFarm)
             yield
         }
     }
@@ -519,7 +587,7 @@ system.runInterval(() => {
             system.runJob(deleteInvalidPathNodes())
 
             function* deleteInvalidPathNodes() {
-                const allVillagePathNodes = Object.keys(village.pathNodes)
+                const allVillagePathNodes = Object.keys(village.pathNodes) as VectorString[]
                 try {
                     for (const pathNodeLocation of allVillagePathNodes) {
                         if (!village.isValid) {
@@ -647,4 +715,14 @@ function isValidConnection(currentBlock: Block, neighborBlock: Block) {
     }
 
     return checkValidConnection(currentBlock, neighborBlock) && checkValidConnection(neighborBlock, currentBlock)
+}
+
+Dimension.prototype.getVillage = function (location) {
+    const villages = world.getVillages()
+    for (const village of villages) {
+        if (isVectorBetween(location, village.bounds.start, village.bounds.end, true) && this === village.dimension) {
+            return village
+        }
+    }
+    return undefined
 }

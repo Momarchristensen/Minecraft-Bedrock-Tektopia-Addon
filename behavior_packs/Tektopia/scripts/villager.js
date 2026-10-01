@@ -19916,10 +19916,10 @@ import {
   StructureRotation
 } from "@minecraft/server";
 function isVectorBetween(vector, vector1, vector2, ignoreY = false) {
-  vector = centerVector(vector);
+  const centeredVector = centerVector(vector);
   const startingVector = floorVector(minVectors(vector1, vector2));
   const endingVector = ceilVector(maxVectors(vector1, vector2));
-  return vector.x >= startingVector.x && vector.x <= endingVector.x && (ignoreY || vector.y >= startingVector.y && vector.y <= endingVector.y) && vector.z >= startingVector.z && vector.z <= endingVector.z;
+  return centeredVector.x >= startingVector.x && centeredVector.x <= endingVector.x && (ignoreY || centeredVector.y >= startingVector.y && centeredVector.y <= endingVector.y) && centeredVector.z >= startingVector.z && centeredVector.z <= endingVector.z;
 }
 function formatTypeId(itemTypeId) {
   return capitalizeEveryWord(removeIdentifier(itemTypeId).replace(/_/g, " "));
@@ -20002,9 +20002,6 @@ function multiplyVector(vector, axises, value) {
     y: vector.y,
     z: vector.z
   };
-  if (typeof axises === "string") {
-    axises = axises.split("");
-  }
   for (const axis of axises) {
     if (axis in result) {
       result[axis] *= value;
@@ -20343,14 +20340,14 @@ function defineRegistry(definitions) {
   const registry = {};
   for (const key of Object.keys(definitions)) {
     Object.defineProperty(registry, key, {
-      get: lazy(definitions[key]),
+      get: lazy(() => definitions[key](registry)),
       enumerable: true
     });
   }
   return registry;
 }
-var blocks = (test) => () => Registry.blockTypes.filter(test);
-var entities = (test) => () => Registry.entityTypes.filter(test);
+var blocks = (test) => (self) => self.blockTypes.filter(test);
+var entities = (test) => (self) => self.entityTypes.filter(test);
 var Registry = defineRegistry({
   blockTypes: () => BlockTypes.getAll().map((b) => b.id),
   entityTypes: () => EntityTypes.getAll().map((e) => e.id),
@@ -20371,241 +20368,6 @@ var Registry = defineRegistry({
 });
 
 // src/path.ts
-function generatePath(entity, startLocation, targetLocation, token) {
-  return new Promise((resolve) => {
-    const village = entity.getVillage();
-    if (!village) {
-      resolve("no_village");
-      return;
-    }
-    const villageBounds = village.bounds;
-    const dimensionId = village.dimensionId;
-    const dimension = world.getDimension(dimensionId);
-    const nodeList = village.pathNodes;
-    startLocation = floorVector(startLocation);
-    targetLocation = floorVector(targetLocation);
-    const endBlock = dimension.getBlockSafe(targetLocation);
-    if (endBlock !== void 0 && !endBlock.isValidPath(villageBounds)) {
-      const checkBlocks = [
-        endBlock.northSafe(),
-        endBlock.eastSafe(),
-        endBlock.southSafe(),
-        endBlock.westSafe()
-      ];
-      for (let i = 0; i < checkBlocks.length; i++) {
-        const block = checkBlocks[i];
-        if (block !== void 0 && block.isValidPath(villageBounds)) {
-          targetLocation = block.location;
-          break;
-        }
-      }
-    }
-    function heuristic(vector1, vector2) {
-      return Math.abs(vector1.x - vector2.x) + Math.abs(vector1.y - vector2.y) + Math.abs(vector1.z - vector2.z);
-    }
-    system.runJob(safeTickGeneratePath());
-    function* safeTickGeneratePath() {
-      try {
-        yield* tickGeneratePath();
-      } catch (error) {
-        console.warn("Pathfinding failed: ", error);
-        resolve("error");
-      }
-    }
-    function* tickGeneratePath() {
-      let startKey = vectorToString(startLocation);
-      let endKey = vectorToString(targetLocation);
-      if (!nodeList[startKey]) {
-        const nearestStart = findNearestNodeLocation(nodeList, startLocation);
-        if (nearestStart === void 0) {
-          resolve("no_path");
-          return;
-        }
-        startKey = vectorToString(nearestStart);
-      }
-      if (!nodeList[endKey]) {
-        const nearestEnd = findNearestNodeLocation(nodeList, targetLocation);
-        if (nearestEnd === void 0) {
-          resolve("no_path");
-          return;
-        }
-        endKey = vectorToString(nearestEnd);
-      }
-      const startVec = stringToVector(startKey);
-      const endVec = stringToVector(endKey);
-      if (startKey === endKey) {
-        resolve([startVec]);
-        return;
-      }
-      const HEURISTIC_WEIGHT = 1;
-      const MAX_EXPANSIONS = 2e4;
-      const YIELD_EVERY = 20;
-      const closedSet = /* @__PURE__ */ new Set();
-      const gScore = /* @__PURE__ */ new Map([[startKey, 0]]);
-      const cameFrom = /* @__PURE__ */ new Map();
-      const openSet = new PriorityQueue();
-      openSet.enqueue(startKey, heuristic(startVec, endVec) * HEURISTIC_WEIGHT);
-      const checkEntityList = getCheckPathEntities(dimensionId, entity);
-      let expansions = 0;
-      while (!openSet.isEmpty()) {
-        const currentKey = openSet.dequeue();
-        if (closedSet.has(currentKey)) {
-          continue;
-        }
-        closedSet.add(currentKey);
-        if (currentKey === endKey) {
-          const path = [];
-          let k = currentKey;
-          while (k !== void 0) {
-            path.push(stringToVector(k));
-            k = cameFrom.get(k);
-          }
-          path.reverse();
-          resolve(path);
-          return;
-        }
-        if (token.cancelled) {
-          resolve("cancelled");
-          return;
-        }
-        if (++expansions > MAX_EXPANSIONS) {
-          resolve("timeout");
-          return;
-        }
-        const currentVec = stringToVector(currentKey);
-        const currentNode = nodeList[currentKey];
-        if (!currentNode) {
-          continue;
-        }
-        const currentG = gScore.get(currentKey) ?? 0;
-        outerLoop: for (const neighborKey of currentNode.neighbors) {
-          if (closedSet.has(neighborKey)) {
-            continue;
-          }
-          const neighborNode = nodeList[neighborKey];
-          if (!neighborNode) {
-            continue;
-          }
-          if (neighborNode.requirement !== void 0 && !checkRequirement(entity.typeId, neighborNode.requirement)) {
-            continue;
-          }
-          const neighborLocation = stringToVector(neighborKey);
-          const neighborCenter = centerVector(neighborLocation, true);
-          let isBlocked = false;
-          for (let i = 0; i < checkEntityList.length; i++) {
-            const other = checkEntityList[i];
-            if (calculateSquareDistance(other.location, neighborCenter) < 1.75) {
-              if (other.cancelPath) {
-                continue outerLoop;
-              }
-              isBlocked = true;
-              break;
-            }
-          }
-          const moveCost = heuristic(currentVec, neighborLocation) + (neighborLocation.y !== currentVec.y ? 10 : 0) + (isBlocked ? 50 : 0);
-          const tentativeG = currentG + moveCost;
-          if (tentativeG < (gScore.get(neighborKey) ?? Infinity)) {
-            cameFrom.set(neighborKey, currentKey);
-            gScore.set(neighborKey, tentativeG);
-            openSet.enqueue(
-              neighborKey,
-              tentativeG + heuristic(neighborLocation, endVec) * HEURISTIC_WEIGHT
-            );
-          }
-        }
-        if (expansions % YIELD_EVERY === 0) {
-          yield;
-        }
-      }
-      resolve("no_path");
-    }
-  });
-}
-function findNearestNodeLocation(nodeList, location, maxRadius = 6) {
-  if (nodeList[vectorToString(location)]) {
-    return location;
-  }
-  for (let radius = 1; radius <= maxRadius; radius++) {
-    let closest;
-    let closestDist = Infinity;
-    for (let dx = -radius; dx <= radius; dx++) {
-      for (let dy = -radius; dy <= radius; dy++) {
-        for (let dz = -radius; dz <= radius; dz++) {
-          if (Math.max(Math.abs(dx), Math.abs(dy), Math.abs(dz)) !== radius) {
-            continue;
-          }
-          const candidate = addVectors(location, { x: dx, y: dy, z: dz });
-          if (!nodeList[vectorToString(candidate)]) {
-            continue;
-          }
-          const dist = calculateSquareDistance(candidate, location);
-          if (dist < closestDist) {
-            closestDist = dist;
-            closest = candidate;
-          }
-        }
-      }
-    }
-    if (closest) {
-      return closest;
-    }
-  }
-  return void 0;
-}
-function getCheckPathEntities(dimensionId, villager) {
-  const VillagerClass = villager.constructor;
-  const result = [];
-  const entityList = pathCheckEntities[dimensionId] ?? [];
-  for (let i = 0; i < entityList.length; i++) {
-    const checkEntityObject = entityList[i];
-    if (!checkEntityObject || checkEntityObject.id === villager.id) {
-      continue;
-    }
-    const checkEntity = world.getEntity(checkEntityObject.id);
-    if (!checkEntity) {
-      continue;
-    }
-    result.push({
-      ...checkEntityObject,
-      isBlocked: checkEntity instanceof VillagerClass && (checkEntity.isBlocked || !checkEntity.isPathing)
-    });
-  }
-  return result;
-}
-var pathCheckEntities = {};
-system.runInterval(() => {
-  for (let i = 0; i < Registry.dimensionTypes.length; i++) {
-    const dimensionId = Registry.dimensionTypes[i];
-    const dimension = world.getDimension(dimensionId);
-    const entities2 = dimension.getEntities({
-      excludeTypes: pathIgnoreEntityTypes
-    });
-    pathCheckEntities[dimensionId] = [];
-    for (let i2 = 0; i2 < entities2.length; i2++) {
-      const entity = entities2[i2];
-      if (entity instanceof Player && entity.getGameMode() === GameMode.Spectator) {
-        continue;
-      }
-      pathCheckEntities[dimensionId].push({
-        location: entity.location,
-        id: entity.id,
-        typeId: entity.typeId,
-        cancelPath: pathCancelEntityTypes.includesFast(entity.typeId)
-      });
-    }
-  }
-});
-function checkRequirement(villagerType, requirement) {
-  if (!requirement) {
-    return true;
-  }
-  const { whiteList, types } = requirement;
-  const typeSet = new Set(types);
-  if (whiteList) {
-    return typeSet.has(villagerType);
-  }
-  return !typeSet.has(villagerType);
-}
 var PriorityQueue = class {
   heap = [];
   enqueue(element, priority) {
@@ -20616,6 +20378,9 @@ var PriorityQueue = class {
   dequeue() {
     const min = this.heap[0];
     const end = this.heap.pop();
+    if (end === void 0) {
+      return void 0;
+    }
     if (this.heap.length > 0) {
       this.heap[0] = end;
       this.bubbleDown();
@@ -20668,6 +20433,236 @@ var PriorityQueue = class {
     return this.heap.length === 0;
   }
 };
+function generatePath(entity, start, end, token) {
+  return new Promise((resolve) => {
+    const village = entity.getVillage();
+    if (village === void 0) {
+      resolve("no_village");
+      return;
+    }
+    const villageBounds = village.bounds;
+    const dimensionId = village.dimensionId;
+    const dimension = world.getDimension(dimensionId);
+    const nodeList = village.pathNodes;
+    const startLocation = floorVector(start);
+    let endLocation = floorVector(end);
+    const endBlock = dimension.getBlockSafe(endLocation);
+    if (endBlock !== void 0 && !endBlock.isValidPath(villageBounds)) {
+      const checkBlocks = [
+        endBlock.northSafe(),
+        endBlock.eastSafe(),
+        endBlock.southSafe(),
+        endBlock.westSafe()
+      ];
+      for (const block of checkBlocks) {
+        if (block?.isValidPath(villageBounds)) {
+          endLocation = block.location;
+          break;
+        }
+      }
+    }
+    function heuristic(vector1, vector2) {
+      return Math.abs(vector1.x - vector2.x) + Math.abs(vector1.y - vector2.y) + Math.abs(vector1.z - vector2.z);
+    }
+    system.runJob(safeTickGeneratePath());
+    function* safeTickGeneratePath() {
+      try {
+        yield* tickGeneratePath();
+      } catch (error) {
+        console.warn("Pathfinding failed: ", error);
+        resolve("error");
+      }
+    }
+    function* tickGeneratePath() {
+      let startKey = vectorToString(startLocation);
+      let endKey = vectorToString(endLocation);
+      if (nodeList[startKey] === void 0) {
+        const nearestStart = findNearestNodeLocation(nodeList, startLocation);
+        if (nearestStart === void 0) {
+          resolve("no_path");
+          return;
+        }
+        startKey = vectorToString(nearestStart);
+      }
+      if (nodeList[endKey] === void 0) {
+        const nearestEnd = findNearestNodeLocation(nodeList, endLocation);
+        if (nearestEnd === void 0) {
+          resolve("no_path");
+          return;
+        }
+        endKey = vectorToString(nearestEnd);
+      }
+      const startVec = stringToVector(startKey);
+      const endVec = stringToVector(endKey);
+      if (startKey === endKey) {
+        resolve([startVec]);
+        return;
+      }
+      const HEURISTIC_WEIGHT = 1;
+      const MAX_EXPANSIONS = 2e4;
+      const YIELD_EVERY = 20;
+      const closedSet = /* @__PURE__ */ new Set();
+      const gScore = /* @__PURE__ */ new Map([[startKey, 0]]);
+      const cameFrom = /* @__PURE__ */ new Map();
+      const openSet = new PriorityQueue();
+      openSet.enqueue(startKey, heuristic(startVec, endVec) * HEURISTIC_WEIGHT);
+      const checkEntityList = getCheckPathEntities(dimensionId, entity);
+      let expansions = 0;
+      while (!openSet.isEmpty()) {
+        const currentKey = openSet.dequeue();
+        if (currentKey === void 0 || closedSet.has(currentKey)) {
+          continue;
+        }
+        closedSet.add(currentKey);
+        if (currentKey === endKey) {
+          const path = [];
+          let k = currentKey;
+          while (k !== void 0) {
+            path.push(stringToVector(k));
+            k = cameFrom.get(k);
+          }
+          path.reverse();
+          resolve(path);
+          return;
+        }
+        if (token.cancelled) {
+          resolve("cancelled");
+          return;
+        }
+        if (++expansions > MAX_EXPANSIONS) {
+          resolve("timeout");
+          return;
+        }
+        const currentVec = stringToVector(currentKey);
+        const currentNode = nodeList[currentKey];
+        if (currentNode === void 0) {
+          continue;
+        }
+        const currentG = gScore.get(currentKey) ?? 0;
+        outerLoop: for (const neighborKey of currentNode.neighbors) {
+          if (closedSet.has(neighborKey)) {
+            continue;
+          }
+          const neighborNode = nodeList[neighborKey];
+          if (neighborNode === void 0) {
+            continue;
+          }
+          if (neighborNode.requirement !== void 0 && !checkRequirement(entity.typeId, neighborNode.requirement)) {
+            continue;
+          }
+          const neighborLocation = stringToVector(neighborKey);
+          const neighborCenter = centerVector(neighborLocation, true);
+          let isBlocked = false;
+          for (const other of checkEntityList) {
+            if (calculateSquareDistance(other.location, neighborCenter) < 1.75) {
+              if (other.cancelPath) {
+                continue outerLoop;
+              }
+              isBlocked = true;
+              break;
+            }
+          }
+          const moveCost = heuristic(currentVec, neighborLocation) + (neighborLocation.y !== currentVec.y ? 10 : 0) + (isBlocked ? 50 : 0);
+          const tentativeG = currentG + moveCost;
+          if (tentativeG < (gScore.get(neighborKey) ?? Infinity)) {
+            cameFrom.set(neighborKey, currentKey);
+            gScore.set(neighborKey, tentativeG);
+            openSet.enqueue(
+              neighborKey,
+              tentativeG + heuristic(neighborLocation, endVec) * HEURISTIC_WEIGHT
+            );
+          }
+        }
+        if (expansions % YIELD_EVERY === 0) {
+          yield;
+        }
+      }
+      resolve("no_path");
+    }
+  });
+}
+function findNearestNodeLocation(nodeList, location, maxRadius = 6) {
+  if (nodeList[vectorToString(location)] !== void 0) {
+    return location;
+  }
+  for (let radius = 1; radius <= maxRadius; radius++) {
+    let closest;
+    let closestDist = Infinity;
+    for (let dx = -radius; dx <= radius; dx++) {
+      for (let dy = -radius; dy <= radius; dy++) {
+        for (let dz = -radius; dz <= radius; dz++) {
+          if (Math.max(Math.abs(dx), Math.abs(dy), Math.abs(dz)) !== radius) {
+            continue;
+          }
+          const candidate = addVectors(location, { x: dx, y: dy, z: dz });
+          if (nodeList[vectorToString(candidate)] === void 0) {
+            continue;
+          }
+          const dist = calculateSquareDistance(candidate, location);
+          if (dist < closestDist) {
+            closestDist = dist;
+            closest = candidate;
+          }
+        }
+      }
+    }
+    if (closest !== void 0) {
+      return closest;
+    }
+  }
+  return void 0;
+}
+var pathCheckEntities = {};
+function getCheckPathEntities(dimensionId, villager) {
+  const VillagerClass = villager.constructor;
+  const result = [];
+  const entityList = pathCheckEntities[dimensionId] ?? [];
+  for (const checkEntityObject of entityList) {
+    if (checkEntityObject.id === villager.id) {
+      continue;
+    }
+    const checkEntity = world.getEntity(checkEntityObject.id);
+    if (checkEntity === void 0) {
+      continue;
+    }
+    result.push({
+      ...checkEntityObject,
+      isBlocked: checkEntity instanceof VillagerClass && (checkEntity.isBlocked || !checkEntity.isPathing)
+    });
+  }
+  return result;
+}
+system.runInterval(() => {
+  for (const dimensionId of Registry.dimensionTypes) {
+    const dimension = world.getDimension(dimensionId);
+    const entities2 = dimension.getEntities({
+      excludeTypes: pathIgnoreEntityTypes
+    });
+    pathCheckEntities[dimensionId] = [];
+    for (const entity of entities2) {
+      if (entity instanceof Player && entity.getGameMode() === GameMode.Spectator) {
+        continue;
+      }
+      pathCheckEntities[dimensionId].push({
+        location: entity.location,
+        id: entity.id,
+        typeId: entity.typeId,
+        cancelPath: pathCancelEntityTypes.includesFast(entity.typeId)
+      });
+    }
+  }
+});
+function checkRequirement(villagerType, requirement) {
+  if (requirement === void 0) {
+    return true;
+  }
+  const { whiteList, types } = requirement;
+  const typeSet = new Set(types);
+  if (whiteList) {
+    return typeSet.has(villagerType);
+  }
+  return !typeSet.has(villagerType);
+}
 var updatePathNodeList = [];
 function updatePathNodes(blockList) {
   updatePathNodeList.push(blockList);
@@ -20675,30 +20670,24 @@ function updatePathNodes(blockList) {
 world.afterEvents.playerInteractWithBlock.subscribe((event) => {
   const block = event.block;
   updatePathNodes(
-    [block, block.aboveSafe(), block.belowSafe()].filter(
-      (block2) => block2 !== void 0
-    )
+    [block, block.aboveSafe(), block.belowSafe()].filter((checkBlock) => checkBlock !== void 0)
   );
 });
 world.afterEvents.playerPlaceBlock.subscribe((event) => {
   const block = event.block;
-  updatePathNodes([block, block.aboveSafe(), block.belowSafe()].filter((block2) => block2 !== void 0));
+  updatePathNodes([block, block.aboveSafe(), block.belowSafe()].filter((checkBlock) => checkBlock !== void 0));
 });
 world.afterEvents.playerBreakBlock.subscribe((event) => {
   const block = event.block;
   updatePathNodes(
-    [block, block.aboveSafe(), block.belowSafe()].filter(
-      (block2) => block2 !== void 0
-    )
+    [block, block.aboveSafe(), block.belowSafe()].filter((checkBlock) => checkBlock !== void 0)
   );
 });
 world.afterEvents.explosion.subscribe((event) => {
   const impactedBlocks = event.getImpactedBlocks();
   updatePathNodes(
     impactedBlocks.flatMap(
-      (block) => [block, block.aboveSafe(), block.belowSafe()].filter(
-        (block2) => block2 !== void 0
-      )
+      (block) => [block, block.aboveSafe(), block.belowSafe()].filter((checkBlock) => checkBlock !== void 0)
     )
   );
 });
@@ -20722,20 +20711,15 @@ function* updateNodesBlocks(callback) {
         const neighborList = checkBlock.getNodeNeighbors();
         const checkBlockStringLocation = vectorToString(checkBlock);
         const villageList = world.getVillages();
-        for (let j = 0; j < villageList.length; j++) {
-          const village = villageList[j];
+        for (const village of villageList) {
           const alreadyCheckedLocations = /* @__PURE__ */ new Set();
           const villageBounds = village.bounds;
           village.removeNode(checkBlockStringLocation);
-          for (let k = 0; k < neighborList.length; k++) {
-            const neighborBlock = neighborList[k];
-            if (neighborBlock === void 0) {
-              continue;
-            }
+          for (const neighborBlock of neighborList) {
             const neighborLocationString = vectorToString(neighborBlock);
             if (!alreadyCheckedLocations.has(neighborLocationString)) {
               alreadyCheckedLocations.add(neighborLocationString);
-              if (village.pathNodes[neighborLocationString] && neighborBlock.isValidPath(villageBounds)) {
+              if (village.pathNodes[neighborLocationString] !== void 0 && neighborBlock.isValidPath(villageBounds)) {
                 system.runJob(village.searchBlocks(neighborBlock));
               }
             }
@@ -20856,17 +20840,16 @@ function destroyTree(startingBlock, callback) {
       const leafTypeId = `minecraft:${logType}_leaves`;
       const logBlocks = [startingBlock];
       const checkLogBlocks = [];
-      const y = 0;
       for (let x = -1; x <= 1; x++) {
         for (let z = -1; z <= 1; z++) {
-          checkLogBlocks.push(startingBlock.offsetSafe({ x, y, z }));
+          checkLogBlocks.push(startingBlock.offsetSafe({ x, y: 0, z }));
         }
       }
       const checkLeafBlocks = [];
       let logChecks = 0;
       while (true) {
         currentBlock = currentBlock.aboveSafe();
-        if (currentBlock === void 0 || currentBlock.typeId !== logTypeId) {
+        if (currentBlock?.typeId !== logTypeId) {
           break;
         }
         if (currentBlock.permutation.getState("pillar_axis") !== "y") {
@@ -20883,7 +20866,7 @@ function destroyTree(startingBlock, callback) {
         );
         for (let x = -1; x <= 1; x++) {
           for (let z = -1; z <= 1; z++) {
-            checkLogBlocks.push(currentBlock.offsetSafe({ x, y, z }));
+            checkLogBlocks.push(currentBlock.offsetSafe({ x, y: 0, z }));
           }
         }
         if (++logChecks % 10 === 0) {
@@ -20918,9 +20901,9 @@ function destroyTree(startingBlock, callback) {
           checkBlock.westSafe()
         );
         for (let x = -1; x <= 1; x++) {
-          for (let y2 = 0; y2 <= 1; y2++) {
+          for (let y = 0; y <= 1; y++) {
             for (let z = -1; z <= 1; z++) {
-              checkLogBlocks.push(checkBlock.offsetSafe({ x, y: y2, z }));
+              checkLogBlocks.push(checkBlock.offsetSafe({ x, y, z }));
             }
           }
         }
@@ -20958,7 +20941,7 @@ function destroyTree(startingBlock, callback) {
                 continue;
               }
               const block = checkBlock.offsetSafe({ x: dx, y: dy, z: dz });
-              if (!block) {
+              if (block === void 0) {
                 continue;
               }
               const distance = calculateDistance(block, checkBlock);
@@ -20972,12 +20955,10 @@ function destroyTree(startingBlock, callback) {
             }
           }
         }
-        if (!closestLogLocation) {
+        if (closestLogLocation === void 0) {
           continue;
         }
-        if (!logBlockLocations.some(
-          (location) => areVectorsEqual(closestLogLocation, location)
-        )) {
+        if (!logBlockLocations.some((location) => areVectorsEqual(closestLogLocation, location))) {
           continue;
         }
         leafBlocks.push(checkBlock);
@@ -21000,21 +20981,19 @@ function destroyTree(startingBlock, callback) {
         const block = blockList[i];
         block.destroy();
         const updateBlockList = [block, block.aboveSafe(), block.belowSafe()];
-        for (let j = 0; j < updateBlockList.length; j++) {
-          const block2 = updateBlockList[j];
-          if (block2 === void 0) {
+        for (const updateBlock of updateBlockList) {
+          if (updateBlock === void 0) {
             continue;
           }
-          const list = [block2, block2.aboveSafe()];
-          for (let k = 0; k < list.length; k++) {
-            const block3 = list[k];
-            if (block3 === void 0) {
+          const neighborBlockList = [updateBlock, updateBlock.aboveSafe()];
+          for (const neighborBlock of neighborBlockList) {
+            if (neighborBlock === void 0) {
               continue;
             }
-            const blockString = vectorToString(block3);
+            const blockString = vectorToString(neighborBlock);
             if (!checkedBlocks.has(blockString)) {
               checkedBlocks.add(blockString);
-              blocksToUpdate.push(block3, block3.aboveSafe());
+              blocksToUpdate.push(neighborBlock, neighborBlock.aboveSafe());
             }
           }
         }
@@ -21199,32 +21178,25 @@ var Villager = class _Villager {
   }
   getVillage() {
     const entityLocation = this.location;
-    const villages = world2.getVillages();
-    for (let i = 0; i < villages.length; i++) {
-      const village = villages[i];
-      if (isVectorBetween(entityLocation, village.bounds.start, village.bounds.end, true)) {
-        return village;
-      }
-    }
-    return void 0;
+    const entityDimension = this.dimension;
+    return entityDimension.getVillage(entityLocation);
   }
   findTree(village) {
     const takenTrees = /* @__PURE__ */ new Set();
     const villagers = world2.getVillagers();
-    for (let i = 0; i < villagers.length; i++) {
-      if (villagers[i].id === this.id) {
+    for (const villager of villagers) {
+      if (villager.id === this.id) {
         continue;
       }
-      const tree = villagers[i].foundTree;
-      if (tree) {
+      const tree = villager.foundTree;
+      if (tree !== void 0) {
         takenTrees.add(vectorToString(tree));
       }
     }
     const villagerLoc = this.location;
     let closestTree;
     let minDist = Infinity;
-    for (let i = 0; i < village.treeLocations.length; i++) {
-      const treeStr = village.treeLocations[i];
+    for (const treeStr of village.treeLocations) {
       if (takenTrees.has(treeStr)) {
         continue;
       }
@@ -21255,9 +21227,8 @@ var Villager = class _Villager {
     });
     let closestItem;
     let bestDist = Infinity;
-    for (let i = 0; i < nearbyItems.length; i++) {
-      const item = nearbyItems[i];
-      if (!item.isOnGround || item.unreachable) {
+    for (const item of nearbyItems) {
+      if (!item.isOnGround || item.unreachable > 0) {
         continue;
       }
       if (Math.abs(item.location.y - villagerLoc.y) > 1.1) {
@@ -21291,6 +21262,11 @@ var Villager = class _Villager {
     villager.isPathing = true;
     const token = { cancelled: false };
     let finished = false;
+    const timeoutId = system3.runTimeout(() => {
+      if (!finished) {
+        cancelPath();
+      }
+    }, 1200);
     function cancelPath() {
       if (finished) {
         return;
@@ -21309,22 +21285,17 @@ var Villager = class _Villager {
       };
     }
     villager.stopPath = cancelPath;
-    const timeoutId = system3.runTimeout(() => {
-      if (!finished) {
-        cancelPath();
-      }
-    }, 1200);
     try {
       let startLocation = floorVector(villager.location);
       if (village.pathNodes[vectorToString(startLocation)] === void 0) {
         const entityStandingOnBlocks = villager.getAllBlocksStandingOn();
-        for (let i = 0; i < entityStandingOnBlocks.length; i++) {
-          const blockAbove = entityStandingOnBlocks[i].aboveSafe();
+        for (const block of entityStandingOnBlocks) {
+          const blockAbove = block.aboveSafe();
           if (blockAbove === void 0) {
             continue;
           }
           const blockAboveLocationString = vectorToString(blockAbove);
-          if (village.pathNodes[blockAboveLocationString]) {
+          if (village.pathNodes[blockAboveLocationString] !== void 0) {
             startLocation = blockAbove.location;
             break;
           }
@@ -21367,7 +21338,7 @@ var Villager = class _Villager {
       return;
     }
     const pathError = villager.pathError;
-    if (villager.waiting && pathError === void 0) {
+    if (villager.isWaiting && pathError === void 0) {
       let nameTag = `Waiting${".".repeat(Math.floor(system3.currentTick / 5) % 3 + 1)}`;
       if (typeof villager.waiting === "number") {
         villager.waiting--;
@@ -21386,6 +21357,9 @@ var Villager = class _Villager {
     villager.updateHoldingItem();
     villager.updateAnimation();
   }
+  get isWaiting() {
+    return typeof this.waiting === "number" ? this.waiting > 0 : this.waiting;
+  }
   tickTasks(village) {
     const villager = this;
     const dimension = villager.dimension;
@@ -21395,13 +21369,11 @@ var Villager = class _Villager {
     }
     const villagerLocation = villager.location;
     const allTaskList = globalTasks.concat(villagerProps.customTasks);
-    const taskList = villager.currentTask ? allTaskList.filter((task) => task.canInterrupt) : allTaskList;
-    villager.taskProgress ??= 0;
-    if (!villager.currentTask) {
+    const taskList = villager.currentTask !== void 0 ? allTaskList.filter((task) => task.canInterrupt) : allTaskList;
+    if (villager.currentTask === void 0) {
       villager.foundTree = void 0;
       villager.foundItem = void 0;
-      for (let i = 0; i < taskList.length; i++) {
-        const task = taskList[i];
+      for (const task of taskList) {
         if (task.condition(villager, village)) {
           villager.currentTask = task.id;
           villager.stopPath();
@@ -21409,15 +21381,15 @@ var Villager = class _Villager {
           break;
         }
       }
-      if (!villager.currentTask) {
+      if (villager.currentTask === void 0) {
         villager.foundTree = void 0;
         villager.foundItem = void 0;
       }
     }
     if (villager.currentTask !== void 0) {
-      const task = allTaskList.find((task2) => task2.id === villager.currentTask);
+      const task = allTaskList.find((checkTask) => checkTask.id === villager.currentTask);
       task?.tick?.(villager, village);
-      if (!villager.currentTask && !villager.waiting) {
+      if (!villager.hasTask && !villager.isWaiting) {
         if (villager.animation !== "walking") {
           villager.animation = void 0;
         }
@@ -21426,10 +21398,9 @@ var Villager = class _Villager {
         villager.taskProgress = 0;
         villager.foundTree = void 0;
       }
-      for (let i = 0; i < allTaskList.length; i++) {
-        const task2 = allTaskList[i];
-        if (task2.id === villager.currentTask) {
-          villager.nameTag = `${task2.name}
+      for (const checkTask of allTaskList) {
+        if (checkTask.id === villager.currentTask) {
+          villager.nameTag = `${checkTask.name}
 ${villager.blockedTimer}`;
           break;
         }
@@ -21446,14 +21417,14 @@ ${villager.blockedTimer}`;
       } else {
         let block = dimension.getBlockSafe(randomLocation);
         if (block !== void 0) {
-          while (block !== void 0 && block.isAir) {
+          while (block?.isAir) {
             block = block.belowSafe();
           }
           while (block !== void 0 && !block.isAir) {
             block = block.aboveSafe();
           }
           if (block !== void 0) {
-            if (village.pathNodes[vectorToString(block)]) {
+            if (village.pathNodes[vectorToString(block)] !== void 0) {
               villager.pathFindTo(block.location);
               villager.taskProgress = randomInt(20, 200);
             }
@@ -21473,7 +21444,7 @@ ${villager.blockedTimer}`;
         for (let y = minVector.y; y <= maxVector.y; y++) {
           for (let z = minVector.z; z <= maxVector.z; z++) {
             const block = dimension.getBlockSafe({ x, y, z });
-            if (!block) {
+            if (block === void 0) {
               continue;
             }
             if (block.permutation.getState("persistent_bit") === false) {
@@ -21496,13 +21467,16 @@ ${villager.blockedTimer}`;
       updatePathNodes(blocksToUpdate);
     }
   }
+  get hasTask() {
+    return this.currentTask !== void 0;
+  }
   tickChop(village) {
     const villager = this;
     const dimension = villager.dimension;
     const foundTree = villager.foundTree;
     if (foundTree !== void 0) {
       const treeBlock = dimension.getBlockSafe(foundTree);
-      if (treeBlock !== void 0 && treeBlock.isTree) {
+      if (treeBlock?.isTree) {
         const treeDist = calculateDistance(foundTree, villager.location);
         if (treeDist <= 5) {
           villager.holdingItem = "wooden_axe";
@@ -21513,7 +21487,7 @@ ${villager.blockedTimer}`;
           villager.animation = "chopping";
           villager.lookAt(centerVector(foundTree));
           villager.taskProgress++;
-          if (villager.taskProgress > 100 && !villager.waiting) {
+          if (villager.taskProgress > 100 && !villager.isWaiting) {
             const saplingTypeId = treeBlock.typeId.replace(
               "_log",
               "_sapling"
@@ -21545,7 +21519,7 @@ ${villager.blockedTimer}`;
     const villager = this;
     const foundItem = villager.foundItem;
     const pathError = villager.pathError;
-    if (foundItem !== void 0 && foundItem.isValid) {
+    if (foundItem?.isValid) {
       if (calculateDistance(foundItem.location, villager.location) < 1.75) {
         if (villager.getMoveSpeed() < 0.01) {
           const item = foundItem.getComponent(EntityComponentTypes.Item)?.itemStack;
@@ -21582,7 +21556,7 @@ ${villager.blockedTimer}`;
     if (this.lastHoldingItem !== this.holdingItem) {
       this.lastHoldingItem = this.holdingItem;
       this.entity.runCommand(
-        this.holdingItem ? `replaceitem entity @s slot.weapon.offhand 0 ${this.holdingItem}` : "replaceitem entity @s slot.weapon.offhand 0 air"
+        this.holdingItem !== void 0 ? `replaceitem entity @s slot.weapon.offhand 0 ${this.holdingItem}` : "replaceitem entity @s slot.weapon.offhand 0 air"
       );
     }
   }
@@ -21601,12 +21575,12 @@ ${villager.blockedTimer}`;
         return;
       }
       try {
-        if (!villager.isValid || !villager.isPathing) {
+        if (!villager.isValid || !villager.isPathing || village === void 0) {
           cancelPath();
           return;
         }
         const targetBlock = dimension.getBlockSafe(targetLocation);
-        if (targetBlock && !targetBlock.isValidPath(villageBounds) && calculateDistance(centerVector(targetLocation), villager.location) <= 1.25) {
+        if (targetBlock !== void 0 && !targetBlock.isValidPath(villageBounds) && calculateDistance(centerVector(targetLocation), villager.location) <= 1.25) {
           cancelPath();
           return;
         }
@@ -21653,9 +21627,8 @@ ${villager.blockedTimer}`;
         }
         let isBlocked = false;
         let blockedByTektopiaVillager = false;
-        for (let i = 0; i < checkEntityList.length; i++) {
-          const checkEntity = checkEntityList[i];
-          if (checkEntity.isBlocked === void 0 || !checkEntity.isBlocked) {
+        for (const checkEntity of checkEntityList) {
+          if (!checkEntity.isBlocked) {
             const checkEntityLocation = checkEntity.location;
             const checkEntityIsTektopiaVillager = checkEntity.typeId.startsWith("tektopia:");
             if (calculateSquareDistance(checkEntityLocation, currentPathNode) < 1.75) {
@@ -21669,7 +21642,6 @@ ${villager.blockedTimer}`;
             }
           }
         }
-        villager.unblockTimer ??= 0;
         if (blockedByTektopiaVillager) {
           villager.unblockTimer = 20;
         } else if (!isBlocked && villager.unblockTimer > 0) {
@@ -21721,8 +21693,7 @@ system3.runInterval(() => {
     return;
   }
   const villagers = world2.getVillagers();
-  for (let i = 0; i < villagers.length; i++) {
-    const villager = villagers[i];
+  for (const villager of villagers) {
     try {
       villager.tickAI();
     } catch (error) {
@@ -21732,9 +21703,8 @@ system3.runInterval(() => {
 });
 system3.runInterval(() => {
   const itemEntities = world2.getEntities({ type: "item" });
-  for (let i = 0; i < itemEntities.length; i++) {
-    const entity = itemEntities[i];
-    if (entity.unreachable) {
+  for (const entity of itemEntities) {
+    if (entity.unreachable > 0) {
       entity.unreachable--;
     }
   }
@@ -21746,8 +21716,7 @@ Block2.prototype.destroy = function() {
   const lootTableManager = world2.getLootTableManager();
   const itemList = lootTableManager.generateLootFromBlock(this) ?? [];
   const dimension = this.dimension;
-  for (let i = 0; i < itemList.length; i++) {
-    const item = itemList[i];
+  for (const item of itemList) {
     item.makeVillageItem();
     dimension.spawnItem(item, this.center());
   }
@@ -21763,6 +21732,7 @@ ItemStack.prototype.makeVillageItem = function() {
   this.setLore(["\xA7r\xA77Village Item"]);
 };
 Block2.prototype.soundEvent = function(eventId, soundOptions) {
+  let options = soundOptions !== void 0 ? { ...soundOptions } : void 0;
   if (this.isAir) {
     return;
   }
@@ -21771,10 +21741,12 @@ Block2.prototype.soundEvent = function(eventId, soundOptions) {
     console.warn(`Missing sound: ${this.typeId}`);
     return;
   }
-  if (soundOptions === void 0 && typeof sound === "object" && sound !== null) {
-    soundOptions = {};
-    soundOptions.pitch = sound.pitch !== void 0 ? resolveValue(sound.pitch) : 1;
-    soundOptions.volume = sound.volume !== void 0 ? resolveValue(sound.volume) : 1;
+  if (typeof sound === "object" && sound !== null) {
+    options = {
+      pitch: resolveValue(sound.pitch ?? 1),
+      volume: resolveValue(sound.volume ?? 1),
+      ...options
+    };
   }
   function resolveValue(value) {
     if (Array.isArray(value)) {
@@ -21783,7 +21755,7 @@ Block2.prototype.soundEvent = function(eventId, soundOptions) {
     return value;
   }
   if (sound !== null) {
-    this.playSound(typeof sound === "string" ? sound : sound.sound, soundOptions);
+    this.playSound(typeof sound === "string" ? sound : sound.sound, options);
   }
 };
 Block2.prototype.playSound = function(soundId, soundOptions) {

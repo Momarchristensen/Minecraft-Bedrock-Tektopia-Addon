@@ -36,9 +36,6 @@ function addVector(vector, axises, value) {
     y: vector.y,
     z: vector.z
   };
-  if (typeof axises === "string") {
-    axises = axises.split("");
-  }
   for (const axis of axises) {
     if (axis in result) {
       result[axis] += value;
@@ -94,7 +91,9 @@ system.run(_tickDrawDebug);
 function* drawDebug(callback) {
   try {
     if (!world.loadedData) {
-      callback();
+      if (callback !== void 0) {
+        callback();
+      }
       return;
     }
     const players = world.getAllPlayers();
@@ -137,13 +136,11 @@ function* drawDebug(callback) {
               if (node.requirement !== void 0) {
                 color = requirementColor(node.requirement);
               }
-              if (color === void 0) {
-                color = {
-                  red: 122 / 255,
-                  green: 122 / 255,
-                  blue: 122 / 255
-                };
-              }
+              color ??= {
+                red: 122 / 255,
+                green: 122 / 255,
+                blue: 122 / 255
+              };
               colorMap.setColorRGB("color", color);
               player.spawnParticle("tektopia:path_node", particlePos, colorMap);
               const directionSet = new Set(
@@ -228,7 +225,7 @@ function* drawDebug(callback) {
   }
 }
 function requirementColor(requirement) {
-  if (!requirement?.types?.length) {
+  if (requirement === void 0 || requirement.types.length === 0) {
     return { red: 0, green: 0, blue: 0 };
   }
   const key = [...requirement.types].sort().join(",") + (requirement.whiteList ? "+w" : "+b");
@@ -243,11 +240,11 @@ function requirementColor(requirement) {
   }
   return { red: red / 255, green: green / 255, blue: blue / 255 };
   function hashString(str) {
-    let hash2 = 0;
+    let hashStr = 0;
     for (let i = 0; i < str.length; i++) {
-      hash2 = hash2 * 31 + str.charCodeAt(i) | 0;
+      hashStr = hashStr * 31 + str.charCodeAt(i) | 0;
     }
-    return hash2 >>> 0;
+    return hashStr >>> 0;
   }
 }
 function testLag() {

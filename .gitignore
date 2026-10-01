@@ -9,14 +9,7 @@ world_resource_packs.json
 world_behavior_pack_history.json
 world_resource_pack_history.json
 
-# Keep world_behavior_packs.json / world_resource_packs.json tracked
-# only if you want the pack-to-world linkage in version control.
-# Otherwise uncomment:
-# world_behavior_packs.json
-# world_resource_packs.json
-
 # Editor / OS junk
-.vscode/
 .AddCompLib/
 .idea/
 Thumbs.db
@@ -29,6 +22,10 @@ desktop.ini
 *.mcworld
 dist/
 build/
+
+# Generated dependency graph (make_dep_graph.py)
+dependencies.dot
+dependencies.svg
 
 #Python Scripts
 Python Scripts/

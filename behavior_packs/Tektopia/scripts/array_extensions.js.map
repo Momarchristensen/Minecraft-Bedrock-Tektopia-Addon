@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["../../../src/array_extensions.ts"],
+  "sourcesContent": ["const setCache = new WeakMap()\r\n\r\nArray.prototype.includesFast = function (value) {\r\n    let set = setCache.get(this)\r\n\r\n    if (set === undefined) {\r\n        set = new Set(this)\r\n        setCache.set(this, set)\r\n    }\r\n\r\n    return set.has(value)\r\n}\r\n\r\nArray.prototype.remove = function (value) {\r\n    const index = this.indexOf(value)\r\n    if (index !== -1) {\r\n        this.splice(index, 1)\r\n    }\r\n    return this\r\n}\r\n"],
+  "mappings": ";;;;;;;;;;AAAA;AAAA;AAAA,QAAM,WAAW,oBAAI,QAAQ;AAE7B,UAAM,UAAU,eAAe,SAAU,OAAO;AAC5C,UAAI,MAAM,SAAS,IAAI,IAAI;AAE3B,UAAI,QAAQ,QAAW;AACnB,cAAM,IAAI,IAAI,IAAI;AAClB,iBAAS,IAAI,MAAM,GAAG;AAAA,MAC1B;AAEA,aAAO,IAAI,IAAI,KAAK;AAAA,IACxB;AAEA,UAAM,UAAU,SAAS,SAAU,OAAO;AACtC,YAAM,QAAQ,KAAK,QAAQ,KAAK;AAChC,UAAI,UAAU,IAAI;AACd,aAAK,OAAO,OAAO,CAAC;AAAA,MACxB;AACA,aAAO;AAAA,IACX;AAAA;AAAA;",
+  "names": []
+}

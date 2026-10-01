@@ -139,13 +139,8 @@ export class Villager {
 
     getVillage() {
         const entityLocation = this.location
-        const villages = world.getVillages()
-        for (const village of villages) {
-            if (isVectorBetween(entityLocation, village.bounds.start, village.bounds.end, true)) {
-                return village
-            }
-        }
-        return undefined
+        const entityDimension = this.dimension
+        return entityDimension.getVillage(entityLocation)
     }
 
     findTree(village: Village): Vector3 | undefined {
