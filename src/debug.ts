@@ -1,4 +1,7 @@
 import {
+    CommandPermissionLevel,
+    CustomCommandParamType,
+    CustomCommandStatus,
     MolangVariableMap,
     system,
     world
@@ -16,18 +19,79 @@ import {
 
 import type { NodeRequirement } from "."
 
-function _tickDrawDebug() {
-    system.runJob(drawDebug(_tickDrawDebug))
+export const debugFlags = {
+    scanParticles: true,
+    pathNodeParticles: true,
+    itemFrameScanParticles: false,
+    villagerPathParticles: true,
+    pathfindingWarnings: true,
+    nodeDeletionWarnings: true
 }
 
-system.run(_tickDrawDebug)
+export type DebugFlag = keyof typeof debugFlags
+
+export const debugFlagNames = Object.keys(debugFlags) as DebugFlag[]
+
+const PROPERTY_PREFIX = "tektopia:debug:"
+
+export function isDebugFlag(value: string): value is DebugFlag {
+    return value in debugFlags
+}
+
+export function setDebugFlag(flag: DebugFlag, enabled: boolean) {
+    debugFlags[flag] = enabled
+    world.setDynamicProperty(PROPERTY_PREFIX + flag, enabled ? true : undefined)
+}
+
+export function loadDebugFlags() {
+    for (const flag of debugFlagNames) {
+        const saved = world.getDynamicProperty(PROPERTY_PREFIX + flag)
+        if (typeof saved === "boolean") {
+            debugFlags[flag] = saved
+        }
+    }
+}
+
+system.beforeEvents.startup.subscribe(event => {
+    const customCommandRegistry = event.customCommandRegistry
+
+    customCommandRegistry.registerEnum("tektopia:debugflag", debugFlagNames)
+
+    customCommandRegistry.registerCommand({
+        name: "tektopia:debug",
+        cheatsRequired: false,
+        description: "Toggle a debug flag (omit the value to flip it)",
+        mandatoryParameters: [{ type: CustomCommandParamType.Enum, name: "tektopia:debugflag" }],
+        optionalParameters: [{ type: CustomCommandParamType.Boolean, name: "enabled" }],
+        permissionLevel: CommandPermissionLevel.Admin
+    }, (_, flag: string, enabled?: boolean) => {
+        if (!isDebugFlag(flag)) {
+            return {
+                status: CustomCommandStatus.Failure,
+                message: `Unknown flag. Options: ${debugFlagNames.join(", ")}`
+            }
+        }
+
+        const newValue = enabled ?? !debugFlags[flag]
+
+        system.run(() => setDebugFlag(flag, newValue))
+
+        return {
+            status: CustomCommandStatus.Success,
+            message: `${flag} is now ${newValue ? "on" : "off"}`
+        }
+    })
+})
+
+function tickDrawDebug() {
+    system.runJob(drawDebug(tickDrawDebug))
+}
+
+system.run(tickDrawDebug)
 
 function* drawDebug(callback?: () => void) {
     try {
-        if (!world.loadedData) {
-            if (callback !== undefined) {
-                callback()
-            }
+        if (!world.loadedData || !debugFlags.pathNodeParticles) {
             return
         }
         const players = world.getAllPlayers()
@@ -219,4 +283,12 @@ export function testLag() {
         console.warn(Date.now() - world.lagTime)
         world.lagTime = undefined
     }
+}
+
+world.afterEvents.worldLoad.subscribe(() => {
+    main()
+})
+
+function main() {
+    loadDebugFlags()
 }

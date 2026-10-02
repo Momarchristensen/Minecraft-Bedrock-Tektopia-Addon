@@ -7,6 +7,8 @@ import {
     world
 } from "@minecraft/server"
 
+import { debugFlags } from "./debug"
+
 import { Registry } from "./registry"
 
 import {
@@ -15,6 +17,7 @@ import {
     areVectorsEqual,
     calculateSquareDistance,
     centerVector,
+    type Direction,
     directionToVector,
     getOppositeDirection,
     rotationToStructureRotation,
@@ -23,7 +26,7 @@ import {
 
 import { Village } from "./village"
 
-const itemFrameRotations: Record<string, string> = {
+const itemFrameRotations: Record<string, Direction> = {
     2: "south",
     3: "north",
     4: "east",
@@ -31,6 +34,177 @@ const itemFrameRotations: Record<string, string> = {
 }
 
 const cardinalDirectionList = ["north", "east", "south", "west"]
+
+interface StructureValidationResult {
+    result: boolean | undefined
+    doorLocation: Vector3 | undefined
+}
+
+function* validateStructure(
+    dimension: Dimension,
+    block: Block,
+    rotation: Direction,
+    structureId: string
+): Generator<void, StructureValidationResult, void> {
+    const blockCenter = block.center()
+    const blockCenterString = vectorToString(blockCenter)
+    let doorLocation: Vector3 | undefined
+
+    const fail = (result: boolean | undefined): StructureValidationResult => ({ result, doorLocation })
+
+    function getFloorBlock(location: Vector3) {
+        return dimension.getBlockBelow(location, {
+            maxDistance: 32,
+            includeLiquidBlocks: false,
+            includePassableBlocks: false
+        })
+    }
+
+    function getCeilingBlock(location: Vector3) {
+        return dimension.getBlockAbove(location, {
+            maxDistance: 32,
+            includeLiquidBlocks: false,
+            includePassableBlocks: false
+        })
+    }
+
+    if (!cardinalDirectionList.includes(rotation)) {
+        return fail(false)
+    }
+
+    const itemFrameOnBlock = block.offsetSafe(directionToVector(rotation))
+    if (itemFrameOnBlock === undefined) {
+        return fail(false)
+    }
+
+    // Look for a door around the block the frame is mounted on
+    const oppositeRotation = getOppositeDirection(rotation)
+    const itemFrameOffsetList = [{ x: 0, y: -1, z: 0 }].concat(
+        cardinalDirectionList
+            .filter(direction => direction !== rotation && direction !== oppositeRotation)
+            .map(direction => directionToVector(direction))
+    )
+
+    let foundDoor
+    for (const offset of itemFrameOffsetList) {
+        const checkBlock = itemFrameOnBlock.offsetSafe(offset)
+        if (checkBlock === undefined) {
+            return fail(false)
+        }
+        if (Registry.doorTypes.includes(checkBlock.typeId)) {
+            foundDoor = checkBlock
+        }
+    }
+    if (foundDoor === undefined) {
+        return fail(false)
+    }
+
+    doorLocation = addVector(foundDoor.location, "y", -1)
+    const doorBlock = dimension.getBlockSafe(doorLocation)
+    if (doorBlock === undefined) {
+        return fail(undefined)
+    }
+    if (!Registry.doorTypes.includes(doorBlock.typeId)) {
+        return fail(false)
+    }
+
+    // Village proximity rules
+    const villageList = world.getVillages()
+    if (structureId === "townhall") {
+        const tooCloseToAnotherVillage = villageList
+            .filter(village => village.centerString !== blockCenterString)
+            .some(village => calculateSquareDistance(village.center, blockCenter, true) < 200)
+        if (tooCloseToAnotherVillage) {
+            return fail(false)
+        }
+    }
+    else if (!villageList.some(village => calculateSquareDistance(village.center, blockCenter, true) <= 100)) {
+        return fail(false)
+    }
+
+    // Flood fill the interior to make sure it's big enough
+    const floorBlockList = []
+    const startingLocation = addVectors(doorBlock, directionToVector(rotation))
+    const checkLocationList = [
+        {
+            floor: getFloorBlock(startingLocation),
+            ceiling: getCeilingBlock(startingLocation)
+        }
+    ]
+    const alreadyCheckedLocations = new Set([vectorToString(addVector(doorLocation, "y", -1))])
+
+    let steps = 0
+    while (checkLocationList.length > 0) {
+        const currentLocation = checkLocationList.shift()
+        if (
+            currentLocation?.ceiling !== undefined &&
+            currentLocation.floor !== undefined &&
+            currentLocation.ceiling.y - currentLocation.floor.y > 2
+        ) {
+            const floorLocationString = vectorToString(currentLocation.floor)
+            if (!alreadyCheckedLocations.has(floorLocationString)) {
+                alreadyCheckedLocations.add(floorLocationString)
+
+                if (debugFlags.itemFrameScanParticles) {
+                    try {
+                        dimension.spawnParticle(
+                            "minecraft:basic_flame_particle",
+                            centerVector(currentLocation.floor)
+                        )
+                    }
+                    catch { }
+                }
+
+                floorBlockList.push(currentLocation.floor.aboveSafe())
+
+                const floorOffsetList = [
+                    { x: 1, y: 0, z: 0 },
+                    { x: -1, y: 0, z: 0 },
+                    { x: 0, y: 0, z: 1 },
+                    { x: 0, y: 0, z: -1 }
+                ]
+
+                for (const offset of floorOffsetList) {
+                    const offsetLocation = addVectors(currentLocation.floor, offset)
+                    if (alreadyCheckedLocations.has(vectorToString(offsetLocation))) {
+                        continue
+                    }
+
+                    const checkLocation = addVector(offsetLocation, "y", 1)
+
+                    let floorBlock = getFloorBlock(checkLocation)?.aboveSafe()
+                    while (floorBlock?.isSolid) {
+                        floorBlock = floorBlock.aboveSafe()
+                    }
+                    if (floorBlock === undefined) {
+                        return fail(undefined)
+                    }
+
+                    const ceilingBlock = getCeilingBlock(floorBlock.location)
+
+                    floorBlock = floorBlock.belowSafe()
+                    if (
+                        floorBlock !== undefined &&
+                        ceilingBlock !== undefined &&
+                        ceilingBlock.y - floorBlock.y > 2 &&
+                        currentLocation.ceiling.y - floorBlock.y > 2 &&
+                        ceilingBlock.y - checkLocation.y >= 2
+                    ) {
+                        checkLocationList.push({
+                            floor: floorBlock,
+                            ceiling: ceilingBlock
+                        })
+                    }
+                }
+            }
+        }
+        if (++steps % 5 === 0) {
+            yield
+        }
+    }
+
+    return fail(floorBlockList.length >= 9)
+}
 
 function tickScanItemFrames() {
     system.runJob(scanItemFrames(() => system.runTimeout(tickScanItemFrames, 100)))
@@ -40,213 +214,73 @@ system.run(tickScanItemFrames)
 
 function* scanItemFrames(callback?: () => void) {
     try {
-        const villageItemFrameLocations = []
+        const villageItemFrameLocations: string[] = []
+
         for (const itemFrame of world.itemFrameList) {
             const dimension = world.getDimension(itemFrame.dimensionId)
-            const itemFrameBlock = dimension.getBlockSafe(itemFrame.location)
-            if (itemFrameBlock !== undefined) {
-                const block = itemFrameBlock
-                const item = block.getFrameItem()
-                const blockCenter = block.center()
-                const blockCenterString = vectorToString(blockCenter)
-                if (item?.typeId.startsWith("tektopia:structure_")) {
-                    const facingDirection = block.permutation.getState("facing_direction")
-                    if (facingDirection === undefined || !(facingDirection in itemFrameRotations)) {
-                        if (item.typeId === "tektopia:structure_townhall") {
-                            villageItemFrameLocations.push(blockCenterString)
-                        }
-                        continue
-                    }
-                    const rotation = itemFrameRotations[facingDirection]
-                    const structureId = item.typeId.replace("tektopia:structure_", "")
-                    itemFrame.structureId = structureId
-                    let doorLocation: Vector3 | undefined
+            const block = dimension.getBlockSafe(itemFrame.location)
 
-                    function* checkStructureValidation() {
-                        if (!cardinalDirectionList.includes(rotation)) {
-                            return false
-                        }
-                        const itemFrameOnBlock = block.offsetSafe(
-                            directionToVector(rotation)
-                        )
-                        if (itemFrameOnBlock === undefined) {
-                            return false
-                        }
-                        const oppositeRotation = getOppositeDirection(rotation)
-                        const itemFrameOffsetList = [{ x: 0, y: -1, z: 0 }].concat(
-                            cardinalDirectionList
-                                .filter(
-                                    direction =>
-                                        direction !== rotation && direction !== oppositeRotation
-                                )
-                                .map(direction => directionToVector(direction))
-                        )
-                        let foundDoor
-                        for (const offset of itemFrameOffsetList) {
-                            const checkBlock = itemFrameOnBlock.offsetSafe(offset)
-                            if (checkBlock === undefined) {
-                                return false
-                            }
-                            if (Registry.doorTypes.includes(checkBlock.typeId)) {
-                                foundDoor = checkBlock
-                            }
-                        }
-                        if (foundDoor === undefined) {
-                            return false
-                        }
-                        doorLocation = addVector(foundDoor.location, "y", -1)
-                        const doorBlock = dimension.getBlockSafe(doorLocation)
-                        if (doorBlock === undefined) {
-                            return undefined
-                        }
-                        if (!Registry.doorTypes.includes(doorBlock.typeId)) {
-                            return false
-                        }
-                        const villageList = world.getVillages()
-                        if (structureId === "townhall") {
-                            if (villageList.filter(village => village.centerString !== blockCenterString).some(village => calculateSquareDistance(village.center, blockCenter, true) < 200)) {
-                                return false
-                            }
-                        }
-                        else if (!villageList.some(village => calculateSquareDistance(village.center, blockCenter, true) <= 100)) {
-                            return false
-                        }
+            if (block === undefined) {
+                if (itemFrame.structureId === "townhall") {
+                    villageItemFrameLocations.push(vectorToString(centerVector(itemFrame.location)))
+                }
+                yield
+                continue
+            }
 
-                        const floorBlockList = []
-                        const startingLocation = addVectors(
-                            doorBlock,
-                            directionToVector(rotation)
-                        )
-                        const checkLocationList = [
-                            {
-                                floor: getFloorBlock(startingLocation),
-                                ceiling: getCeilingBlock(startingLocation)
-                            }
-                        ]
-                        const alreadyCheckedLocations = new Set([vectorToString(addVector(doorLocation, "y", -1))])
+            const item = block.getFrameItem()
+            const blockCenter = block.center()
+            const blockCenterString = vectorToString(blockCenter)
 
-                        let steps = 0
-                        while (checkLocationList.length > 0) {
-                            const currentLocation = checkLocationList.shift()
-                            if (currentLocation !== undefined) {
-                                if (currentLocation.ceiling !== undefined && currentLocation.floor !== undefined) {
-                                    if (currentLocation.ceiling.y - currentLocation.floor.y > 2) {
-                                        const floorLocationString = vectorToString(
-                                            currentLocation.floor
-                                        )
-                                        if (!alreadyCheckedLocations.has(floorLocationString)) {
-                                            alreadyCheckedLocations.add(floorLocationString)
+            if (!item?.typeId.startsWith("tektopia:structure_")) {
+                itemFrame.structureId = undefined
+                yield
+                continue
+            }
 
-                                            floorBlockList.push(currentLocation.floor.aboveSafe())
+            const isTownhall = item.typeId === "tektopia:structure_townhall"
+            const facingDirection = block.permutation.getState("facing_direction")
 
-                                            const floorOffsetList = [
-                                                { x: 1, y: 0, z: 0 },
-                                                { x: -1, y: 0, z: 0 },
-                                                { x: 0, y: 0, z: 1 },
-                                                { x: 0, y: 0, z: -1 }
-                                            ]
+            if (facingDirection === undefined || !(facingDirection in itemFrameRotations)) {
+                if (isTownhall) {
+                    villageItemFrameLocations.push(blockCenterString)
+                }
+                yield
+                continue
+            }
 
-                                            for (const offset of floorOffsetList) {
-                                                const offsetLocation = addVectors(currentLocation.floor, offset)
-                                                if (!alreadyCheckedLocations.has(vectorToString(offsetLocation))) {
-                                                    const checkLocation = addVector(offsetLocation, "y", 1)
+            const rotation = itemFrameRotations[facingDirection]
+            const structureId = item.typeId.replace("tektopia:structure_", "")
+            itemFrame.structureId = structureId
 
-                                                    let floorBlock = getFloorBlock(checkLocation)?.aboveSafe()
-                                                    while (floorBlock?.isSolid) {
-                                                        floorBlock = floorBlock.aboveSafe()
-                                                    }
-                                                    if (floorBlock === undefined) {
-                                                        return undefined
-                                                    }
+            const { result, doorLocation } = yield* validateStructure(dimension, block, rotation, structureId)
 
-                                                    const ceilingBlock = getCeilingBlock(
-                                                        floorBlock.location
-                                                    )
+            if (!block.isValid) {
+                if (isTownhall) {
+                    villageItemFrameLocations.push(blockCenterString)
+                }
+                yield
+                continue
+            }
 
-                                                    floorBlock = floorBlock.belowSafe()
-                                                    if (floorBlock !== undefined && ceilingBlock !== undefined && ceilingBlock.y - floorBlock.y > 2 && currentLocation.ceiling.y - floorBlock.y > 2 && ceilingBlock.y - checkLocation.y >= 2) {
-                                                        checkLocationList.push({
-                                                            floor: floorBlock,
-                                                            ceiling: ceilingBlock
-                                                        })
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                            if (++steps % 5 === 0) {
-                                yield
-                            }
-                        }
-
-                        if (floorBlockList.length < 9) {
-                            return false
-                        }
-                        return true
-
-                        function getFloorBlock(location: Vector3) {
-                            return dimension.getBlockBelow(location, {
-                                maxDistance: 32,
-                                includeLiquidBlocks: false,
-                                includePassableBlocks: false
-                            })
-                        }
-
-                        function getCeilingBlock(location: Vector3) {
-                            return dimension.getBlockAbove(location, {
-                                maxDistance: 32,
-                                includeLiquidBlocks: false,
-                                includePassableBlocks: false
-                            })
-                        }
-                    }
-
-                    const result = yield* checkStructureValidation()
-                    if (!block.isValid) {
-                        if (item.typeId === "tektopia:structure_townhall") {
-                            villageItemFrameLocations.push(blockCenterString)
-                        }
-                        continue
-                    }
-                    if (result !== undefined) {
-                        if (result && doorLocation !== undefined) {
-                            if (structureId === "townhall") {
-                                villageItemFrameLocations.push(blockCenterString)
-                                const villageList = world.getVillages()
-                                const villageStringCenterList = villageList.map(
-                                    village => village.centerString
-                                )
-                                if (!villageStringCenterList.includes(blockCenterString)) {
-                                    world.villageList.push(
-                                        Village.createData(blockCenter, dimension.id, doorLocation)
-                                    )
-                                }
-                            }
-                        }
-                        dimension.placeStructureFrame(
-                            block.location,
-                            structureId,
-                            result,
-                            rotation
-                        )
-                    }
-                    else if (structureId === "townhall") {
-                        villageItemFrameLocations.push(blockCenterString)
+            if (result !== undefined) {
+                if (result && doorLocation !== undefined && structureId === "townhall") {
+                    villageItemFrameLocations.push(blockCenterString)
+                    const villageStringCenterList = world.getVillages().map(village => village.centerString)
+                    if (!villageStringCenterList.includes(blockCenterString)) {
+                        world.villageList.push(Village.createData(blockCenter, dimension.id, doorLocation))
                     }
                 }
-                else {
-                    itemFrame.structureId = undefined
-                }
+                dimension.placeStructureFrame(block.location, structureId, result, rotation)
             }
-            else if (itemFrame.structureId === "townhall") {
-                villageItemFrameLocations.push(
-                    vectorToString(centerVector(itemFrame.location))
-                )
+            else if (isTownhall) {
+                villageItemFrameLocations.push(blockCenterString)
             }
+
             yield
         }
+
+        // Remove villages whose townhall frame no longer exists
         const keep = new Set(villageItemFrameLocations)
         for (let i = world.villageList.length - 1; i >= 0; i--) {
             if (!keep.has(vectorToString(world.villageList[i].center))) {
@@ -255,9 +289,7 @@ function* scanItemFrames(callback?: () => void) {
         }
     }
     finally {
-        if (callback !== undefined) {
-            callback()
-        }
+        callback?.()
     }
 }
 

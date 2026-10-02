@@ -59,7 +59,8 @@ declare module "@minecraft/server" {
     }
 
     interface Dimension {
-        getBlockSafe(location: Vector3): Block | undefined
+        getBlockSafe(...args: Parameters<Dimension["getBlock"]>): ReturnType<Dimension["getBlock"]> | undefined;
+
         placeStructureFrame(location: Vector3, structureId: string, isEnchanted: boolean, rotation: string): void
         getVillage(location: Vector3): Village | undefined
     }
@@ -72,13 +73,15 @@ declare module "@minecraft/server" {
 
     interface Block {
         getFrameItem(): ItemStack | undefined
-        offsetSafe(offset: Vector3): Block | undefined
-        northSafe(): Block | undefined
-        eastSafe(): Block | undefined
-        southSafe(): Block | undefined
-        westSafe(): Block | undefined
-        aboveSafe(): Block | undefined
-        belowSafe(): Block | undefined
+
+        northSafe(...args: Parameters<Block["north"]>): ReturnType<Block["north"]> | undefined;
+        eastSafe(...args: Parameters<Block["east"]>): ReturnType<Block["east"]> | undefined;
+        southSafe(...args: Parameters<Block["south"]>): ReturnType<Block["south"]> | undefined;
+        westSafe(...args: Parameters<Block["west"]>): ReturnType<Block["west"]> | undefined;
+        aboveSafe(...args: Parameters<Block["above"]>): ReturnType<Block["above"]> | undefined;
+        belowSafe(...args: Parameters<Block["below"]>): ReturnType<Block["below"]> | undefined;
+        offsetSafe(...args: Parameters<Block["offset"]>): ReturnType<Block["offset"]> | undefined;
+
         canPathThrough(): boolean
         canWalkThrough(): boolean
         getIsSolid(): boolean
@@ -94,6 +97,8 @@ declare module "@minecraft/server" {
         scanBlock(village: Village): boolean
         readonly isTree: boolean
         readonly isFarm: boolean
+        readonly isHarvestable: boolean
+        readonly isHarvestableSugarCane: boolean
     }
 
     interface Container {
@@ -107,6 +112,7 @@ declare module "@minecraft/server" {
 
     interface Player {
         resetCache(): void
+        spawnBorderParticles(bounds: VillageBounds): void
     }
 }
 

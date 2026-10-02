@@ -1,5 +1,8 @@
 // src/debug.ts
 import {
+  CommandPermissionLevel,
+  CustomCommandParamType,
+  CustomCommandStatus,
   MolangVariableMap,
   system,
   world
@@ -84,16 +87,60 @@ function subtractVectors(vector1, vector2) {
 }
 
 // src/debug.ts
-function _tickDrawDebug() {
-  system.runJob(drawDebug(_tickDrawDebug));
+var debugFlags = {
+  scanParticles: true,
+  pathParticles: true,
+  pathfindingWarnings: true
+};
+var debugFlagNames = Object.keys(debugFlags);
+var PROPERTY_PREFIX = "tektopia:debug:";
+function isDebugFlag(value) {
+  return value in debugFlags;
 }
-system.run(_tickDrawDebug);
+function setDebugFlag(flag, enabled) {
+  debugFlags[flag] = enabled;
+  world.setDynamicProperty(PROPERTY_PREFIX + flag, enabled ? true : void 0);
+}
+function loadDebugFlags() {
+  for (const flag of debugFlagNames) {
+    const saved = world.getDynamicProperty(PROPERTY_PREFIX + flag);
+    if (typeof saved === "boolean") {
+      debugFlags[flag] = saved;
+    }
+  }
+}
+system.beforeEvents.startup.subscribe((event) => {
+  const customCommandRegistry = event.customCommandRegistry;
+  customCommandRegistry.registerEnum("tektopia:debugflag", debugFlagNames);
+  customCommandRegistry.registerCommand({
+    name: "tektopia:debug",
+    cheatsRequired: false,
+    description: "Toggle a debug flag (omit the value to flip it)",
+    mandatoryParameters: [{ type: CustomCommandParamType.Enum, name: "tektopia:debugflag" }],
+    optionalParameters: [{ type: CustomCommandParamType.Boolean, name: "enabled" }],
+    permissionLevel: CommandPermissionLevel.Admin
+  }, (_, flag, enabled) => {
+    if (!isDebugFlag(flag)) {
+      return {
+        status: CustomCommandStatus.Failure,
+        message: `Unknown flag. Options: ${debugFlagNames.join(", ")}`
+      };
+    }
+    const newValue = enabled ?? !debugFlags[flag];
+    system.run(() => setDebugFlag(flag, newValue));
+    return {
+      status: CustomCommandStatus.Success,
+      message: `${flag} is now ${newValue ? "on" : "off"}`
+    };
+  });
+});
+function tickDrawDebug() {
+  system.runJob(drawDebug(tickDrawDebug));
+}
+system.run(tickDrawDebug);
 function* drawDebug(callback) {
   try {
-    if (!world.loadedData) {
-      if (callback !== void 0) {
-        callback();
-      }
+    if (!world.loadedData || !debugFlags.pathParticles) {
       return;
     }
     const players = world.getAllPlayers();
@@ -255,7 +302,18 @@ function testLag() {
     world.lagTime = void 0;
   }
 }
+world.afterEvents.worldLoad.subscribe(() => {
+  main();
+});
+function main() {
+  loadDebugFlags();
+}
 export {
+  debugFlagNames,
+  debugFlags,
+  isDebugFlag,
+  loadDebugFlags,
+  setDebugFlag,
   testLag
 };
 //# sourceMappingURL=debug.js.map

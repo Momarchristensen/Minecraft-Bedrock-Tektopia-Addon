@@ -1,6 +1,6 @@
 // src/tree.ts
 import {
-  system as system2
+  system as system3
 } from "@minecraft/server";
 
 // src/path.ts
@@ -8,8 +8,8 @@ import {
   Block,
   GameMode,
   Player,
-  system,
-  world
+  system as system2,
+  world as world2
 } from "@minecraft/server";
 
 // src/path_constants.ts
@@ -56,11 +56,14 @@ var pathIgnoreEntityTypes = [
   "minecraft:item"
 ];
 
-// src/registry.ts
+// src/debug.ts
 import {
-  BlockTypes,
-  DimensionTypes,
-  EntityTypes
+  CommandPermissionLevel,
+  CustomCommandParamType,
+  CustomCommandStatus,
+  MolangVariableMap,
+  system,
+  world
 } from "@minecraft/server";
 
 // src/utils.ts
@@ -117,6 +120,39 @@ function centerVector(vector, floorY = false) {
     z: Math.floor(vector.z) + 0.5
   };
 }
+function addVectors(...vectors) {
+  let x = 0, y = 0, z = 0;
+  const len = vectors.length;
+  for (let i = 0; i < len; i++) {
+    const v = vectors[i];
+    x += v.x;
+    y += v.y;
+    z += v.z;
+  }
+  return { x, y, z };
+}
+function addVector(vector, axises, value) {
+  const result = {
+    x: vector.x,
+    y: vector.y,
+    z: vector.z
+  };
+  for (const axis of axises) {
+    if (axis in result) {
+      result[axis] += value;
+    }
+  }
+  return result;
+}
+function stringToVector(string) {
+  const index1 = string.indexOf(",");
+  const index2 = string.indexOf(",", index1 + 1);
+  return {
+    x: Number(string.substring(0, index1)),
+    y: Number(string.substring(index1 + 1, index2)),
+    z: Number(string.substring(index2 + 1))
+  };
+}
 function subtractLists(list1, list2) {
   const removalSet = new Set(list2);
   const result = [];
@@ -133,9 +169,261 @@ function subtractLists(list1, list2) {
 function areVectorsEqual(vector1, vector2) {
   return vector1.x === vector2.x && vector1.y === vector2.y && vector1.z === vector2.z;
 }
+var directionMap = {
+  "0,0,-1": "north",
+  "1,0,0": "east",
+  "0,0,1": "south",
+  "-1,0,0": "west",
+  "0,1,0": "up",
+  "0,-1,0": "down",
+  "1,0,-1": "northeast",
+  "1,0,1": "southeast",
+  "-1,0,1": "southwest",
+  "-1,0,-1": "northwest",
+  "0,1,-1": "northup",
+  "1,1,0": "eastup",
+  "0,1,1": "southup",
+  "-1,1,0": "westup",
+  "0,-1,-1": "northdown",
+  "1,-1,0": "eastdown",
+  "0,-1,1": "southdown",
+  "-1,-1,0": "westdown"
+};
+function vectorToDirection(vector) {
+  return directionMap[vectorToString(vector)];
+}
+function subtractVectors(vector1, vector2) {
+  return {
+    x: vector1.x - vector2.x,
+    y: vector1.y - vector2.y,
+    z: vector1.z - vector2.z
+  };
+}
 function removeIdentifier(string) {
   return string.includes(":") ? string.split(":")[1] : string;
 }
+
+// src/debug.ts
+var debugFlags = {
+  scanParticles: true,
+  pathParticles: true,
+  pathfindingWarnings: true
+};
+var debugFlagNames = Object.keys(debugFlags);
+var PROPERTY_PREFIX = "tektopia:debug:";
+function isDebugFlag(value) {
+  return value in debugFlags;
+}
+function setDebugFlag(flag, enabled) {
+  debugFlags[flag] = enabled;
+  world.setDynamicProperty(PROPERTY_PREFIX + flag, enabled ? true : void 0);
+}
+function loadDebugFlags() {
+  for (const flag of debugFlagNames) {
+    const saved = world.getDynamicProperty(PROPERTY_PREFIX + flag);
+    if (typeof saved === "boolean") {
+      debugFlags[flag] = saved;
+    }
+  }
+}
+system.beforeEvents.startup.subscribe((event) => {
+  const customCommandRegistry = event.customCommandRegistry;
+  customCommandRegistry.registerEnum("tektopia:debugflag", debugFlagNames);
+  customCommandRegistry.registerCommand({
+    name: "tektopia:debug",
+    cheatsRequired: false,
+    description: "Toggle a debug flag (omit the value to flip it)",
+    mandatoryParameters: [{ type: CustomCommandParamType.Enum, name: "tektopia:debugflag" }],
+    optionalParameters: [{ type: CustomCommandParamType.Boolean, name: "enabled" }],
+    permissionLevel: CommandPermissionLevel.Admin
+  }, (_, flag, enabled) => {
+    if (!isDebugFlag(flag)) {
+      return {
+        status: CustomCommandStatus.Failure,
+        message: `Unknown flag. Options: ${debugFlagNames.join(", ")}`
+      };
+    }
+    const newValue = enabled ?? !debugFlags[flag];
+    system.run(() => setDebugFlag(flag, newValue));
+    return {
+      status: CustomCommandStatus.Success,
+      message: `${flag} is now ${newValue ? "on" : "off"}`
+    };
+  });
+});
+function tickDrawDebug() {
+  system.runJob(drawDebug(tickDrawDebug));
+}
+system.run(tickDrawDebug);
+function* drawDebug(callback) {
+  try {
+    if (!world.loadedData || !debugFlags.pathParticles) {
+      return;
+    }
+    const players = world.getAllPlayers();
+    const rotate45 = new MolangVariableMap();
+    rotate45.setFloat("rotation", 45);
+    const rotate90 = new MolangVariableMap();
+    rotate90.setFloat("rotation", 90);
+    const rotate135 = new MolangVariableMap();
+    rotate135.setFloat("rotation", 135);
+    const villageList = world.getVillages();
+    for (const player of players) {
+      const playerPos = player.location;
+      const nearbyRange = 4;
+      const minY = Math.floor(playerPos.y) - 1;
+      const maxY = Math.floor(playerPos.y) + 1;
+      for (const village of villageList) {
+        for (let dx = -nearbyRange; dx <= nearbyRange; dx++) {
+          for (let dy = minY - Math.floor(playerPos.y); dy <= maxY - Math.floor(playerPos.y); dy++) {
+            for (let dz = -nearbyRange; dz <= nearbyRange; dz++) {
+              const checkPos = {
+                x: Math.floor(playerPos.x + dx),
+                y: Math.floor(playerPos.y + dy),
+                z: Math.floor(playerPos.z + dz)
+              };
+              const key = vectorToString(checkPos);
+              if (!village.pathNodes.hasOwnProperty(key)) {
+                continue;
+              }
+              const node = village.pathNodes[key];
+              if (node === void 0) {
+                continue;
+              }
+              const particlePos = addVector(
+                centerVector(checkPos, true),
+                "y",
+                0.01
+              );
+              const colorMap = new MolangVariableMap();
+              let color;
+              if (node.requirement !== void 0) {
+                color = requirementColor(node.requirement);
+              }
+              color ??= {
+                red: 122 / 255,
+                green: 122 / 255,
+                blue: 122 / 255
+              };
+              colorMap.setColorRGB("color", color);
+              player.spawnParticle("tektopia:path_node", particlePos, colorMap);
+              const directionSet = new Set(
+                node.neighbors.map(
+                  (neighborString) => vectorToDirection(
+                    subtractVectors(stringToVector(neighborString), checkPos)
+                  )
+                )
+              );
+              const spawnConnection = (offsetX, offsetY, offsetZ, dir) => {
+                const pos = addVectors(
+                  addVector(centerVector(checkPos, true), "y", 0.02),
+                  { x: offsetX, y: offsetY, z: offsetZ }
+                );
+                try {
+                  if (typeof dir === "string") {
+                    player.spawnParticle(`tektopia:node_connection_${dir}`, pos);
+                  } else {
+                    player.spawnParticle("tektopia:node_connection", pos, dir);
+                  }
+                } catch {
+                }
+              };
+              if (directionSet.has("north")) {
+                spawnConnection(-0.1, 0, -0.5);
+              }
+              if (directionSet.has("east")) {
+                spawnConnection(0.5, 0, -0.1, rotate90);
+              }
+              if (directionSet.has("south")) {
+                spawnConnection(0.1, 0, 0.5);
+              }
+              if (directionSet.has("west")) {
+                spawnConnection(-0.5, 0, 0.1, rotate90);
+              }
+              if (directionSet.has("northeast")) {
+                spawnConnection(0.43, 0, -0.57, rotate135);
+              }
+              if (directionSet.has("northwest")) {
+                spawnConnection(-0.57, 0, -0.43, rotate45);
+              }
+              if (directionSet.has("southeast")) {
+                spawnConnection(0.57, 0, 0.43, rotate45);
+              }
+              if (directionSet.has("southwest")) {
+                spawnConnection(-0.43, 0, 0.57, rotate135);
+              }
+              if (directionSet.has("northdown")) {
+                spawnConnection(-0.1, -0.5, -0.5, "north");
+              }
+              if (directionSet.has("eastdown")) {
+                spawnConnection(0.5, -0.5, -0.1, "east");
+              }
+              if (directionSet.has("southdown")) {
+                spawnConnection(0.1, -0.5, 0.5, "south");
+              }
+              if (directionSet.has("westdown")) {
+                spawnConnection(-0.5, -0.5, 0.1, "west");
+              }
+              if (directionSet.has("northup")) {
+                spawnConnection(-0.1, 0.5, -0.5, "south");
+              }
+              if (directionSet.has("eastup")) {
+                spawnConnection(0.5, 0.5, -0.1, "west");
+              }
+              if (directionSet.has("southup")) {
+                spawnConnection(0.1, 0.5, 0.5, "north");
+              }
+              if (directionSet.has("westup")) {
+                spawnConnection(-0.5, 0.5, 0.1, "east");
+              }
+              yield;
+            }
+          }
+        }
+      }
+    }
+  } finally {
+    if (callback !== void 0) {
+      callback();
+    }
+  }
+}
+function requirementColor(requirement) {
+  if (requirement === void 0 || requirement.types.length === 0) {
+    return { red: 0, green: 0, blue: 0 };
+  }
+  const key = [...requirement.types].sort().join(",") + (requirement.whiteList ? "+w" : "+b");
+  const hash = hashString(key);
+  let red = hash * 197 % 256;
+  let green = hash * 293 % 256;
+  let blue = hash * 503 % 256;
+  if (!requirement.whiteList) {
+    red = red ^ 137;
+    green = green ^ 251;
+    blue = blue ^ 61;
+  }
+  return { red: red / 255, green: green / 255, blue: blue / 255 };
+  function hashString(str) {
+    let hashStr = 0;
+    for (let i = 0; i < str.length; i++) {
+      hashStr = hashStr * 31 + str.charCodeAt(i) | 0;
+    }
+    return hashStr >>> 0;
+  }
+}
+world.afterEvents.worldLoad.subscribe(() => {
+  main();
+});
+function main() {
+  loadDebugFlags();
+}
+
+// src/registry.ts
+import {
+  BlockTypes,
+  DimensionTypes,
+  EntityTypes
+} from "@minecraft/server";
 
 // src/variables.ts
 var minecraftDangerousBlockTypes = [
@@ -468,9 +756,9 @@ var Registry = defineRegistry({
 
 // src/path.ts
 var pathCheckEntities = {};
-system.runInterval(() => {
+system2.runInterval(() => {
   for (const dimensionId of Registry.dimensionTypes) {
-    const dimension = world.getDimension(dimensionId);
+    const dimension = world2.getDimension(dimensionId);
     const entities2 = dimension.getEntities({
       excludeTypes: pathIgnoreEntityTypes
     });
@@ -492,23 +780,23 @@ var updatePathNodeList = [];
 function updatePathNodes(blockList) {
   updatePathNodeList.push(blockList);
 }
-world.afterEvents.playerInteractWithBlock.subscribe((event) => {
+world2.afterEvents.playerInteractWithBlock.subscribe((event) => {
   const block = event.block;
   updatePathNodes(
     [block, block.aboveSafe(), block.belowSafe()].filter((checkBlock) => checkBlock !== void 0)
   );
 });
-world.afterEvents.playerPlaceBlock.subscribe((event) => {
+world2.afterEvents.playerPlaceBlock.subscribe((event) => {
   const block = event.block;
   updatePathNodes([block, block.aboveSafe(), block.belowSafe()].filter((checkBlock) => checkBlock !== void 0));
 });
-world.afterEvents.playerBreakBlock.subscribe((event) => {
+world2.afterEvents.playerBreakBlock.subscribe((event) => {
   const block = event.block;
   updatePathNodes(
     [block, block.aboveSafe(), block.belowSafe()].filter((checkBlock) => checkBlock !== void 0)
   );
 });
-world.afterEvents.explosion.subscribe((event) => {
+world2.afterEvents.explosion.subscribe((event) => {
   const impactedBlocks = event.getImpactedBlocks();
   updatePathNodes(
     impactedBlocks.flatMap(
@@ -517,12 +805,12 @@ world.afterEvents.explosion.subscribe((event) => {
   );
 });
 function tickUpdateNodes() {
-  system.runJob(updateNodesBlocks(tickUpdateNodes));
+  system2.runJob(updateNodesBlocks(tickUpdateNodes));
 }
-system.run(tickUpdateNodes);
+system2.run(tickUpdateNodes);
 function* updateNodesBlocks(callback) {
   try {
-    if (!world.loadedData) {
+    if (!world2.loadedData) {
       return;
     }
     let index = 0;
@@ -535,7 +823,7 @@ function* updateNodesBlocks(callback) {
         }
         const neighborList = checkBlock.getNodeNeighbors();
         const checkBlockStringLocation = vectorToString(checkBlock);
-        const villageList = world.getVillages();
+        const villageList = world2.getVillages();
         for (const village of villageList) {
           const alreadyCheckedLocations = /* @__PURE__ */ new Set();
           const villageBounds = village.bounds;
@@ -545,7 +833,7 @@ function* updateNodesBlocks(callback) {
             if (!alreadyCheckedLocations.has(neighborLocationString)) {
               alreadyCheckedLocations.add(neighborLocationString);
               if (village.pathNodes[neighborLocationString] !== void 0 && neighborBlock.isValidPath(villageBounds)) {
-                system.runJob(village.searchBlocks(neighborBlock));
+                system2.runJob(village.searchBlocks(neighborBlock));
               }
             }
           }
@@ -653,7 +941,7 @@ Block.prototype.isDangerous = function() {
 
 // src/tree.ts
 function destroyTree(startingBlock, callback) {
-  system2.runJob(destroyTreeGenerator());
+  system3.runJob(destroyTreeGenerator());
   function* destroyTreeGenerator() {
     try {
       let currentBlock = startingBlock;

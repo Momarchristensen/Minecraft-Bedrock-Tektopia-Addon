@@ -9,6 +9,8 @@ import {
     world
 } from "@minecraft/server"
 
+import { debugFlags } from "./debug"
+
 import { blockSounds } from "./generated"
 
 import {
@@ -295,12 +297,16 @@ export class Villager {
                 }
                 villager.followPath(result, targetLocation, cancelPath, () => finished)
             }).catch(error => {
-                console.warn("pathFindTo failed: ", error)
+                if (debugFlags.pathfindingWarnings) {
+                    console.warn("pathFindTo failed: ", error)
+                }
                 cancelPath()
             })
         }
         catch (error) {
-            console.warn("pathFindTo setup failed: ", error)
+            if (debugFlags.pathfindingWarnings) {
+                console.warn("pathFindTo setup failed: ", error)
+            }
             cancelPath()
         }
     }
@@ -605,7 +611,7 @@ export class Villager {
                     cancelPath()
                     return
                 }
-                if (system.currentTick % 20 === 0) {
+                if (debugFlags.villagerPathParticles && system.currentTick % 20 === 0) {
                     pathNodeList.forEach(pathNode => {
                         try {
                             dimension.spawnParticle(
@@ -702,7 +708,9 @@ export class Villager {
                 }
             }
             catch (error) {
-                console.warn("Path follow failed: ", error)
+                if (debugFlags.pathfindingWarnings) {
+                    console.warn("Path follow failed: ", error)
+                }
                 cancelPath()
             }
         }

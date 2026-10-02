@@ -3,72 +3,72 @@ import {
     Dimension
 } from "@minecraft/server"
 
-Block.prototype.northSafe = function () {
+Block.prototype.northSafe = function (...args) {
     try {
-        return this.north()
+        return this.north(...args)
     }
     catch {
         return undefined
     }
 }
 
-Block.prototype.eastSafe = function () {
+Block.prototype.eastSafe = function (...args) {
     try {
-        return this.east()
+        return this.east(...args)
     }
     catch {
         return undefined
     }
 }
 
-Block.prototype.southSafe = function () {
+Block.prototype.southSafe = function (...args) {
     try {
-        return this.south()
+        return this.south(...args)
     }
     catch {
         return undefined
     }
 }
 
-Block.prototype.westSafe = function () {
+Block.prototype.westSafe = function (...args) {
     try {
-        return this.west()
+        return this.west(...args)
     }
     catch {
         return undefined
     }
 }
 
-Block.prototype.aboveSafe = function () {
+Block.prototype.aboveSafe = function (...args) {
     try {
-        return this.above()
+        return this.above(...args)
     }
     catch {
         return undefined
     }
 }
 
-Block.prototype.belowSafe = function () {
+Block.prototype.belowSafe = function (...args) {
     try {
-        return this.below()
+        return this.below(...args)
     }
     catch {
         return undefined
     }
 }
 
-Block.prototype.offsetSafe = function (offset) {
+Block.prototype.offsetSafe = function (...args) {
     try {
-        return this.offset(offset)
+        return this.offset(...args)
     }
     catch {
         return undefined
     }
 }
 
-Dimension.prototype.getBlockSafe = function (location) {
+Dimension.prototype.getBlockSafe = function (...args) {
     try {
-        return this.getBlock(location)
+        return this.getBlock(...args)
     }
     catch {
         return undefined

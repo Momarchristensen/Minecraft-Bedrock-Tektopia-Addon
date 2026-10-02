@@ -7,6 +7,8 @@ import {
     world
 } from "@minecraft/server"
 
+import { debugFlags } from "./debug"
+
 import {
     pathCancelEntityTypes,
     pathIgnoreEntityTypes
@@ -34,6 +36,7 @@ import type {
     NodeRequirement,
     PathNode,
     UndefinedRecord,
+    VectorString,
     VillageBounds
 } from "."
 
@@ -175,7 +178,9 @@ export function generatePath(entity: Villager, start: Vector3, end: Vector3, tok
                 yield* tickGeneratePath()
             }
             catch (error) {
-                console.warn("Pathfinding failed: ", error)
+                if (debugFlags.pathfindingWarnings) {
+                    console.warn("Pathfinding failed: ", error)
+                }
                 resolve("error")
             }
         }
@@ -215,8 +220,8 @@ export function generatePath(entity: Villager, start: Vector3, end: Vector3, tok
 
             const closedSet = new Set<string>()
             const gScore = new Map<string, number>([[startKey, 0]])
-            const cameFrom = new Map<string, string>()
-            const openSet = new PriorityQueue<string>()
+            const cameFrom = new Map<string, VectorString>()
+            const openSet = new PriorityQueue<VectorString>()
             openSet.enqueue(startKey, heuristic(startVec, endVec) * HEURISTIC_WEIGHT)
 
             const checkEntityList = getCheckPathEntities(dimensionId, entity)
@@ -232,10 +237,10 @@ export function generatePath(entity: Villager, start: Vector3, end: Vector3, tok
 
                 if (currentKey === endKey) {
                     const path: Vector3[] = []
-                    let k: string | undefined = currentKey
-                    while (k !== undefined) {
-                        path.push(stringToVector(k))
-                        k = cameFrom.get(k)
+                    let key: VectorString | undefined = currentKey
+                    while (key !== undefined) {
+                        path.push(stringToVector(key))
+                        key = cameFrom.get(key)
                     }
                     path.reverse()
                     resolve(path)

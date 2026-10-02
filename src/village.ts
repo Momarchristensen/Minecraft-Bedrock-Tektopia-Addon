@@ -11,17 +11,14 @@ import {
     world
 } from "@minecraft/server"
 
+import { debugFlags } from "./debug"
+
 import { Registry } from "./registry"
 
 import {
-    addVector,
-    calculateDistance,
-    ceilVector,
     centerVector,
     floorVector,
     isVectorBetween,
-    maxVectors,
-    minVectors,
     randomInt,
     randomItem,
     stringToVector,
@@ -78,7 +75,7 @@ system.beforeEvents.startup.subscribe(event => {
 
         return {
             status: CustomCommandStatus.Success,
-            message: "Block scanned successfully."
+            message: "Scan started."
         }
     })
 })
@@ -93,7 +90,8 @@ export interface VillageSaveData {
     sugarCaneLocations: VectorString[]
     saplingLocations: VectorString[]
     farmLocations: VectorString[]
-    cropLocations: VectorString[]
+    harvestLocations: VectorString[]
+    sweetBerryLocations: VectorString[]
     treeLocations: VectorString[]
 }
 
@@ -134,7 +132,8 @@ export class Village {
             sugarCaneLocations: [],
             saplingLocations: [],
             farmLocations: [],
-            cropLocations: [],
+            harvestLocations: [],
+            sweetBerryLocations: [],
             treeLocations: []
         }
     }
@@ -148,7 +147,7 @@ export class Village {
     }
 
     get dimensionId() {
-        return this.data.dimensionId
+        return this.dimension.id
     }
 
     get doorLocation() {
@@ -171,8 +170,12 @@ export class Village {
         return this.data.farmLocations
     }
 
-    get cropLocations() {
-        return this.data.cropLocations
+    get harvestLocations() {
+        return this.data.harvestLocations
+    }
+
+    get sweetBerryLocations() {
+        return this.data.sweetBerryLocations
     }
 
     get treeLocations() {
@@ -337,7 +340,14 @@ export class Village {
             if (block === undefined || node === undefined) {
                 continue
             }
-            dimension.spawnParticle("minecraft:basic_flame_particle", centerVector(block.location))
+
+            if (debugFlags.scanParticles) {
+                try {
+                    dimension.spawnParticle("minecraft:basic_flame_particle", centerVector(block.location))
+                }
+                catch { }
+            }
+
             try {
                 const checkBlockList = [
                     block,
@@ -377,6 +387,13 @@ export class Village {
                             village.treeLocations.push(checkBlockString)
                         }
                     }
+                    else if (checkBlock.typeId === "minecraft:sweet_berry_bush") {
+                        checkNearbyNodes = true
+                        if (!village.sweetBerryLocations.includes(checkBlockString)) {
+                            village.sweetBerryLocations.push(checkBlockString)
+                        }
+                    }
+
                     if (checkNearbyNodes) {
                         locationStringList.push(...node.neighbors)
                     }
@@ -406,16 +423,13 @@ export class Village {
             const neighborBlock = dimension.getBlockSafe(stringToVector(neighborKey))
             if (neighborBlock !== undefined && !isValidConnection(block, neighborBlock)) {
                 village.unlink(pathNodeLocation, neighborKey)
-                //console.warn("Node Deleted: ", pathNodeLocation)
+                if (debugFlags.nodeDeletionWarnings) {
+                    console.warn("Node connection deleted: ", pathNodeLocation, neighborKey)
+                }
             }
         }
     }
 
-}
-
-export interface VillageExtraData {
-    searchingBlocks: boolean
-    deletingInvalidNodes?: boolean
 }
 
 World.prototype.getVillages = function () {
@@ -462,21 +476,56 @@ Object.defineProperty(Block.prototype, "isTree", {
 
 Object.defineProperty(Block.prototype, "isFarm", {
     get(this: Block) {
-        const block = this
-        const blockAbove = block.aboveSafe()
-        if (blockAbove === undefined) {
-            return false
+        return this.typeId === "minecraft:farmland"
+    }
+})
+
+Object.defineProperty(Block.prototype, "isHarvestableSugarCane", {
+    get(this: Block) {
+        let validSugarCane = true
+        const sugarCaneBlocks = [this, this.aboveSafe(), this.aboveSafe(2)]
+
+        for (const block of sugarCaneBlocks) {
+            if (block?.typeId !== "minecraft:reeds") {
+                validSugarCane = false
+                break
+            }
         }
-        const blockAboveAbove = blockAbove.aboveSafe()
-        if (blockAboveAbove === undefined) {
-            return false
+
+        if (validSugarCane) {
+            return true
         }
-        return block.typeId === "minecraft:farmland" && blockAbove.isAir && blockAboveAbove.isAir
+
+        return false
+    }
+})
+
+Object.defineProperty(Block.prototype, "isHarvestable", {
+    get(this: Block) {
+        if (["minecraft:pumpkin", "minecraft:melon_block"].includes(this.typeId)) {
+            return true
+        }
+
+        const blockGrowth = this.permutation.getState("growth")
+
+        if (blockGrowth === 7 && ["minecraft:wheat", "minecraft:carrots", "minecraft:potatoes", "minecraft:beetroot"].includes(this.typeId)) {
+            return true
+        }
+
+        if (blockGrowth === 3 && this.typeId === "minecraft:sweet_berry_bush") {
+            return true
+        }
+
+        if (this.isHarvestableSugarCane) {
+            return true
+        }
+
+        return false
     }
 })
 
 function tickScanVillage() {
-    system.runJob(scanVillageBlocks(tickScanVillage))
+    system.runJob(scanVillageBlocks(() => system.runTimeout(tickScanVillage, 20)))
 }
 
 system.run(tickScanVillage)
@@ -524,7 +573,7 @@ function* pruneLocations(dimension: Dimension, locations: VectorString[], should
 }
 
 function tickUpdateVillage() {
-    system.runJob(updateVillageBlocks(tickUpdateVillage))
+    system.runJob(updateVillageBlocks(() => system.runTimeout(tickUpdateVillage, 20)))
 }
 
 system.run(tickUpdateVillage)
@@ -551,7 +600,39 @@ function* updateVillageBlocks(callback?: () => void) {
                 return !Registry.saplingTypes.includesFast(block.typeId)
             })
 
-            yield* pruneLocations(dimension, village.farmLocations, block => !block.isFarm)
+            yield* pruneLocations(dimension, village.farmLocations, block => {
+                const aboveBlock = block.aboveSafe()
+                if (aboveBlock?.isHarvestable) {
+                    const aboveLocationString = vectorToString(aboveBlock.location)
+                    if (!village.harvestLocations.includes(aboveLocationString)) {
+                        village.harvestLocations.push(aboveLocationString)
+                    }
+                }
+                return !block.isFarm
+            })
+
+            yield* pruneLocations(dimension, village.sugarCaneLocations, (block, locationString) => {
+                if (block.isHarvestableSugarCane) {
+                    if (!village.harvestLocations.includes(locationString)) {
+                        village.harvestLocations.push(locationString)
+                    }
+                }
+
+                return block.typeId !== "minecraft:reeds"
+            })
+
+            yield* pruneLocations(dimension, village.sweetBerryLocations, (block, locationString) => {
+                if (block.isHarvestable) {
+                    if (!village.harvestLocations.includes(locationString)) {
+                        village.harvestLocations.push(locationString)
+                    }
+                }
+
+                return block.typeId !== "minecraft:sweet_berry_bush"
+            })
+
+            yield* pruneLocations(dimension, village.harvestLocations, block => !block.isHarvestable)
+
             yield
         }
     }
@@ -593,6 +674,9 @@ system.runInterval(() => {
                         if (!village.isValid) {
                             return
                         }
+                        while (village.searchingBlocks) {
+                            yield
+                        }
                         village.checkNodeValidity(pathNodeLocation)
                         yield
                     }
@@ -605,83 +689,75 @@ system.runInterval(() => {
     }
 }, 100)
 
-function getBoundaryLocations(vector1: Vector3, vector2: Vector3, ignoreY = false) {
-    const minV = floorVector(minVectors(vector1, vector2))
-    const maxV = ceilVector(maxVectors(vector1, vector2))
+const BORDER_PARTICLE_RANGE = 20
+const BORDER_PARTICLE_ID = "minecraft:rising_border_dust_particle"
 
-    const { x: minX, y: minY, z: minZ } = minV
-    const { x: maxX, y: maxY, z: maxZ } = maxV
+Player.prototype.spawnBorderParticles = function (bounds) { //not debug
+    const player = this
 
-    const boundary = []
-    if (ignoreY) {
-        const y = minY
-        for (let x = minX; x <= maxX; x++) {
-            boundary.push({ x, y, z: minZ })
-            if (minZ !== maxZ) {
-                boundary.push({ x, y, z: maxZ })
-            }
+    const range = BORDER_PARTICLE_RANGE
+    const { x: px, y: py, z: pz } = player.location
+
+    const minX = Math.floor(bounds.start.x)
+    const maxX = Math.ceil(bounds.end.x)
+    const minZ = Math.floor(bounds.start.z)
+    const maxZ = Math.ceil(bounds.end.z)
+
+    if (px < minX - range || px > maxX + range || pz < minZ - range || pz > maxZ + range) {
+        return
+    }
+
+    const emit = (x: number, z: number) => {
+        player.spawnParticle(BORDER_PARTICLE_ID, { x, y: py + randomInt(-10, 10), z })
+    }
+
+    for (const edgeZ of [minZ, maxZ]) {
+        const dz = pz - edgeZ
+        if (Math.abs(dz) >= range) {
+            continue
         }
-        for (let z = minZ + 1; z < maxZ; z++) {
-            boundary.push({ x: minX, y, z })
-            if (minX !== maxX) {
-                boundary.push({ x: maxX, y, z })
-            }
+        const half = Math.sqrt((range * range) - (dz * dz))
+        const from = Math.max(minX, Math.ceil(px - half))
+        const to = Math.min(maxX, Math.floor(px + half))
+        for (let x = from; x <= to; x++) {
+            emit(x, edgeZ)
         }
     }
-    else {
-        for (let x = minX; x <= maxX; x++) {
-            for (let z = minZ; z <= maxZ; z++) {
-                boundary.push({ x, y: minY, z })
-                if (minY !== maxY) {
-                    boundary.push({ x, y: maxY, z })
-                }
-            }
+
+    for (const edgeX of [minX, maxX]) {
+        const dx = px - edgeX
+        if (Math.abs(dx) >= range) {
+            continue
         }
-        for (let y = minY + 1; y < maxY; y++) {
-            boundary.push({ x: minX, y, z: minZ })
-            if (minZ !== maxZ) {
-                boundary.push({ x: minX, y, z: maxZ })
-            }
-            if (minX !== maxX) {
-                boundary.push({ x: maxX, y, z: minZ })
-                if (minZ !== maxZ) {
-                    boundary.push({ x: maxX, y, z: maxZ })
-                }
-            }
+        const half = Math.sqrt((range * range) - (dx * dx))
+        const from = Math.max(minZ + 1, Math.ceil(pz - half))
+        const to = Math.min(maxZ - 1, Math.floor(pz + half))
+        for (let z = from; z <= to; z++) {
+            emit(edgeX, z)
         }
     }
-    return boundary
 }
 
-system.runInterval(() => { //not debug
+system.runInterval(() => {
     if (!world.loadedData) {
         return
     }
 
-    const players = world.getAllPlayers()
-    for (const player of players) {
-        const playerLocation = player.location
+    const villageList = world.getVillages()
+    if (villageList.length === 0) {
+        return
+    }
 
-        const villageList = world.getVillages()
+    for (const player of world.getAllPlayers()) {
+        const dimensionId = player.dimension.id
         for (const village of villageList) {
-            const boundaryLocationList = getBoundaryLocations(
-                village.bounds.start,
-                village.bounds.end,
-                true
-            )
-
-            for (const location of boundaryLocationList) {
-                location.y = playerLocation.y
-                if (calculateDistance(location, playerLocation) < 20) {
-                    try {
-                        player.spawnParticle(
-                            "minecraft:rising_border_dust_particle",
-                            addVector(location, "y", randomInt(-10, 10))
-                        )
-                    }
-                    catch { }
-                }
+            if (village.dimensionId !== dimensionId) {
+                continue
             }
+            try {
+                player.spawnBorderParticles(village.bounds)
+            }
+            catch { }
         }
     }
 }, 20)
@@ -703,11 +779,11 @@ function isValidConnection(currentBlock: Block, neighborBlock: Block) {
             const dirX = offset.x === 1 ? "eastSafe" : "westSafe"
             const dirZ = offset.z === 1 ? "southSafe" : "northSafe"
             const checkBlockX = block1[dirX]()
-            if (checkBlockX !== undefined && (!checkBlockX.canWalkThrough() || !checkBlockX.aboveSafe()?.canWalkThrough() || !checkBlockX.isValidPath())) {
+            if (checkBlockX === undefined || (!checkBlockX.canWalkThrough() || !checkBlockX.aboveSafe()?.canWalkThrough() || !checkBlockX.isValidPath())) {
                 return false
             }
             const checkBlockZ = block1[dirZ]()
-            if (checkBlockZ !== undefined && (!checkBlockZ.canWalkThrough() || !checkBlockZ.aboveSafe()?.canWalkThrough() || !checkBlockZ.isValidPath())) {
+            if (checkBlockZ === undefined || (!checkBlockZ.canWalkThrough() || !checkBlockZ.aboveSafe()?.canWalkThrough() || !checkBlockZ.isValidPath())) {
                 return false
             }
         }
@@ -720,7 +796,7 @@ function isValidConnection(currentBlock: Block, neighborBlock: Block) {
 Dimension.prototype.getVillage = function (location) {
     const villages = world.getVillages()
     for (const village of villages) {
-        if (isVectorBetween(location, village.bounds.start, village.bounds.end, true) && this === village.dimension) {
+        if (isVectorBetween(location, village.bounds.start, village.bounds.end, true) && this.id === village.dimensionId) {
             return village
         }
     }

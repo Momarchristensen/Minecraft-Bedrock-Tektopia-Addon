@@ -53,12 +53,6 @@ function ceilVector(vector) {
     z: Math.ceil(vector.z)
   };
 }
-function calculateDistance(v1, v2, ignoreY = false) {
-  const dx = v1.x - v2.x;
-  const dy = ignoreY ? 0 : v1.y - v2.y;
-  const dz = v1.z - v2.z;
-  return Math.sqrt(dx * dx + dy * dy + dz * dz);
-}
 function calculateSquareDistance(v1, v2, ignoreY = false) {
   const dx = Math.abs(v1.x - v2.x);
   const dy = ignoreY ? 0 : Math.abs(v1.y - v2.y);
@@ -176,6 +170,9 @@ function getOppositeDirection(direction) {
   }
   return void 0;
 }
+function vectorToDirection(vector) {
+  return directionMap[vectorToString(vector)];
+}
 function subtractVectors(vector1, vector2) {
   return {
     x: vector1.x - vector2.x,
@@ -183,9 +180,30 @@ function subtractVectors(vector1, vector2) {
     z: vector1.z - vector2.z
   };
 }
+var directionMap;
 var init_utils = __esm({
   "src/utils.ts"() {
     "use strict";
+    directionMap = {
+      "0,0,-1": "north",
+      "1,0,0": "east",
+      "0,0,1": "south",
+      "-1,0,0": "west",
+      "0,1,0": "up",
+      "0,-1,0": "down",
+      "1,0,-1": "northeast",
+      "1,0,1": "southeast",
+      "-1,0,1": "southwest",
+      "-1,0,-1": "northwest",
+      "0,1,-1": "northup",
+      "1,1,0": "eastup",
+      "0,1,1": "southup",
+      "-1,1,0": "westup",
+      "0,-1,-1": "northdown",
+      "1,-1,0": "eastdown",
+      "0,-1,1": "southdown",
+      "-1,-1,0": "westdown"
+    };
   }
 });
 
@@ -536,6 +554,236 @@ var init_registry = __esm({
   }
 });
 
+// src/debug.ts
+import {
+  CommandPermissionLevel,
+  CustomCommandParamType,
+  CustomCommandStatus,
+  MolangVariableMap,
+  system,
+  world
+} from "@minecraft/server";
+function isDebugFlag(value) {
+  return value in debugFlags;
+}
+function setDebugFlag(flag, enabled) {
+  debugFlags[flag] = enabled;
+  world.setDynamicProperty(PROPERTY_PREFIX + flag, enabled ? true : void 0);
+}
+function loadDebugFlags() {
+  for (const flag of debugFlagNames) {
+    const saved = world.getDynamicProperty(PROPERTY_PREFIX + flag);
+    if (typeof saved === "boolean") {
+      debugFlags[flag] = saved;
+    }
+  }
+}
+function tickDrawDebug() {
+  system.runJob(drawDebug(tickDrawDebug));
+}
+function* drawDebug(callback) {
+  try {
+    if (!world.loadedData || !debugFlags.pathParticles) {
+      return;
+    }
+    const players = world.getAllPlayers();
+    const rotate45 = new MolangVariableMap();
+    rotate45.setFloat("rotation", 45);
+    const rotate90 = new MolangVariableMap();
+    rotate90.setFloat("rotation", 90);
+    const rotate135 = new MolangVariableMap();
+    rotate135.setFloat("rotation", 135);
+    const villageList = world.getVillages();
+    for (const player of players) {
+      const playerPos = player.location;
+      const nearbyRange = 4;
+      const minY = Math.floor(playerPos.y) - 1;
+      const maxY = Math.floor(playerPos.y) + 1;
+      for (const village of villageList) {
+        for (let dx = -nearbyRange; dx <= nearbyRange; dx++) {
+          for (let dy = minY - Math.floor(playerPos.y); dy <= maxY - Math.floor(playerPos.y); dy++) {
+            for (let dz = -nearbyRange; dz <= nearbyRange; dz++) {
+              const checkPos = {
+                x: Math.floor(playerPos.x + dx),
+                y: Math.floor(playerPos.y + dy),
+                z: Math.floor(playerPos.z + dz)
+              };
+              const key = vectorToString(checkPos);
+              if (!village.pathNodes.hasOwnProperty(key)) {
+                continue;
+              }
+              const node = village.pathNodes[key];
+              if (node === void 0) {
+                continue;
+              }
+              const particlePos = addVector(
+                centerVector(checkPos, true),
+                "y",
+                0.01
+              );
+              const colorMap = new MolangVariableMap();
+              let color;
+              if (node.requirement !== void 0) {
+                color = requirementColor(node.requirement);
+              }
+              color ??= {
+                red: 122 / 255,
+                green: 122 / 255,
+                blue: 122 / 255
+              };
+              colorMap.setColorRGB("color", color);
+              player.spawnParticle("tektopia:path_node", particlePos, colorMap);
+              const directionSet = new Set(
+                node.neighbors.map(
+                  (neighborString) => vectorToDirection(
+                    subtractVectors(stringToVector(neighborString), checkPos)
+                  )
+                )
+              );
+              const spawnConnection = (offsetX, offsetY, offsetZ, dir) => {
+                const pos = addVectors(
+                  addVector(centerVector(checkPos, true), "y", 0.02),
+                  { x: offsetX, y: offsetY, z: offsetZ }
+                );
+                try {
+                  if (typeof dir === "string") {
+                    player.spawnParticle(`tektopia:node_connection_${dir}`, pos);
+                  } else {
+                    player.spawnParticle("tektopia:node_connection", pos, dir);
+                  }
+                } catch {
+                }
+              };
+              if (directionSet.has("north")) {
+                spawnConnection(-0.1, 0, -0.5);
+              }
+              if (directionSet.has("east")) {
+                spawnConnection(0.5, 0, -0.1, rotate90);
+              }
+              if (directionSet.has("south")) {
+                spawnConnection(0.1, 0, 0.5);
+              }
+              if (directionSet.has("west")) {
+                spawnConnection(-0.5, 0, 0.1, rotate90);
+              }
+              if (directionSet.has("northeast")) {
+                spawnConnection(0.43, 0, -0.57, rotate135);
+              }
+              if (directionSet.has("northwest")) {
+                spawnConnection(-0.57, 0, -0.43, rotate45);
+              }
+              if (directionSet.has("southeast")) {
+                spawnConnection(0.57, 0, 0.43, rotate45);
+              }
+              if (directionSet.has("southwest")) {
+                spawnConnection(-0.43, 0, 0.57, rotate135);
+              }
+              if (directionSet.has("northdown")) {
+                spawnConnection(-0.1, -0.5, -0.5, "north");
+              }
+              if (directionSet.has("eastdown")) {
+                spawnConnection(0.5, -0.5, -0.1, "east");
+              }
+              if (directionSet.has("southdown")) {
+                spawnConnection(0.1, -0.5, 0.5, "south");
+              }
+              if (directionSet.has("westdown")) {
+                spawnConnection(-0.5, -0.5, 0.1, "west");
+              }
+              if (directionSet.has("northup")) {
+                spawnConnection(-0.1, 0.5, -0.5, "south");
+              }
+              if (directionSet.has("eastup")) {
+                spawnConnection(0.5, 0.5, -0.1, "west");
+              }
+              if (directionSet.has("southup")) {
+                spawnConnection(0.1, 0.5, 0.5, "north");
+              }
+              if (directionSet.has("westup")) {
+                spawnConnection(-0.5, 0.5, 0.1, "east");
+              }
+              yield;
+            }
+          }
+        }
+      }
+    }
+  } finally {
+    if (callback !== void 0) {
+      callback();
+    }
+  }
+}
+function requirementColor(requirement) {
+  if (requirement === void 0 || requirement.types.length === 0) {
+    return { red: 0, green: 0, blue: 0 };
+  }
+  const key = [...requirement.types].sort().join(",") + (requirement.whiteList ? "+w" : "+b");
+  const hash = hashString(key);
+  let red = hash * 197 % 256;
+  let green = hash * 293 % 256;
+  let blue = hash * 503 % 256;
+  if (!requirement.whiteList) {
+    red = red ^ 137;
+    green = green ^ 251;
+    blue = blue ^ 61;
+  }
+  return { red: red / 255, green: green / 255, blue: blue / 255 };
+  function hashString(str) {
+    let hashStr = 0;
+    for (let i = 0; i < str.length; i++) {
+      hashStr = hashStr * 31 + str.charCodeAt(i) | 0;
+    }
+    return hashStr >>> 0;
+  }
+}
+function main() {
+  loadDebugFlags();
+}
+var debugFlags, debugFlagNames, PROPERTY_PREFIX;
+var init_debug = __esm({
+  "src/debug.ts"() {
+    "use strict";
+    init_utils();
+    debugFlags = {
+      scanParticles: true,
+      pathParticles: true,
+      pathfindingWarnings: true
+    };
+    debugFlagNames = Object.keys(debugFlags);
+    PROPERTY_PREFIX = "tektopia:debug:";
+    system.beforeEvents.startup.subscribe((event) => {
+      const customCommandRegistry = event.customCommandRegistry;
+      customCommandRegistry.registerEnum("tektopia:debugflag", debugFlagNames);
+      customCommandRegistry.registerCommand({
+        name: "tektopia:debug",
+        cheatsRequired: false,
+        description: "Toggle a debug flag (omit the value to flip it)",
+        mandatoryParameters: [{ type: CustomCommandParamType.Enum, name: "tektopia:debugflag" }],
+        optionalParameters: [{ type: CustomCommandParamType.Boolean, name: "enabled" }],
+        permissionLevel: CommandPermissionLevel.Admin
+      }, (_, flag, enabled) => {
+        if (!isDebugFlag(flag)) {
+          return {
+            status: CustomCommandStatus.Failure,
+            message: `Unknown flag. Options: ${debugFlagNames.join(", ")}`
+          };
+        }
+        const newValue = enabled ?? !debugFlags[flag];
+        system.run(() => setDebugFlag(flag, newValue));
+        return {
+          status: CustomCommandStatus.Success,
+          message: `${flag} is now ${newValue ? "on" : "off"}`
+        };
+      });
+    });
+    system.run(tickDrawDebug);
+    world.afterEvents.worldLoad.subscribe(() => {
+      main();
+    });
+  }
+});
+
 // src/village_serialization.ts
 function packUnsigned(values) {
   let result = "";
@@ -731,6 +979,8 @@ function compressVillage(data) {
     SAVE_RESOURCE_LOCATIONS ? packLocations(data.saplingLocations, origin) : "",
     SAVE_RESOURCE_LOCATIONS ? packLocations(data.farmLocations, origin) : "",
     SAVE_RESOURCE_LOCATIONS ? packLocations(data.treeLocations, origin) : "",
+    SAVE_RESOURCE_LOCATIONS ? packLocations(data.harvestLocations, origin) : "",
+    SAVE_RESOURCE_LOCATIONS ? packLocations(data.sweetBerryLocations, origin) : "",
     packPoints(nodeEntries.map((entry) => entry.location), origin),
     packUnsigned(palette),
     packUnsigned(maskIndices),
@@ -740,58 +990,66 @@ function compressVillage(data) {
 function decompressVillage(compressed) {
   const [
     dimensionId,
-    centerTriple,
-    doorTriple,
-    sugarCaneText,
-    saplingText,
-    farmText,
-    treeText,
-    nodeText,
-    paletteText,
-    maskIndexText
+    centerCoords,
+    doorOffset,
+    packedSugarCaneLocations,
+    packedSaplingLocations,
+    packedFarmLocations,
+    packedTreeLocations,
+    packedHarvestLocations,
+    packedSweetBerryLocations,
+    packedNodeLocations,
+    packedMaskPalette,
+    packedMaskIndices,
+    compressedRequirements
   ] = compressed;
-  const nodeRequirements = compressed[compressed.length - 1];
-  const center = { x: centerTriple[0], y: centerTriple[1], z: centerTriple[2] };
+  const center = { x: centerCoords[0], y: centerCoords[1], z: centerCoords[2] };
   const origin = originOf(center);
-  const points = unpackPoints(nodeText, origin);
-  const keys = points.map((point) => vectorToString(point));
+  const nodePoints = unpackPoints(packedNodeLocations, origin);
+  const nodeKeys = nodePoints.map((point) => vectorToString(point));
   const pathNodes = {};
-  for (const key of keys) {
+  for (const key of nodeKeys) {
     pathNodes[key] = { neighbors: [] };
   }
-  const palette = unpackUnsigned(paletteText);
-  const maskIndices = unpackUnsigned(maskIndexText);
-  for (let i = 0; i < points.length; i++) {
-    const mask = palette[maskIndices[i]];
-    if (mask === void 0) {
+  const maskPalette = unpackUnsigned(packedMaskPalette);
+  const maskPaletteIndices = unpackUnsigned(packedMaskIndices);
+  for (let nodeIndex = 0; nodeIndex < nodePoints.length; nodeIndex++) {
+    const neighborMask = maskPalette[maskPaletteIndices[nodeIndex]];
+    if (neighborMask === void 0) {
       continue;
     }
-    const node = pathNodes[keys[i]];
-    if (node === void 0) {
+    const currentKey = nodeKeys[nodeIndex];
+    const currentNode = pathNodes[currentKey];
+    if (currentNode === void 0) {
       continue;
     }
-    for (let bit = 0; bit < 13; bit++) {
-      if ((mask & 1 << bit) === 0) {
+    for (let bitIndex = 0; bitIndex < 13; bitIndex++) {
+      if ((neighborMask & 1 << bitIndex) === 0) {
         continue;
       }
-      const neighborKey = offsetKey(points[i], NEIGHBOR_OFFSETS[FORWARD_START + bit]);
+      const neighborKey = offsetKey(
+        nodePoints[nodeIndex],
+        NEIGHBOR_OFFSETS[FORWARD_START + bitIndex]
+      );
       const neighborNode = pathNodes[neighborKey];
       if (neighborNode === void 0) {
         continue;
       }
-      node.neighbors.push(neighborKey);
-      neighborNode.neighbors.push(keys[i]);
+      currentNode.neighbors.push(neighborKey);
+      neighborNode.neighbors.push(currentKey);
     }
   }
-  for (const requirement of nodeRequirements) {
-    const [whiteList, types, deltaText] = requirement;
-    const deltas = unpackUnsigned(deltaText);
-    let index = 0;
-    for (const delta of deltas) {
-      index += delta;
-      const node = pathNodes[keys[index]];
+  for (const [whiteListFlag, requiredTypes, packedIndexDeltas] of compressedRequirements) {
+    const indexDeltas = unpackUnsigned(packedIndexDeltas);
+    let nodeIndex = 0;
+    for (const delta of indexDeltas) {
+      nodeIndex += delta;
+      const node = pathNodes[nodeKeys[nodeIndex]];
       if (node !== void 0) {
-        node.requirement = { whiteList: whiteList === 1, types: types.slice() };
+        node.requirement = {
+          whiteList: whiteListFlag === 1,
+          types: requiredTypes.slice()
+        };
       }
     }
   }
@@ -799,15 +1057,17 @@ function decompressVillage(compressed) {
     dimensionId: dimensionId.includes(":") ? dimensionId : NAMESPACE + dimensionId,
     center,
     doorLocation: {
-      x: doorTriple[0] + origin.x,
-      y: doorTriple[1] + origin.y,
-      z: doorTriple[2] + origin.z
+      x: doorOffset[0] + origin.x,
+      y: doorOffset[1] + origin.y,
+      z: doorOffset[2] + origin.z
     },
     pathNodes,
-    sugarCaneLocations: unpackLocations(sugarCaneText, origin),
-    saplingLocations: unpackLocations(saplingText, origin),
-    farmLocations: unpackLocations(farmText, origin),
-    treeLocations: unpackLocations(treeText, origin)
+    sugarCaneLocations: unpackLocations(packedSugarCaneLocations, origin),
+    saplingLocations: unpackLocations(packedSaplingLocations, origin),
+    farmLocations: unpackLocations(packedFarmLocations, origin),
+    treeLocations: unpackLocations(packedTreeLocations, origin),
+    harvestLocations: unpackLocations(packedHarvestLocations, origin),
+    sweetBerryLocations: unpackLocations(packedSweetBerryLocations, origin)
   };
 }
 var SAVE_PATH_NODES, SAVE_RESOURCE_LOCATIONS, NAMESPACE, DIGITS, DIGIT_VALUES, NEIGHBOR_OFFSETS, FORWARD_START;
@@ -840,24 +1100,24 @@ var init_village_serialization = __esm({
 // src/village.ts
 import {
   Block,
-  CommandPermissionLevel,
-  CustomCommandParamType,
-  CustomCommandStatus,
+  CommandPermissionLevel as CommandPermissionLevel2,
+  CustomCommandParamType as CustomCommandParamType2,
+  CustomCommandStatus as CustomCommandStatus2,
   Dimension,
   Player,
-  system,
+  system as system2,
   World,
-  world
+  world as world2
 } from "@minecraft/server";
 function tickScanVillage() {
-  system.runJob(scanVillageBlocks(tickScanVillage));
+  system2.runJob(scanVillageBlocks(() => system2.runTimeout(tickScanVillage, 20)));
 }
 function* scanVillageBlocks(callback) {
   try {
-    if (!world.loadedData) {
+    if (!world2.loadedData) {
       return;
     }
-    const villageList = world.getVillages();
+    const villageList = world2.getVillages();
     for (const village of villageList) {
       const randomLocationString = randomItem(Object.keys(village.pathNodes));
       if (randomLocationString === void 0) {
@@ -888,19 +1148,19 @@ function* pruneLocations(dimension, locations, shouldRemove) {
   }
 }
 function tickUpdateVillage() {
-  system.runJob(updateVillageBlocks(tickUpdateVillage));
+  system2.runJob(updateVillageBlocks(() => system2.runTimeout(tickUpdateVillage, 20)));
 }
 function* updateVillageBlocks(callback) {
   try {
-    if (!world.loadedData) {
+    if (!world2.loadedData) {
       return;
     }
-    const villageList = world.getVillages();
+    const villageList = world2.getVillages();
     for (const village of villageList) {
       if (!village.isValid) {
         continue;
       }
-      const dimension = world.getDimension(village.dimensionId);
+      const dimension = world2.getDimension(village.dimensionId);
       yield* pruneLocations(dimension, village.saplingLocations, (block, locationString) => {
         if (Registry.logTypes.includesFast(block.typeId)) {
           if (!village.treeLocations.includes(locationString)) {
@@ -910,7 +1170,33 @@ function* updateVillageBlocks(callback) {
         }
         return !Registry.saplingTypes.includesFast(block.typeId);
       });
-      yield* pruneLocations(dimension, village.farmLocations, (block) => !block.isFarm);
+      yield* pruneLocations(dimension, village.farmLocations, (block) => {
+        const aboveBlock = block.aboveSafe();
+        if (aboveBlock?.isHarvestable) {
+          const aboveLocationString = vectorToString(aboveBlock.location);
+          if (!village.harvestLocations.includes(aboveLocationString)) {
+            village.harvestLocations.push(aboveLocationString);
+          }
+        }
+        return !block.isFarm;
+      });
+      yield* pruneLocations(dimension, village.sugarCaneLocations, (block, locationString) => {
+        if (block.isHarvestableSugarCane) {
+          if (!village.harvestLocations.includes(locationString)) {
+            village.harvestLocations.push(locationString);
+          }
+        }
+        return block.typeId !== "minecraft:reeds";
+      });
+      yield* pruneLocations(dimension, village.sweetBerryLocations, (block, locationString) => {
+        if (block.isHarvestable) {
+          if (!village.harvestLocations.includes(locationString)) {
+            village.harvestLocations.push(locationString);
+          }
+        }
+        return block.typeId !== "minecraft:sweet_berry_bush";
+      });
+      yield* pruneLocations(dimension, village.harvestLocations, (block) => !block.isHarvestable);
       yield;
     }
   } finally {
@@ -918,50 +1204,6 @@ function* updateVillageBlocks(callback) {
       callback();
     }
   }
-}
-function getBoundaryLocations(vector1, vector2, ignoreY = false) {
-  const minV = floorVector(minVectors(vector1, vector2));
-  const maxV = ceilVector(maxVectors(vector1, vector2));
-  const { x: minX, y: minY, z: minZ } = minV;
-  const { x: maxX, y: maxY, z: maxZ } = maxV;
-  const boundary = [];
-  if (ignoreY) {
-    const y = minY;
-    for (let x = minX; x <= maxX; x++) {
-      boundary.push({ x, y, z: minZ });
-      if (minZ !== maxZ) {
-        boundary.push({ x, y, z: maxZ });
-      }
-    }
-    for (let z = minZ + 1; z < maxZ; z++) {
-      boundary.push({ x: minX, y, z });
-      if (minX !== maxX) {
-        boundary.push({ x: maxX, y, z });
-      }
-    }
-  } else {
-    for (let x = minX; x <= maxX; x++) {
-      for (let z = minZ; z <= maxZ; z++) {
-        boundary.push({ x, y: minY, z });
-        if (minY !== maxY) {
-          boundary.push({ x, y: maxY, z });
-        }
-      }
-    }
-    for (let y = minY + 1; y < maxY; y++) {
-      boundary.push({ x: minX, y, z: minZ });
-      if (minZ !== maxZ) {
-        boundary.push({ x: minX, y, z: maxZ });
-      }
-      if (minX !== maxX) {
-        boundary.push({ x: maxX, y, z: minZ });
-        if (minZ !== maxZ) {
-          boundary.push({ x: maxX, y, z: maxZ });
-        }
-      }
-    }
-  }
-  return boundary;
 }
 function isValidConnection(currentBlock, neighborBlock) {
   function checkValidConnection(block1, block2) {
@@ -980,11 +1222,11 @@ function isValidConnection(currentBlock, neighborBlock) {
       const dirX = offset.x === 1 ? "eastSafe" : "westSafe";
       const dirZ = offset.z === 1 ? "southSafe" : "northSafe";
       const checkBlockX = block1[dirX]();
-      if (checkBlockX !== void 0 && (!checkBlockX.canWalkThrough() || !checkBlockX.aboveSafe()?.canWalkThrough() || !checkBlockX.isValidPath())) {
+      if (checkBlockX === void 0 || (!checkBlockX.canWalkThrough() || !checkBlockX.aboveSafe()?.canWalkThrough() || !checkBlockX.isValidPath())) {
         return false;
       }
       const checkBlockZ = block1[dirZ]();
-      if (checkBlockZ !== void 0 && (!checkBlockZ.canWalkThrough() || !checkBlockZ.aboveSafe()?.canWalkThrough() || !checkBlockZ.isValidPath())) {
+      if (checkBlockZ === void 0 || (!checkBlockZ.canWalkThrough() || !checkBlockZ.aboveSafe()?.canWalkThrough() || !checkBlockZ.isValidPath())) {
         return false;
       }
     }
@@ -992,27 +1234,28 @@ function isValidConnection(currentBlock, neighborBlock) {
   }
   return checkValidConnection(currentBlock, neighborBlock) && checkValidConnection(neighborBlock, currentBlock);
 }
-var VILLAGE_RADIUS, Village;
+var VILLAGE_RADIUS, Village, BORDER_PARTICLE_RANGE, BORDER_PARTICLE_ID;
 var init_village = __esm({
   "src/village.ts"() {
     "use strict";
+    init_debug();
     init_registry();
     init_utils();
     init_variables();
     init_village_serialization();
-    system.beforeEvents.startup.subscribe((event) => {
+    system2.beforeEvents.startup.subscribe((event) => {
       const customCommandRegistry = event.customCommandRegistry;
       customCommandRegistry.registerCommand({
         name: "tektopia:scan",
         cheatsRequired: false,
         description: "Scan a block at a specified location",
-        mandatoryParameters: [{ type: CustomCommandParamType.Location, name: "location" }],
-        permissionLevel: CommandPermissionLevel.Admin
+        mandatoryParameters: [{ type: CustomCommandParamType2.Location, name: "location" }],
+        permissionLevel: CommandPermissionLevel2.Admin
       }, (origin, blockLocation) => {
         const player = origin.sourceEntity instanceof Player ? origin.sourceEntity : void 0;
         if (player === void 0) {
           return {
-            status: CustomCommandStatus.Failure,
+            status: CustomCommandStatus2.Failure,
             message: "This command can only be run by a player."
           };
         }
@@ -1020,14 +1263,14 @@ var init_village = __esm({
         const village = dimension.getVillage(blockLocation);
         if (village === void 0) {
           return {
-            status: CustomCommandStatus.Failure,
+            status: CustomCommandStatus2.Failure,
             message: "No village was found at the specified location."
           };
         }
-        system.runJob(village.scanLocation(blockLocation));
+        system2.runJob(village.scanLocation(blockLocation));
         return {
-          status: CustomCommandStatus.Success,
-          message: "Block scanned successfully."
+          status: CustomCommandStatus2.Success,
+          message: "Scan started."
         };
       });
     });
@@ -1066,7 +1309,8 @@ var init_village = __esm({
           sugarCaneLocations: [],
           saplingLocations: [],
           farmLocations: [],
-          cropLocations: [],
+          harvestLocations: [],
+          sweetBerryLocations: [],
           treeLocations: []
         };
       }
@@ -1077,7 +1321,7 @@ var init_village = __esm({
         return decompressVillage(compressed);
       }
       get dimensionId() {
-        return this.data.dimensionId;
+        return this.dimension.id;
       }
       get doorLocation() {
         return this.data.doorLocation;
@@ -1094,17 +1338,20 @@ var init_village = __esm({
       get farmLocations() {
         return this.data.farmLocations;
       }
-      get cropLocations() {
-        return this.data.cropLocations;
+      get harvestLocations() {
+        return this.data.harvestLocations;
+      }
+      get sweetBerryLocations() {
+        return this.data.sweetBerryLocations;
       }
       get treeLocations() {
         return this.data.treeLocations;
       }
       get dimension() {
-        return world.getDimension(this.data.dimensionId);
+        return world2.getDimension(this.data.dimensionId);
       }
       get isValid() {
-        return world.villageList.includes(this.data);
+        return world2.villageList.includes(this.data);
       }
       link(aKey, bKey) {
         const village = this;
@@ -1155,7 +1402,7 @@ var init_village = __esm({
           const startingBlockLocationString = vectorToString(startingBlock);
           const alreadyCheckedLocations = /* @__PURE__ */ new Set([startingBlockLocationString]);
           const villageBounds = village.bounds;
-          const dimension = world.getDimension(village.dimensionId);
+          const dimension = world2.getDimension(village.dimensionId);
           const pathCache = /* @__PURE__ */ new Map();
           while (checkBlockList.length > 0) {
             if (!village.isValid) {
@@ -1222,7 +1469,7 @@ var init_village = __esm({
       *scanLocation(location) {
         const flooredLocation = floorVector(location);
         const village = this;
-        const dimension = world.getDimension(village.dimensionId);
+        const dimension = world2.getDimension(village.dimensionId);
         const locationStringList = [vectorToString(flooredLocation)];
         const alreadyCheckedLocations = /* @__PURE__ */ new Set();
         while (locationStringList.length > 0) {
@@ -1237,7 +1484,12 @@ var init_village = __esm({
           if (block === void 0 || node === void 0) {
             continue;
           }
-          dimension.spawnParticle("minecraft:basic_flame_particle", centerVector(block.location));
+          if (debugFlags.scanParticles) {
+            try {
+              dimension.spawnParticle("minecraft:basic_flame_particle", centerVector(block.location));
+            } catch {
+            }
+          }
           try {
             const checkBlockList = [
               block,
@@ -1273,6 +1525,11 @@ var init_village = __esm({
                 if (!village.treeLocations.includes(checkBlockString)) {
                   village.treeLocations.push(checkBlockString);
                 }
+              } else if (checkBlock.typeId === "minecraft:sweet_berry_bush") {
+                checkNearbyNodes = true;
+                if (!village.sweetBerryLocations.includes(checkBlockString)) {
+                  village.sweetBerryLocations.push(checkBlockString);
+                }
               }
               if (checkNearbyNodes) {
                 locationStringList.push(...node.neighbors);
@@ -1285,7 +1542,7 @@ var init_village = __esm({
       }
       checkNodeValidity(pathNodeLocation) {
         const village = this;
-        const dimension = world.getDimension(village.dimensionId);
+        const dimension = world2.getDimension(village.dimensionId);
         const block = dimension.getBlockSafe(stringToVector(pathNodeLocation));
         const pathNode = village.pathNodes[pathNodeLocation];
         if (block === void 0 || pathNode === void 0) {
@@ -1341,32 +1598,57 @@ var init_village = __esm({
     });
     Object.defineProperty(Block.prototype, "isFarm", {
       get() {
-        const block = this;
-        const blockAbove = block.aboveSafe();
-        if (blockAbove === void 0) {
-          return false;
-        }
-        const blockAboveAbove = blockAbove.aboveSafe();
-        if (blockAboveAbove === void 0) {
-          return false;
-        }
-        return block.typeId === "minecraft:farmland" && blockAbove.isAir && blockAboveAbove.isAir;
+        return this.typeId === "minecraft:farmland";
       }
     });
-    system.run(tickScanVillage);
-    system.run(tickUpdateVillage);
-    system.runInterval(() => {
-      if (!world.loadedData) {
+    Object.defineProperty(Block.prototype, "isHarvestableSugarCane", {
+      get() {
+        let validSugarCane = true;
+        const sugarCaneBlocks = [this, this.aboveSafe(), this.aboveSafe(2)];
+        for (const block of sugarCaneBlocks) {
+          if (block?.typeId !== "minecraft:reeds") {
+            validSugarCane = false;
+            break;
+          }
+        }
+        if (validSugarCane) {
+          return true;
+        }
+        return false;
+      }
+    });
+    Object.defineProperty(Block.prototype, "isHarvestable", {
+      get() {
+        if (["minecraft:pumpkin", "minecraft:melon_block"].includes(this.typeId)) {
+          return true;
+        }
+        const blockGrowth = this.permutation.getState("growth");
+        if (blockGrowth === 7 && ["minecraft:wheat", "minecraft:carrots", "minecraft:potatoes", "minecraft:beetroot"].includes(this.typeId)) {
+          return true;
+        }
+        if (blockGrowth === 3 && this.typeId === "minecraft:sweet_berry_bush") {
+          return true;
+        }
+        if (this.isHarvestableSugarCane) {
+          return true;
+        }
+        return false;
+      }
+    });
+    system2.run(tickScanVillage);
+    system2.run(tickUpdateVillage);
+    system2.runInterval(() => {
+      if (!world2.loadedData) {
         return;
       }
-      const villageList = world.getVillages();
+      const villageList = world2.getVillages();
       for (const village of villageList) {
-        const dimension = world.getDimension(village.dimensionId);
+        const dimension = world2.getDimension(village.dimensionId);
         if (!village.searchingBlocks) {
           const doorBlock = dimension.getBlockSafe(village.doorLocation);
           if (doorBlock !== void 0) {
             village.searchingBlocks = true;
-            system.runJob(
+            system2.runJob(
               village.searchBlocks(doorBlock, true, () => {
                 village.searchingBlocks = false;
               })
@@ -1375,13 +1657,16 @@ var init_village = __esm({
         }
         if (!village.deletingInvalidNodes) {
           village.deletingInvalidNodes = true;
-          system.runJob(deleteInvalidPathNodes());
+          system2.runJob(deleteInvalidPathNodes());
           function* deleteInvalidPathNodes() {
             const allVillagePathNodes = Object.keys(village.pathNodes);
             try {
               for (const pathNodeLocation of allVillagePathNodes) {
                 if (!village.isValid) {
                   return;
+                }
+                while (village.searchingBlocks) {
+                  yield;
                 }
                 village.checkNodeValidity(pathNodeLocation);
                 yield;
@@ -1393,39 +1678,72 @@ var init_village = __esm({
         }
       }
     }, 100);
-    system.runInterval(() => {
-      if (!world.loadedData) {
+    BORDER_PARTICLE_RANGE = 20;
+    BORDER_PARTICLE_ID = "minecraft:rising_border_dust_particle";
+    Player.prototype.spawnBorderParticles = function(bounds) {
+      const player = this;
+      const range = BORDER_PARTICLE_RANGE;
+      const { x: px, y: py, z: pz } = player.location;
+      const minX = Math.floor(bounds.start.x);
+      const maxX = Math.ceil(bounds.end.x);
+      const minZ = Math.floor(bounds.start.z);
+      const maxZ = Math.ceil(bounds.end.z);
+      if (px < minX - range || px > maxX + range || pz < minZ - range || pz > maxZ + range) {
         return;
       }
-      const players = world.getAllPlayers();
-      for (const player of players) {
-        const playerLocation = player.location;
-        const villageList = world.getVillages();
+      const emit = (x, z) => {
+        player.spawnParticle(BORDER_PARTICLE_ID, { x, y: py + randomInt(-10, 10), z });
+      };
+      for (const edgeZ of [minZ, maxZ]) {
+        const dz = pz - edgeZ;
+        if (Math.abs(dz) >= range) {
+          continue;
+        }
+        const half = Math.sqrt(range * range - dz * dz);
+        const from = Math.max(minX, Math.ceil(px - half));
+        const to = Math.min(maxX, Math.floor(px + half));
+        for (let x = from; x <= to; x++) {
+          emit(x, edgeZ);
+        }
+      }
+      for (const edgeX of [minX, maxX]) {
+        const dx = px - edgeX;
+        if (Math.abs(dx) >= range) {
+          continue;
+        }
+        const half = Math.sqrt(range * range - dx * dx);
+        const from = Math.max(minZ + 1, Math.ceil(pz - half));
+        const to = Math.min(maxZ - 1, Math.floor(pz + half));
+        for (let z = from; z <= to; z++) {
+          emit(edgeX, z);
+        }
+      }
+    };
+    system2.runInterval(() => {
+      if (!world2.loadedData) {
+        return;
+      }
+      const villageList = world2.getVillages();
+      if (villageList.length === 0) {
+        return;
+      }
+      for (const player of world2.getAllPlayers()) {
+        const dimensionId = player.dimension.id;
         for (const village of villageList) {
-          const boundaryLocationList = getBoundaryLocations(
-            village.bounds.start,
-            village.bounds.end,
-            true
-          );
-          for (const location of boundaryLocationList) {
-            location.y = playerLocation.y;
-            if (calculateDistance(location, playerLocation) < 20) {
-              try {
-                player.spawnParticle(
-                  "minecraft:rising_border_dust_particle",
-                  addVector(location, "y", randomInt(-10, 10))
-                );
-              } catch {
-              }
-            }
+          if (village.dimensionId !== dimensionId) {
+            continue;
+          }
+          try {
+            player.spawnBorderParticles(village.bounds);
+          } catch {
           }
         }
       }
     }, 20);
     Dimension.prototype.getVillage = function(location) {
-      const villages = world.getVillages();
+      const villages = world2.getVillages();
       for (const village of villages) {
-        if (isVectorBetween(location, village.bounds.start, village.bounds.end, true) && this === village.dimension) {
+        if (isVectorBetween(location, village.bounds.start, village.bounds.end, true) && this.id === village.dimensionId) {
           return village;
         }
       }
@@ -1439,8 +1757,8 @@ import {
   Block as Block2,
   Dimension as Dimension2,
   ItemComponentTypes,
-  system as system2,
-  world as world2
+  system as system3,
+  world as world3
 } from "@minecraft/server";
 var require_item_frames = __commonJS({
   "src/item_frames.ts"() {
@@ -1455,14 +1773,14 @@ var require_item_frames = __commonJS({
     };
     var cardinalDirectionList = ["north", "east", "south", "west"];
     function tickScanItemFrames() {
-      system2.runJob(scanItemFrames(() => system2.runTimeout(tickScanItemFrames, 100)));
+      system3.runJob(scanItemFrames(() => system3.runTimeout(tickScanItemFrames, 100)));
     }
-    system2.run(tickScanItemFrames);
+    system3.run(tickScanItemFrames);
     function* scanItemFrames(callback) {
       try {
         const villageItemFrameLocations = [];
-        for (const itemFrame of world2.itemFrameList) {
-          const dimension = world2.getDimension(itemFrame.dimensionId);
+        for (const itemFrame of world3.itemFrameList) {
+          const dimension = world3.getDimension(itemFrame.dimensionId);
           const itemFrameBlock = dimension.getBlockSafe(itemFrame.location);
           if (itemFrameBlock !== void 0) {
             const block = itemFrameBlock;
@@ -1518,7 +1836,7 @@ var require_item_frames = __commonJS({
                 if (!Registry.doorTypes.includes(doorBlock.typeId)) {
                   return false;
                 }
-                const villageList = world2.getVillages();
+                const villageList = world3.getVillages();
                 if (structureId === "townhall") {
                   if (villageList.filter((village) => village.centerString !== blockCenterString).some((village) => calculateSquareDistance(village.center, blockCenter, true) < 200)) {
                     return false;
@@ -1617,12 +1935,12 @@ var require_item_frames = __commonJS({
                 if (result && doorLocation !== void 0) {
                   if (structureId === "townhall") {
                     villageItemFrameLocations.push(blockCenterString);
-                    const villageList = world2.getVillages();
+                    const villageList = world3.getVillages();
                     const villageStringCenterList = villageList.map(
                       (village) => village.centerString
                     );
                     if (!villageStringCenterList.includes(blockCenterString)) {
-                      world2.villageList.push(
+                      world3.villageList.push(
                         Village.createData(blockCenter, dimension.id, doorLocation)
                       );
                     }
@@ -1648,9 +1966,9 @@ var require_item_frames = __commonJS({
           yield;
         }
         const keep = new Set(villageItemFrameLocations);
-        for (let i = world2.villageList.length - 1; i >= 0; i--) {
-          if (!keep.has(vectorToString(world2.villageList[i].center))) {
-            world2.villageList.splice(i, 1);
+        for (let i = world3.villageList.length - 1; i >= 0; i--) {
+          if (!keep.has(vectorToString(world3.villageList[i].center))) {
+            world3.villageList.splice(i, 1);
           }
         }
       } finally {
@@ -1660,7 +1978,7 @@ var require_item_frames = __commonJS({
       }
     }
     Dimension2.prototype.placeStructureFrame = function(location, structureType, isEnchanted, rotation = "north") {
-      const structureManager = world2.structureManager;
+      const structureManager = world3.structureManager;
       const block = this.getBlockSafe(location);
       if (block !== void 0) {
         const item = block.getFrameItem();
@@ -1689,50 +2007,50 @@ var require_item_frames = __commonJS({
       }
       return void 0;
     };
-    world2.afterEvents.playerInteractWithBlock.subscribe((event) => {
+    world3.afterEvents.playerInteractWithBlock.subscribe((event) => {
       const block = event.block;
       const blockLocation = block.location;
       const blockDimension = block.dimension;
-      if (minecraftFrameTypes.includes(block.typeId) && !world2.itemFrameList.some((itemFrame) => areVectorsEqual(itemFrame.location, blockLocation))) {
-        world2.itemFrameList.push({
+      if (minecraftFrameTypes.includes(block.typeId) && !world3.itemFrameList.some((itemFrame) => areVectorsEqual(itemFrame.location, blockLocation))) {
+        world3.itemFrameList.push({
           dimensionId: blockDimension.id,
           location: blockLocation
         });
       }
     });
-    world2.afterEvents.playerPlaceBlock.subscribe((event) => {
+    world3.afterEvents.playerPlaceBlock.subscribe((event) => {
       const block = event.block;
       const blockLocation = block.location;
       const blockDimension = event.dimension;
-      if (minecraftFrameTypes.includes(block.typeId) && !world2.itemFrameList.some(
+      if (minecraftFrameTypes.includes(block.typeId) && !world3.itemFrameList.some(
         (itemFrame) => areVectorsEqual(itemFrame.location, blockLocation)
       )) {
-        world2.itemFrameList.push({
+        world3.itemFrameList.push({
           dimensionId: blockDimension.id,
           location: blockLocation
         });
       }
     });
-    world2.afterEvents.playerBreakBlock.subscribe((event) => {
+    world3.afterEvents.playerBreakBlock.subscribe((event) => {
       const block = event.block;
       const blockLocation = block.location;
       const brokenBlockPermutation = event.brokenBlockPermutation;
       const beforeBlockTypeId = brokenBlockPermutation.type.id;
       if (minecraftFrameTypes.includes(beforeBlockTypeId)) {
-        const itemFrameIndex = world2.itemFrameList.findIndex(
+        const itemFrameIndex = world3.itemFrameList.findIndex(
           (itemFrame) => areVectorsEqual(itemFrame.location, blockLocation)
         );
         if (itemFrameIndex >= 0) {
-          world2.itemFrameList.splice(itemFrameIndex, 1);
+          world3.itemFrameList.splice(itemFrameIndex, 1);
         }
       }
     });
-    system2.runInterval(() => {
-      if (!world2.loadedData) {
+    system3.runInterval(() => {
+      if (!world3.loadedData) {
         return;
       }
-      world2.itemFrameList = world2.itemFrameList.filter((itemFrame) => {
-        const dimension = world2.getDimension(itemFrame.dimensionId);
+      world3.itemFrameList = world3.itemFrameList.filter((itemFrame) => {
+        const dimension = world3.getDimension(itemFrame.dimensionId);
         const block = dimension.getBlockSafe(itemFrame.location);
         return block === void 0 || minecraftFrameTypes.includes(block.typeId);
       });

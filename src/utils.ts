@@ -2,7 +2,8 @@ import {
     StructureRotation,
     type Vector3
 } from "@minecraft/server"
-import { VectorString } from ".";
+
+import type { VectorString } from "."
 
 export type Direction = "north" | "south" | "east" | "west" | "up" | "down"
 

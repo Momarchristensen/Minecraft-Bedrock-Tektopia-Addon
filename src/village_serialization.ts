@@ -5,7 +5,8 @@ import {
 
 import type {
     PathNode,
-    UndefinedRecord
+    UndefinedRecord,
+    VectorString
 } from "."
 
 import type { VillageSaveData } from "./village"
@@ -34,6 +35,8 @@ export type CompressedVillage = [
     saplingLocations: string,
     farmLocations: string,
     treeLocations: string,
+    harvestLocations: string,
+    sweetBerryLocations: string,
     nodeLocations: string,
     neighborMaskPalette: string,
     neighborMaskIndices: string,
@@ -150,13 +153,13 @@ function unpackPoints(text: string, origin: Vector3): Vector3[] {
     return points
 }
 
-function packLocations(locationList: string[], origin: Vector3): string {
+function packLocations(locationList: VectorString[], origin: Vector3): string {
     const points = locationList.map(location => stringToVector(location))
     points.sort(comparePoints)
     return packPoints(points, origin)
 }
 
-function unpackLocations(text: string, origin: Vector3): string[] {
+function unpackLocations(text: string, origin: Vector3): VectorString[] {
     return unpackPoints(text, origin).map(point => vectorToString(point))
 }
 
@@ -192,7 +195,7 @@ function offsetKey(location: Vector3, offset: Vector3) {
 export function compressVillage(data: VillageSaveData): CompressedVillage {
     const center = data.center
     const origin = originOf(center)
-    const nodeEntries = SAVE_PATH_NODES ? Object.keys(data.pathNodes).map(key => ({ key, location: stringToVector(key) })) : []
+    const nodeEntries = SAVE_PATH_NODES ? (Object.keys(data.pathNodes) as VectorString[]).map(key => ({ key, location: stringToVector(key) })) : []
     nodeEntries.sort((a, b) => comparePoints(a.location, b.location))
 
     const indexByKey = new Map<string, number>()
@@ -287,6 +290,8 @@ export function compressVillage(data: VillageSaveData): CompressedVillage {
         SAVE_RESOURCE_LOCATIONS ? packLocations(data.saplingLocations, origin) : "",
         SAVE_RESOURCE_LOCATIONS ? packLocations(data.farmLocations, origin) : "",
         SAVE_RESOURCE_LOCATIONS ? packLocations(data.treeLocations, origin) : "",
+        SAVE_RESOURCE_LOCATIONS ? packLocations(data.harvestLocations, origin) : "",
+        SAVE_RESOURCE_LOCATIONS ? packLocations(data.sweetBerryLocations, origin) : "",
         packPoints(nodeEntries.map(entry => entry.location), origin),
         packUnsigned(palette),
         packUnsigned(maskIndices),
@@ -294,69 +299,80 @@ export function compressVillage(data: VillageSaveData): CompressedVillage {
     ]
 }
 
-export function decompressVillage(
-    compressed: CompressedVillage
-): VillageSaveData {
+export function decompressVillage(compressed: CompressedVillage): VillageSaveData {
     const [
         dimensionId,
-        centerTriple,
-        doorTriple,
-        sugarCaneText,
-        saplingText,
-        farmText,
-        treeText,
-        nodeText,
-        paletteText,
-        maskIndexText
+        centerCoords,
+        doorOffset,
+        packedSugarCaneLocations,
+        packedSaplingLocations,
+        packedFarmLocations,
+        packedTreeLocations,
+        packedHarvestLocations,
+        packedSweetBerryLocations,
+        packedNodeLocations,
+        packedMaskPalette,
+        packedMaskIndices,
+        compressedRequirements
     ] = compressed
 
-    const nodeRequirements = compressed[compressed.length - 1] as CompressedRequirement[]
-
-    const center: Vector3 = { x: centerTriple[0], y: centerTriple[1], z: centerTriple[2] }
+    const center: Vector3 = { x: centerCoords[0], y: centerCoords[1], z: centerCoords[2] }
     const origin = originOf(center)
 
-    const points = unpackPoints(nodeText, origin)
-    const keys = points.map(point => vectorToString(point))
+    const nodePoints = unpackPoints(packedNodeLocations, origin)
+    const nodeKeys = nodePoints.map(point => vectorToString(point))
     const pathNodes: UndefinedRecord<string, PathNode> = {}
 
-    for (const key of keys) {
+    for (const key of nodeKeys) {
         pathNodes[key] = { neighbors: [] }
     }
 
-    const palette = unpackUnsigned(paletteText)
-    const maskIndices = unpackUnsigned(maskIndexText)
-    for (let i = 0; i < points.length; i++) {
-        const mask = palette[maskIndices[i]] as number | undefined
-        if (mask === undefined) {
+    const maskPalette = unpackUnsigned(packedMaskPalette)
+    const maskPaletteIndices = unpackUnsigned(packedMaskIndices)
+
+    for (let nodeIndex = 0; nodeIndex < nodePoints.length; nodeIndex++) {
+        const neighborMask = maskPalette[maskPaletteIndices[nodeIndex]] as number | undefined
+        if (neighborMask === undefined) {
             continue
         }
-        const node = pathNodes[keys[i]]
-        if (node === undefined) {
+
+        const currentKey = nodeKeys[nodeIndex]
+        const currentNode = pathNodes[currentKey]
+        if (currentNode === undefined) {
             continue
         }
-        for (let bit = 0; bit < 13; bit++) {
-            if ((mask & (1 << bit)) === 0) {
+
+        for (let bitIndex = 0; bitIndex < 13; bitIndex++) {
+            if ((neighborMask & (1 << bitIndex)) === 0) {
                 continue
             }
-            const neighborKey = offsetKey(points[i], NEIGHBOR_OFFSETS[FORWARD_START + bit])
+
+            const neighborKey = offsetKey(
+                nodePoints[nodeIndex],
+                NEIGHBOR_OFFSETS[FORWARD_START + bitIndex]
+            )
             const neighborNode = pathNodes[neighborKey]
             if (neighborNode === undefined) {
                 continue
             }
-            node.neighbors.push(neighborKey)
-            neighborNode.neighbors.push(keys[i])
+
+            currentNode.neighbors.push(neighborKey)
+            neighborNode.neighbors.push(currentKey)
         }
     }
 
-    for (const requirement of nodeRequirements) {
-        const [whiteList, types, deltaText] = requirement
-        const deltas = unpackUnsigned(deltaText)
-        let index = 0
-        for (const delta of deltas) {
-            index += delta
-            const node = pathNodes[keys[index]]
+    for (const [whiteListFlag, requiredTypes, packedIndexDeltas] of compressedRequirements) {
+        const indexDeltas = unpackUnsigned(packedIndexDeltas)
+        let nodeIndex = 0
+
+        for (const delta of indexDeltas) {
+            nodeIndex += delta
+            const node = pathNodes[nodeKeys[nodeIndex]]
             if (node !== undefined) {
-                node.requirement = { whiteList: whiteList === 1, types: types.slice() }
+                node.requirement = {
+                    whiteList: whiteListFlag === 1,
+                    types: requiredTypes.slice()
+                }
             }
         }
     }
@@ -365,14 +381,16 @@ export function decompressVillage(
         dimensionId: dimensionId.includes(":") ? dimensionId : NAMESPACE + dimensionId,
         center,
         doorLocation: {
-            x: doorTriple[0] + origin.x,
-            y: doorTriple[1] + origin.y,
-            z: doorTriple[2] + origin.z
+            x: doorOffset[0] + origin.x,
+            y: doorOffset[1] + origin.y,
+            z: doorOffset[2] + origin.z
         },
         pathNodes,
-        sugarCaneLocations: unpackLocations(sugarCaneText, origin),
-        saplingLocations: unpackLocations(saplingText, origin),
-        farmLocations: unpackLocations(farmText, origin),
-        treeLocations: unpackLocations(treeText, origin)
+        sugarCaneLocations: unpackLocations(packedSugarCaneLocations, origin),
+        saplingLocations: unpackLocations(packedSaplingLocations, origin),
+        farmLocations: unpackLocations(packedFarmLocations, origin),
+        treeLocations: unpackLocations(packedTreeLocations, origin),
+        harvestLocations: unpackLocations(packedHarvestLocations, origin),
+        sweetBerryLocations: unpackLocations(packedSweetBerryLocations, origin)
     }
 }

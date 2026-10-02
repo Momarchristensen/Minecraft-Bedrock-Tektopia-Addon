@@ -14,58 +14,58 @@ import {
 } from "@minecraft/server";
 var require_block_extensions = __commonJS({
   "src/block_extensions.ts"() {
-    Block.prototype.northSafe = function() {
+    Block.prototype.northSafe = function(...args) {
       try {
-        return this.north();
+        return this.north(...args);
       } catch {
         return void 0;
       }
     };
-    Block.prototype.eastSafe = function() {
+    Block.prototype.eastSafe = function(...args) {
       try {
-        return this.east();
+        return this.east(...args);
       } catch {
         return void 0;
       }
     };
-    Block.prototype.southSafe = function() {
+    Block.prototype.southSafe = function(...args) {
       try {
-        return this.south();
+        return this.south(...args);
       } catch {
         return void 0;
       }
     };
-    Block.prototype.westSafe = function() {
+    Block.prototype.westSafe = function(...args) {
       try {
-        return this.west();
+        return this.west(...args);
       } catch {
         return void 0;
       }
     };
-    Block.prototype.aboveSafe = function() {
+    Block.prototype.aboveSafe = function(...args) {
       try {
-        return this.above();
+        return this.above(...args);
       } catch {
         return void 0;
       }
     };
-    Block.prototype.belowSafe = function() {
+    Block.prototype.belowSafe = function(...args) {
       try {
-        return this.below();
+        return this.below(...args);
       } catch {
         return void 0;
       }
     };
-    Block.prototype.offsetSafe = function(offset) {
+    Block.prototype.offsetSafe = function(...args) {
       try {
-        return this.offset(offset);
+        return this.offset(...args);
       } catch {
         return void 0;
       }
     };
-    Dimension.prototype.getBlockSafe = function(location) {
+    Dimension.prototype.getBlockSafe = function(...args) {
       try {
-        return this.getBlock(location);
+        return this.getBlock(...args);
       } catch {
         return void 0;
       }

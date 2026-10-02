@@ -44,58 +44,58 @@ import {
 var require_block_extensions = __commonJS({
   "src/block_extensions.ts"() {
     "use strict";
-    Block.prototype.northSafe = function() {
+    Block.prototype.northSafe = function(...args) {
       try {
-        return this.north();
+        return this.north(...args);
       } catch {
         return void 0;
       }
     };
-    Block.prototype.eastSafe = function() {
+    Block.prototype.eastSafe = function(...args) {
       try {
-        return this.east();
+        return this.east(...args);
       } catch {
         return void 0;
       }
     };
-    Block.prototype.southSafe = function() {
+    Block.prototype.southSafe = function(...args) {
       try {
-        return this.south();
+        return this.south(...args);
       } catch {
         return void 0;
       }
     };
-    Block.prototype.westSafe = function() {
+    Block.prototype.westSafe = function(...args) {
       try {
-        return this.west();
+        return this.west(...args);
       } catch {
         return void 0;
       }
     };
-    Block.prototype.aboveSafe = function() {
+    Block.prototype.aboveSafe = function(...args) {
       try {
-        return this.above();
+        return this.above(...args);
       } catch {
         return void 0;
       }
     };
-    Block.prototype.belowSafe = function() {
+    Block.prototype.belowSafe = function(...args) {
       try {
-        return this.below();
+        return this.below(...args);
       } catch {
         return void 0;
       }
     };
-    Block.prototype.offsetSafe = function(offset) {
+    Block.prototype.offsetSafe = function(...args) {
       try {
-        return this.offset(offset);
+        return this.offset(...args);
       } catch {
         return void 0;
       }
     };
-    Dimension.prototype.getBlockSafe = function(location) {
+    Dimension.prototype.getBlockSafe = function(...args) {
       try {
-        return this.getBlock(location);
+        return this.getBlock(...args);
       } catch {
         return void 0;
       }
@@ -20596,6 +20596,236 @@ var init_generated = __esm({
   }
 });
 
+// src/debug.ts
+import {
+  CommandPermissionLevel,
+  CustomCommandParamType,
+  CustomCommandStatus,
+  MolangVariableMap,
+  system,
+  world
+} from "@minecraft/server";
+function isDebugFlag(value) {
+  return value in debugFlags;
+}
+function setDebugFlag(flag, enabled) {
+  debugFlags[flag] = enabled;
+  world.setDynamicProperty(PROPERTY_PREFIX + flag, enabled ? true : void 0);
+}
+function loadDebugFlags() {
+  for (const flag of debugFlagNames) {
+    const saved = world.getDynamicProperty(PROPERTY_PREFIX + flag);
+    if (typeof saved === "boolean") {
+      debugFlags[flag] = saved;
+    }
+  }
+}
+function tickDrawDebug() {
+  system.runJob(drawDebug(tickDrawDebug));
+}
+function* drawDebug(callback) {
+  try {
+    if (!world.loadedData || !debugFlags.pathParticles) {
+      return;
+    }
+    const players = world.getAllPlayers();
+    const rotate45 = new MolangVariableMap();
+    rotate45.setFloat("rotation", 45);
+    const rotate90 = new MolangVariableMap();
+    rotate90.setFloat("rotation", 90);
+    const rotate135 = new MolangVariableMap();
+    rotate135.setFloat("rotation", 135);
+    const villageList = world.getVillages();
+    for (const player of players) {
+      const playerPos = player.location;
+      const nearbyRange = 4;
+      const minY = Math.floor(playerPos.y) - 1;
+      const maxY = Math.floor(playerPos.y) + 1;
+      for (const village of villageList) {
+        for (let dx = -nearbyRange; dx <= nearbyRange; dx++) {
+          for (let dy = minY - Math.floor(playerPos.y); dy <= maxY - Math.floor(playerPos.y); dy++) {
+            for (let dz = -nearbyRange; dz <= nearbyRange; dz++) {
+              const checkPos = {
+                x: Math.floor(playerPos.x + dx),
+                y: Math.floor(playerPos.y + dy),
+                z: Math.floor(playerPos.z + dz)
+              };
+              const key = vectorToString(checkPos);
+              if (!village.pathNodes.hasOwnProperty(key)) {
+                continue;
+              }
+              const node = village.pathNodes[key];
+              if (node === void 0) {
+                continue;
+              }
+              const particlePos = addVector(
+                centerVector(checkPos, true),
+                "y",
+                0.01
+              );
+              const colorMap = new MolangVariableMap();
+              let color;
+              if (node.requirement !== void 0) {
+                color = requirementColor(node.requirement);
+              }
+              color ??= {
+                red: 122 / 255,
+                green: 122 / 255,
+                blue: 122 / 255
+              };
+              colorMap.setColorRGB("color", color);
+              player.spawnParticle("tektopia:path_node", particlePos, colorMap);
+              const directionSet = new Set(
+                node.neighbors.map(
+                  (neighborString) => vectorToDirection(
+                    subtractVectors(stringToVector(neighborString), checkPos)
+                  )
+                )
+              );
+              const spawnConnection = (offsetX, offsetY, offsetZ, dir) => {
+                const pos = addVectors(
+                  addVector(centerVector(checkPos, true), "y", 0.02),
+                  { x: offsetX, y: offsetY, z: offsetZ }
+                );
+                try {
+                  if (typeof dir === "string") {
+                    player.spawnParticle(`tektopia:node_connection_${dir}`, pos);
+                  } else {
+                    player.spawnParticle("tektopia:node_connection", pos, dir);
+                  }
+                } catch {
+                }
+              };
+              if (directionSet.has("north")) {
+                spawnConnection(-0.1, 0, -0.5);
+              }
+              if (directionSet.has("east")) {
+                spawnConnection(0.5, 0, -0.1, rotate90);
+              }
+              if (directionSet.has("south")) {
+                spawnConnection(0.1, 0, 0.5);
+              }
+              if (directionSet.has("west")) {
+                spawnConnection(-0.5, 0, 0.1, rotate90);
+              }
+              if (directionSet.has("northeast")) {
+                spawnConnection(0.43, 0, -0.57, rotate135);
+              }
+              if (directionSet.has("northwest")) {
+                spawnConnection(-0.57, 0, -0.43, rotate45);
+              }
+              if (directionSet.has("southeast")) {
+                spawnConnection(0.57, 0, 0.43, rotate45);
+              }
+              if (directionSet.has("southwest")) {
+                spawnConnection(-0.43, 0, 0.57, rotate135);
+              }
+              if (directionSet.has("northdown")) {
+                spawnConnection(-0.1, -0.5, -0.5, "north");
+              }
+              if (directionSet.has("eastdown")) {
+                spawnConnection(0.5, -0.5, -0.1, "east");
+              }
+              if (directionSet.has("southdown")) {
+                spawnConnection(0.1, -0.5, 0.5, "south");
+              }
+              if (directionSet.has("westdown")) {
+                spawnConnection(-0.5, -0.5, 0.1, "west");
+              }
+              if (directionSet.has("northup")) {
+                spawnConnection(-0.1, 0.5, -0.5, "south");
+              }
+              if (directionSet.has("eastup")) {
+                spawnConnection(0.5, 0.5, -0.1, "west");
+              }
+              if (directionSet.has("southup")) {
+                spawnConnection(0.1, 0.5, 0.5, "north");
+              }
+              if (directionSet.has("westup")) {
+                spawnConnection(-0.5, 0.5, 0.1, "east");
+              }
+              yield;
+            }
+          }
+        }
+      }
+    }
+  } finally {
+    if (callback !== void 0) {
+      callback();
+    }
+  }
+}
+function requirementColor(requirement) {
+  if (requirement === void 0 || requirement.types.length === 0) {
+    return { red: 0, green: 0, blue: 0 };
+  }
+  const key = [...requirement.types].sort().join(",") + (requirement.whiteList ? "+w" : "+b");
+  const hash = hashString(key);
+  let red = hash * 197 % 256;
+  let green = hash * 293 % 256;
+  let blue = hash * 503 % 256;
+  if (!requirement.whiteList) {
+    red = red ^ 137;
+    green = green ^ 251;
+    blue = blue ^ 61;
+  }
+  return { red: red / 255, green: green / 255, blue: blue / 255 };
+  function hashString(str) {
+    let hashStr = 0;
+    for (let i = 0; i < str.length; i++) {
+      hashStr = hashStr * 31 + str.charCodeAt(i) | 0;
+    }
+    return hashStr >>> 0;
+  }
+}
+function main() {
+  loadDebugFlags();
+}
+var debugFlags, debugFlagNames, PROPERTY_PREFIX;
+var init_debug = __esm({
+  "src/debug.ts"() {
+    "use strict";
+    init_utils();
+    debugFlags = {
+      scanParticles: true,
+      pathParticles: true,
+      pathfindingWarnings: true
+    };
+    debugFlagNames = Object.keys(debugFlags);
+    PROPERTY_PREFIX = "tektopia:debug:";
+    system.beforeEvents.startup.subscribe((event) => {
+      const customCommandRegistry = event.customCommandRegistry;
+      customCommandRegistry.registerEnum("tektopia:debugflag", debugFlagNames);
+      customCommandRegistry.registerCommand({
+        name: "tektopia:debug",
+        cheatsRequired: false,
+        description: "Toggle a debug flag (omit the value to flip it)",
+        mandatoryParameters: [{ type: CustomCommandParamType.Enum, name: "tektopia:debugflag" }],
+        optionalParameters: [{ type: CustomCommandParamType.Boolean, name: "enabled" }],
+        permissionLevel: CommandPermissionLevel.Admin
+      }, (_, flag, enabled) => {
+        if (!isDebugFlag(flag)) {
+          return {
+            status: CustomCommandStatus.Failure,
+            message: `Unknown flag. Options: ${debugFlagNames.join(", ")}`
+          };
+        }
+        const newValue = enabled ?? !debugFlags[flag];
+        system.run(() => setDebugFlag(flag, newValue));
+        return {
+          status: CustomCommandStatus.Success,
+          message: `${flag} is now ${newValue ? "on" : "off"}`
+        };
+      });
+    });
+    system.run(tickDrawDebug);
+    world.afterEvents.worldLoad.subscribe(() => {
+      main();
+    });
+  }
+});
+
 // src/path_constants.ts
 var pathCancelEntityTypes, pathIgnoreEntityTypes;
 var init_path_constants = __esm({
@@ -20651,8 +20881,8 @@ import {
   Block as Block2,
   GameMode,
   Player,
-  system,
-  world
+  system as system2,
+  world as world2
 } from "@minecraft/server";
 function generatePath(entity, start, end, token) {
   return new Promise((resolve) => {
@@ -20663,7 +20893,7 @@ function generatePath(entity, start, end, token) {
     }
     const villageBounds = village.bounds;
     const dimensionId = village.dimensionId;
-    const dimension = world.getDimension(dimensionId);
+    const dimension = world2.getDimension(dimensionId);
     const nodeList = village.pathNodes;
     const startLocation = floorVector(start);
     let endLocation = floorVector(end);
@@ -20685,12 +20915,14 @@ function generatePath(entity, start, end, token) {
     function heuristic(vector1, vector2) {
       return Math.abs(vector1.x - vector2.x) + Math.abs(vector1.y - vector2.y) + Math.abs(vector1.z - vector2.z);
     }
-    system.runJob(safeTickGeneratePath());
+    system2.runJob(safeTickGeneratePath());
     function* safeTickGeneratePath() {
       try {
         yield* tickGeneratePath();
       } catch (error) {
-        console.warn("Pathfinding failed: ", error);
+        if (debugFlags.pathfindingWarnings) {
+          console.warn("Pathfinding failed: ", error);
+        }
         resolve("error");
       }
     }
@@ -20737,10 +20969,10 @@ function generatePath(entity, start, end, token) {
         closedSet.add(currentKey);
         if (currentKey === endKey) {
           const path = [];
-          let k = currentKey;
-          while (k !== void 0) {
-            path.push(stringToVector(k));
-            k = cameFrom.get(k);
+          let key = currentKey;
+          while (key !== void 0) {
+            path.push(stringToVector(key));
+            key = cameFrom.get(key);
           }
           path.reverse();
           resolve(path);
@@ -20841,7 +21073,7 @@ function getCheckPathEntities(dimensionId, villager) {
     if (checkEntityObject.id === villager.id) {
       continue;
     }
-    const checkEntity = world.getEntity(checkEntityObject.id);
+    const checkEntity = world2.getEntity(checkEntityObject.id);
     if (checkEntity === void 0) {
       continue;
     }
@@ -20867,11 +21099,11 @@ function updatePathNodes(blockList) {
   updatePathNodeList.push(blockList);
 }
 function tickUpdateNodes() {
-  system.runJob(updateNodesBlocks(tickUpdateNodes));
+  system2.runJob(updateNodesBlocks(tickUpdateNodes));
 }
 function* updateNodesBlocks(callback) {
   try {
-    if (!world.loadedData) {
+    if (!world2.loadedData) {
       return;
     }
     let index = 0;
@@ -20884,7 +21116,7 @@ function* updateNodesBlocks(callback) {
         }
         const neighborList = checkBlock.getNodeNeighbors();
         const checkBlockStringLocation = vectorToString(checkBlock);
-        const villageList = world.getVillages();
+        const villageList = world2.getVillages();
         for (const village of villageList) {
           const alreadyCheckedLocations = /* @__PURE__ */ new Set();
           const villageBounds = village.bounds;
@@ -20894,7 +21126,7 @@ function* updateNodesBlocks(callback) {
             if (!alreadyCheckedLocations.has(neighborLocationString)) {
               alreadyCheckedLocations.add(neighborLocationString);
               if (village.pathNodes[neighborLocationString] !== void 0 && neighborBlock.isValidPath(villageBounds)) {
-                system.runJob(village.searchBlocks(neighborBlock));
+                system2.runJob(village.searchBlocks(neighborBlock));
               }
             }
           }
@@ -20919,6 +21151,7 @@ var init_path = __esm({
   "src/path.ts"() {
     "use strict";
     init_path_constants();
+    init_debug();
     init_registry();
     init_utils();
     init_variables();
@@ -20988,9 +21221,9 @@ var init_path = __esm({
       }
     };
     pathCheckEntities = {};
-    system.runInterval(() => {
+    system2.runInterval(() => {
       for (const dimensionId of Registry.dimensionTypes) {
-        const dimension = world.getDimension(dimensionId);
+        const dimension = world2.getDimension(dimensionId);
         const entities2 = dimension.getEntities({
           excludeTypes: pathIgnoreEntityTypes
         });
@@ -21009,23 +21242,23 @@ var init_path = __esm({
       }
     });
     updatePathNodeList = [];
-    world.afterEvents.playerInteractWithBlock.subscribe((event) => {
+    world2.afterEvents.playerInteractWithBlock.subscribe((event) => {
       const block = event.block;
       updatePathNodes(
         [block, block.aboveSafe(), block.belowSafe()].filter((checkBlock) => checkBlock !== void 0)
       );
     });
-    world.afterEvents.playerPlaceBlock.subscribe((event) => {
+    world2.afterEvents.playerPlaceBlock.subscribe((event) => {
       const block = event.block;
       updatePathNodes([block, block.aboveSafe(), block.belowSafe()].filter((checkBlock) => checkBlock !== void 0));
     });
-    world.afterEvents.playerBreakBlock.subscribe((event) => {
+    world2.afterEvents.playerBreakBlock.subscribe((event) => {
       const block = event.block;
       updatePathNodes(
         [block, block.aboveSafe(), block.belowSafe()].filter((checkBlock) => checkBlock !== void 0)
       );
     });
-    world.afterEvents.explosion.subscribe((event) => {
+    world2.afterEvents.explosion.subscribe((event) => {
       const impactedBlocks = event.getImpactedBlocks();
       updatePathNodes(
         impactedBlocks.flatMap(
@@ -21033,7 +21266,7 @@ var init_path = __esm({
         )
       );
     });
-    system.run(tickUpdateNodes);
+    system2.run(tickUpdateNodes);
     Block2.prototype.isValidPath = function(villageBounds) {
       const block = this;
       const below = block.belowSafe();
@@ -21124,10 +21357,10 @@ var init_path = __esm({
 
 // src/tree.ts
 import {
-  system as system2
+  system as system3
 } from "@minecraft/server";
 function destroyTree(startingBlock, callback) {
-  system2.runJob(destroyTreeGenerator());
+  system3.runJob(destroyTreeGenerator());
   function* destroyTreeGenerator() {
     try {
       let currentBlock = startingBlock;
@@ -21408,22 +21641,23 @@ import {
   Block as Block3,
   EntityComponentTypes,
   ItemStack,
-  system as system3,
+  system as system4,
   World,
-  world as world2
+  world as world3
 } from "@minecraft/server";
 var villagerCache, Villager;
 var init_villager = __esm({
   "src/villager.ts"() {
     "use strict";
     init_generated();
+    init_debug();
     init_path();
     init_registry();
     init_tree();
     init_utils();
     init_villager_tasks();
     villagerCache = /* @__PURE__ */ new Map();
-    world2.afterEvents.entityRemove.subscribe((event) => {
+    world3.afterEvents.entityRemove.subscribe((event) => {
       const removedEntityId = event.removedEntityId;
       villagerCache.delete(removedEntityId);
     });
@@ -21472,7 +21706,7 @@ var init_villager = __esm({
         return villager;
       }
       static fromId(entityId) {
-        const entity = world2.getEntity(entityId);
+        const entity = world3.getEntity(entityId);
         if (!entity?.isVillager) {
           return void 0;
         }
@@ -21511,7 +21745,7 @@ var init_villager = __esm({
       }
       findTree(village) {
         const takenTrees = /* @__PURE__ */ new Set();
-        const villagers = world2.getVillagers();
+        const villagers = world3.getVillagers();
         for (const villager of villagers) {
           if (villager.id === this.id) {
             continue;
@@ -21590,7 +21824,7 @@ var init_villager = __esm({
         villager.isPathing = true;
         const token = { cancelled: false };
         let finished = false;
-        const timeoutId = system3.runTimeout(() => {
+        const timeoutId = system4.runTimeout(() => {
           if (!finished) {
             cancelPath();
           }
@@ -21600,13 +21834,13 @@ var init_villager = __esm({
             return;
           }
           finished = true;
-          system3.clearRun(timeoutId);
+          system4.clearRun(timeoutId);
           token.cancelled = true;
           villager.blockedTimer = 0;
           villager.setAnimation(void 0);
           villager.isPathing = false;
           if (villager.pathTickId !== void 0) {
-            system3.clearRun(villager.pathTickId);
+            system4.clearRun(villager.pathTickId);
           }
           villager.pathTickId = void 0;
           villager.stopPath = () => {
@@ -21646,11 +21880,15 @@ var init_villager = __esm({
             }
             villager.followPath(result, targetLocation, cancelPath, () => finished);
           }).catch((error) => {
-            console.warn("pathFindTo failed: ", error);
+            if (debugFlags.pathfindingWarnings) {
+              console.warn("pathFindTo failed: ", error);
+            }
             cancelPath();
           });
         } catch (error) {
-          console.warn("pathFindTo setup failed: ", error);
+          if (debugFlags.pathfindingWarnings) {
+            console.warn("pathFindTo setup failed: ", error);
+          }
           cancelPath();
         }
       }
@@ -21667,7 +21905,7 @@ var init_villager = __esm({
         }
         const pathError = villager.pathError;
         if (villager.isWaiting && pathError === void 0) {
-          let nameTag = `Waiting${".".repeat(Math.floor(system3.currentTick / 5) % 3 + 1)}`;
+          let nameTag = `Waiting${".".repeat(Math.floor(system4.currentTick / 5) % 3 + 1)}`;
           if (typeof villager.waiting === "number") {
             villager.waiting--;
             if (villager.waiting === 0) {
@@ -21763,7 +22001,7 @@ ${villager.blockedTimer}`;
         if (villager.currentTask === void 0) {
           villager.nameTag = "Idle";
         }
-        if (villager.isPathing && villager.typeId === "tektopia:lumberjack" && system3.currentTick % 20 === 0) {
+        if (villager.isPathing && villager.typeId === "tektopia:lumberjack" && system4.currentTick % 20 === 0) {
           const minVector = addVectors(villagerLocation, { x: -2, y: -1, z: -2 });
           const maxVector = addVectors(villagerLocation, { x: 2, y: 2, z: 2 });
           const blocksToUpdate = [];
@@ -21912,12 +22150,12 @@ ${villager.blockedTimer}`;
               cancelPath();
               return;
             }
-            villager.pathTickId = system3.run(tickFollowPath);
+            villager.pathTickId = system4.run(tickFollowPath);
             if (pathNodeList.length === 0) {
               cancelPath();
               return;
             }
-            if (system3.currentTick % 20 === 0) {
+            if (system4.currentTick % 20 === 0) {
               pathNodeList.forEach((pathNode) => {
                 try {
                   dimension.spawnParticle(
@@ -22006,21 +22244,23 @@ ${villager.blockedTimer}`;
               pathNodeList.shift();
             }
           } catch (error) {
-            console.warn("Path follow failed: ", error);
+            if (debugFlags.pathfindingWarnings) {
+              console.warn("Path follow failed: ", error);
+            }
             cancelPath();
           }
         }
-        villager.pathTickId = system3.run(tickFollowPath);
+        villager.pathTickId = system4.run(tickFollowPath);
       }
     };
     World.prototype.getVillager = function(entityId) {
       return Villager.fromId(entityId);
     };
-    system3.runInterval(() => {
-      if (!world2.loadedData) {
+    system4.runInterval(() => {
+      if (!world3.loadedData) {
         return;
       }
-      const villagers = world2.getVillagers();
+      const villagers = world3.getVillagers();
       for (const villager of villagers) {
         try {
           villager.tickAI();
@@ -22029,8 +22269,8 @@ ${villager.blockedTimer}`;
         }
       }
     });
-    system3.runInterval(() => {
-      const itemEntities = world2.getEntities({ type: "item" });
+    system4.runInterval(() => {
+      const itemEntities = world3.getEntities({ type: "item" });
       for (const entity of itemEntities) {
         if (entity.unreachable > 0) {
           entity.unreachable--;
@@ -22041,7 +22281,7 @@ ${villager.blockedTimer}`;
       if (!this.isValid) {
         return;
       }
-      const lootTableManager = world2.getLootTableManager();
+      const lootTableManager = world3.getLootTableManager();
       const itemList = lootTableManager.generateLootFromBlock(this) ?? [];
       const dimension = this.dimension;
       for (const item of itemList) {
@@ -22776,6 +23016,8 @@ function compressVillage(data) {
     SAVE_RESOURCE_LOCATIONS ? packLocations(data.saplingLocations, origin) : "",
     SAVE_RESOURCE_LOCATIONS ? packLocations(data.farmLocations, origin) : "",
     SAVE_RESOURCE_LOCATIONS ? packLocations(data.treeLocations, origin) : "",
+    SAVE_RESOURCE_LOCATIONS ? packLocations(data.harvestLocations, origin) : "",
+    SAVE_RESOURCE_LOCATIONS ? packLocations(data.sweetBerryLocations, origin) : "",
     packPoints(nodeEntries.map((entry) => entry.location), origin),
     packUnsigned(palette),
     packUnsigned(maskIndices),
@@ -22785,58 +23027,66 @@ function compressVillage(data) {
 function decompressVillage(compressed) {
   const [
     dimensionId,
-    centerTriple,
-    doorTriple,
-    sugarCaneText,
-    saplingText,
-    farmText,
-    treeText,
-    nodeText,
-    paletteText,
-    maskIndexText
+    centerCoords,
+    doorOffset,
+    packedSugarCaneLocations,
+    packedSaplingLocations,
+    packedFarmLocations,
+    packedTreeLocations,
+    packedHarvestLocations,
+    packedSweetBerryLocations,
+    packedNodeLocations,
+    packedMaskPalette,
+    packedMaskIndices,
+    compressedRequirements
   ] = compressed;
-  const nodeRequirements = compressed[compressed.length - 1];
-  const center = { x: centerTriple[0], y: centerTriple[1], z: centerTriple[2] };
+  const center = { x: centerCoords[0], y: centerCoords[1], z: centerCoords[2] };
   const origin = originOf(center);
-  const points = unpackPoints(nodeText, origin);
-  const keys = points.map((point) => vectorToString(point));
+  const nodePoints = unpackPoints(packedNodeLocations, origin);
+  const nodeKeys = nodePoints.map((point) => vectorToString(point));
   const pathNodes = {};
-  for (const key of keys) {
+  for (const key of nodeKeys) {
     pathNodes[key] = { neighbors: [] };
   }
-  const palette = unpackUnsigned(paletteText);
-  const maskIndices = unpackUnsigned(maskIndexText);
-  for (let i = 0; i < points.length; i++) {
-    const mask = palette[maskIndices[i]];
-    if (mask === void 0) {
+  const maskPalette = unpackUnsigned(packedMaskPalette);
+  const maskPaletteIndices = unpackUnsigned(packedMaskIndices);
+  for (let nodeIndex = 0; nodeIndex < nodePoints.length; nodeIndex++) {
+    const neighborMask = maskPalette[maskPaletteIndices[nodeIndex]];
+    if (neighborMask === void 0) {
       continue;
     }
-    const node = pathNodes[keys[i]];
-    if (node === void 0) {
+    const currentKey = nodeKeys[nodeIndex];
+    const currentNode = pathNodes[currentKey];
+    if (currentNode === void 0) {
       continue;
     }
-    for (let bit = 0; bit < 13; bit++) {
-      if ((mask & 1 << bit) === 0) {
+    for (let bitIndex = 0; bitIndex < 13; bitIndex++) {
+      if ((neighborMask & 1 << bitIndex) === 0) {
         continue;
       }
-      const neighborKey = offsetKey(points[i], NEIGHBOR_OFFSETS[FORWARD_START + bit]);
+      const neighborKey = offsetKey(
+        nodePoints[nodeIndex],
+        NEIGHBOR_OFFSETS[FORWARD_START + bitIndex]
+      );
       const neighborNode = pathNodes[neighborKey];
       if (neighborNode === void 0) {
         continue;
       }
-      node.neighbors.push(neighborKey);
-      neighborNode.neighbors.push(keys[i]);
+      currentNode.neighbors.push(neighborKey);
+      neighborNode.neighbors.push(currentKey);
     }
   }
-  for (const requirement of nodeRequirements) {
-    const [whiteList, types, deltaText] = requirement;
-    const deltas = unpackUnsigned(deltaText);
-    let index = 0;
-    for (const delta of deltas) {
-      index += delta;
-      const node = pathNodes[keys[index]];
+  for (const [whiteListFlag, requiredTypes, packedIndexDeltas] of compressedRequirements) {
+    const indexDeltas = unpackUnsigned(packedIndexDeltas);
+    let nodeIndex = 0;
+    for (const delta of indexDeltas) {
+      nodeIndex += delta;
+      const node = pathNodes[nodeKeys[nodeIndex]];
       if (node !== void 0) {
-        node.requirement = { whiteList: whiteList === 1, types: types.slice() };
+        node.requirement = {
+          whiteList: whiteListFlag === 1,
+          types: requiredTypes.slice()
+        };
       }
     }
   }
@@ -22844,15 +23094,17 @@ function decompressVillage(compressed) {
     dimensionId: dimensionId.includes(":") ? dimensionId : NAMESPACE + dimensionId,
     center,
     doorLocation: {
-      x: doorTriple[0] + origin.x,
-      y: doorTriple[1] + origin.y,
-      z: doorTriple[2] + origin.z
+      x: doorOffset[0] + origin.x,
+      y: doorOffset[1] + origin.y,
+      z: doorOffset[2] + origin.z
     },
     pathNodes,
-    sugarCaneLocations: unpackLocations(sugarCaneText, origin),
-    saplingLocations: unpackLocations(saplingText, origin),
-    farmLocations: unpackLocations(farmText, origin),
-    treeLocations: unpackLocations(treeText, origin)
+    sugarCaneLocations: unpackLocations(packedSugarCaneLocations, origin),
+    saplingLocations: unpackLocations(packedSaplingLocations, origin),
+    farmLocations: unpackLocations(packedFarmLocations, origin),
+    treeLocations: unpackLocations(packedTreeLocations, origin),
+    harvestLocations: unpackLocations(packedHarvestLocations, origin),
+    sweetBerryLocations: unpackLocations(packedSweetBerryLocations, origin)
   };
 }
 var SAVE_PATH_NODES, SAVE_RESOURCE_LOCATIONS, NAMESPACE, DIGITS, DIGIT_VALUES, NEIGHBOR_OFFSETS, FORWARD_START;
@@ -22885,24 +23137,24 @@ var init_village_serialization = __esm({
 // src/village.ts
 import {
   Block as Block4,
-  CommandPermissionLevel,
-  CustomCommandParamType,
-  CustomCommandStatus,
+  CommandPermissionLevel as CommandPermissionLevel2,
+  CustomCommandParamType as CustomCommandParamType2,
+  CustomCommandStatus as CustomCommandStatus2,
   Dimension as Dimension2,
   Player as Player2,
-  system as system4,
+  system as system5,
   World as World3,
-  world as world3
+  world as world4
 } from "@minecraft/server";
 function tickScanVillage() {
-  system4.runJob(scanVillageBlocks(tickScanVillage));
+  system5.runJob(scanVillageBlocks(() => system5.runTimeout(tickScanVillage, 20)));
 }
 function* scanVillageBlocks(callback) {
   try {
-    if (!world3.loadedData) {
+    if (!world4.loadedData) {
       return;
     }
-    const villageList = world3.getVillages();
+    const villageList = world4.getVillages();
     for (const village of villageList) {
       const randomLocationString = randomItem(Object.keys(village.pathNodes));
       if (randomLocationString === void 0) {
@@ -22933,19 +23185,19 @@ function* pruneLocations(dimension, locations, shouldRemove) {
   }
 }
 function tickUpdateVillage() {
-  system4.runJob(updateVillageBlocks(tickUpdateVillage));
+  system5.runJob(updateVillageBlocks(() => system5.runTimeout(tickUpdateVillage, 20)));
 }
 function* updateVillageBlocks(callback) {
   try {
-    if (!world3.loadedData) {
+    if (!world4.loadedData) {
       return;
     }
-    const villageList = world3.getVillages();
+    const villageList = world4.getVillages();
     for (const village of villageList) {
       if (!village.isValid) {
         continue;
       }
-      const dimension = world3.getDimension(village.dimensionId);
+      const dimension = world4.getDimension(village.dimensionId);
       yield* pruneLocations(dimension, village.saplingLocations, (block, locationString) => {
         if (Registry.logTypes.includesFast(block.typeId)) {
           if (!village.treeLocations.includes(locationString)) {
@@ -22955,7 +23207,33 @@ function* updateVillageBlocks(callback) {
         }
         return !Registry.saplingTypes.includesFast(block.typeId);
       });
-      yield* pruneLocations(dimension, village.farmLocations, (block) => !block.isFarm);
+      yield* pruneLocations(dimension, village.farmLocations, (block) => {
+        const aboveBlock = block.aboveSafe();
+        if (aboveBlock?.isHarvestable) {
+          const aboveLocationString = vectorToString(aboveBlock.location);
+          if (!village.harvestLocations.includes(aboveLocationString)) {
+            village.harvestLocations.push(aboveLocationString);
+          }
+        }
+        return !block.isFarm;
+      });
+      yield* pruneLocations(dimension, village.sugarCaneLocations, (block, locationString) => {
+        if (block.isHarvestableSugarCane) {
+          if (!village.harvestLocations.includes(locationString)) {
+            village.harvestLocations.push(locationString);
+          }
+        }
+        return block.typeId !== "minecraft:reeds";
+      });
+      yield* pruneLocations(dimension, village.sweetBerryLocations, (block, locationString) => {
+        if (block.isHarvestable) {
+          if (!village.harvestLocations.includes(locationString)) {
+            village.harvestLocations.push(locationString);
+          }
+        }
+        return block.typeId !== "minecraft:sweet_berry_bush";
+      });
+      yield* pruneLocations(dimension, village.harvestLocations, (block) => !block.isHarvestable);
       yield;
     }
   } finally {
@@ -22963,50 +23241,6 @@ function* updateVillageBlocks(callback) {
       callback();
     }
   }
-}
-function getBoundaryLocations(vector1, vector2, ignoreY = false) {
-  const minV = floorVector(minVectors(vector1, vector2));
-  const maxV = ceilVector(maxVectors(vector1, vector2));
-  const { x: minX, y: minY, z: minZ } = minV;
-  const { x: maxX, y: maxY, z: maxZ } = maxV;
-  const boundary = [];
-  if (ignoreY) {
-    const y = minY;
-    for (let x = minX; x <= maxX; x++) {
-      boundary.push({ x, y, z: minZ });
-      if (minZ !== maxZ) {
-        boundary.push({ x, y, z: maxZ });
-      }
-    }
-    for (let z = minZ + 1; z < maxZ; z++) {
-      boundary.push({ x: minX, y, z });
-      if (minX !== maxX) {
-        boundary.push({ x: maxX, y, z });
-      }
-    }
-  } else {
-    for (let x = minX; x <= maxX; x++) {
-      for (let z = minZ; z <= maxZ; z++) {
-        boundary.push({ x, y: minY, z });
-        if (minY !== maxY) {
-          boundary.push({ x, y: maxY, z });
-        }
-      }
-    }
-    for (let y = minY + 1; y < maxY; y++) {
-      boundary.push({ x: minX, y, z: minZ });
-      if (minZ !== maxZ) {
-        boundary.push({ x: minX, y, z: maxZ });
-      }
-      if (minX !== maxX) {
-        boundary.push({ x: maxX, y, z: minZ });
-        if (minZ !== maxZ) {
-          boundary.push({ x: maxX, y, z: maxZ });
-        }
-      }
-    }
-  }
-  return boundary;
 }
 function isValidConnection(currentBlock, neighborBlock) {
   function checkValidConnection(block1, block2) {
@@ -23025,11 +23259,11 @@ function isValidConnection(currentBlock, neighborBlock) {
       const dirX = offset.x === 1 ? "eastSafe" : "westSafe";
       const dirZ = offset.z === 1 ? "southSafe" : "northSafe";
       const checkBlockX = block1[dirX]();
-      if (checkBlockX !== void 0 && (!checkBlockX.canWalkThrough() || !checkBlockX.aboveSafe()?.canWalkThrough() || !checkBlockX.isValidPath())) {
+      if (checkBlockX === void 0 || (!checkBlockX.canWalkThrough() || !checkBlockX.aboveSafe()?.canWalkThrough() || !checkBlockX.isValidPath())) {
         return false;
       }
       const checkBlockZ = block1[dirZ]();
-      if (checkBlockZ !== void 0 && (!checkBlockZ.canWalkThrough() || !checkBlockZ.aboveSafe()?.canWalkThrough() || !checkBlockZ.isValidPath())) {
+      if (checkBlockZ === void 0 || (!checkBlockZ.canWalkThrough() || !checkBlockZ.aboveSafe()?.canWalkThrough() || !checkBlockZ.isValidPath())) {
         return false;
       }
     }
@@ -23037,27 +23271,28 @@ function isValidConnection(currentBlock, neighborBlock) {
   }
   return checkValidConnection(currentBlock, neighborBlock) && checkValidConnection(neighborBlock, currentBlock);
 }
-var VILLAGE_RADIUS, Village;
+var VILLAGE_RADIUS, Village, BORDER_PARTICLE_RANGE, BORDER_PARTICLE_ID;
 var init_village = __esm({
   "src/village.ts"() {
     "use strict";
+    init_debug();
     init_registry();
     init_utils();
     init_variables();
     init_village_serialization();
-    system4.beforeEvents.startup.subscribe((event) => {
+    system5.beforeEvents.startup.subscribe((event) => {
       const customCommandRegistry = event.customCommandRegistry;
       customCommandRegistry.registerCommand({
         name: "tektopia:scan",
         cheatsRequired: false,
         description: "Scan a block at a specified location",
-        mandatoryParameters: [{ type: CustomCommandParamType.Location, name: "location" }],
-        permissionLevel: CommandPermissionLevel.Admin
+        mandatoryParameters: [{ type: CustomCommandParamType2.Location, name: "location" }],
+        permissionLevel: CommandPermissionLevel2.Admin
       }, (origin, blockLocation) => {
         const player = origin.sourceEntity instanceof Player2 ? origin.sourceEntity : void 0;
         if (player === void 0) {
           return {
-            status: CustomCommandStatus.Failure,
+            status: CustomCommandStatus2.Failure,
             message: "This command can only be run by a player."
           };
         }
@@ -23065,14 +23300,14 @@ var init_village = __esm({
         const village = dimension.getVillage(blockLocation);
         if (village === void 0) {
           return {
-            status: CustomCommandStatus.Failure,
+            status: CustomCommandStatus2.Failure,
             message: "No village was found at the specified location."
           };
         }
-        system4.runJob(village.scanLocation(blockLocation));
+        system5.runJob(village.scanLocation(blockLocation));
         return {
-          status: CustomCommandStatus.Success,
-          message: "Block scanned successfully."
+          status: CustomCommandStatus2.Success,
+          message: "Scan started."
         };
       });
     });
@@ -23111,7 +23346,8 @@ var init_village = __esm({
           sugarCaneLocations: [],
           saplingLocations: [],
           farmLocations: [],
-          cropLocations: [],
+          harvestLocations: [],
+          sweetBerryLocations: [],
           treeLocations: []
         };
       }
@@ -23122,7 +23358,7 @@ var init_village = __esm({
         return decompressVillage(compressed);
       }
       get dimensionId() {
-        return this.data.dimensionId;
+        return this.dimension.id;
       }
       get doorLocation() {
         return this.data.doorLocation;
@@ -23139,17 +23375,20 @@ var init_village = __esm({
       get farmLocations() {
         return this.data.farmLocations;
       }
-      get cropLocations() {
-        return this.data.cropLocations;
+      get harvestLocations() {
+        return this.data.harvestLocations;
+      }
+      get sweetBerryLocations() {
+        return this.data.sweetBerryLocations;
       }
       get treeLocations() {
         return this.data.treeLocations;
       }
       get dimension() {
-        return world3.getDimension(this.data.dimensionId);
+        return world4.getDimension(this.data.dimensionId);
       }
       get isValid() {
-        return world3.villageList.includes(this.data);
+        return world4.villageList.includes(this.data);
       }
       link(aKey, bKey) {
         const village = this;
@@ -23200,7 +23439,7 @@ var init_village = __esm({
           const startingBlockLocationString = vectorToString(startingBlock);
           const alreadyCheckedLocations = /* @__PURE__ */ new Set([startingBlockLocationString]);
           const villageBounds = village.bounds;
-          const dimension = world3.getDimension(village.dimensionId);
+          const dimension = world4.getDimension(village.dimensionId);
           const pathCache = /* @__PURE__ */ new Map();
           while (checkBlockList.length > 0) {
             if (!village.isValid) {
@@ -23267,7 +23506,7 @@ var init_village = __esm({
       *scanLocation(location) {
         const flooredLocation = floorVector(location);
         const village = this;
-        const dimension = world3.getDimension(village.dimensionId);
+        const dimension = world4.getDimension(village.dimensionId);
         const locationStringList = [vectorToString(flooredLocation)];
         const alreadyCheckedLocations = /* @__PURE__ */ new Set();
         while (locationStringList.length > 0) {
@@ -23282,7 +23521,12 @@ var init_village = __esm({
           if (block === void 0 || node === void 0) {
             continue;
           }
-          dimension.spawnParticle("minecraft:basic_flame_particle", centerVector(block.location));
+          if (debugFlags.scanParticles) {
+            try {
+              dimension.spawnParticle("minecraft:basic_flame_particle", centerVector(block.location));
+            } catch {
+            }
+          }
           try {
             const checkBlockList = [
               block,
@@ -23318,6 +23562,11 @@ var init_village = __esm({
                 if (!village.treeLocations.includes(checkBlockString)) {
                   village.treeLocations.push(checkBlockString);
                 }
+              } else if (checkBlock.typeId === "minecraft:sweet_berry_bush") {
+                checkNearbyNodes = true;
+                if (!village.sweetBerryLocations.includes(checkBlockString)) {
+                  village.sweetBerryLocations.push(checkBlockString);
+                }
               }
               if (checkNearbyNodes) {
                 locationStringList.push(...node.neighbors);
@@ -23330,7 +23579,7 @@ var init_village = __esm({
       }
       checkNodeValidity(pathNodeLocation) {
         const village = this;
-        const dimension = world3.getDimension(village.dimensionId);
+        const dimension = world4.getDimension(village.dimensionId);
         const block = dimension.getBlockSafe(stringToVector(pathNodeLocation));
         const pathNode = village.pathNodes[pathNodeLocation];
         if (block === void 0 || pathNode === void 0) {
@@ -23386,32 +23635,57 @@ var init_village = __esm({
     });
     Object.defineProperty(Block4.prototype, "isFarm", {
       get() {
-        const block = this;
-        const blockAbove = block.aboveSafe();
-        if (blockAbove === void 0) {
-          return false;
-        }
-        const blockAboveAbove = blockAbove.aboveSafe();
-        if (blockAboveAbove === void 0) {
-          return false;
-        }
-        return block.typeId === "minecraft:farmland" && blockAbove.isAir && blockAboveAbove.isAir;
+        return this.typeId === "minecraft:farmland";
       }
     });
-    system4.run(tickScanVillage);
-    system4.run(tickUpdateVillage);
-    system4.runInterval(() => {
-      if (!world3.loadedData) {
+    Object.defineProperty(Block4.prototype, "isHarvestableSugarCane", {
+      get() {
+        let validSugarCane = true;
+        const sugarCaneBlocks = [this, this.aboveSafe(), this.aboveSafe(2)];
+        for (const block of sugarCaneBlocks) {
+          if (block?.typeId !== "minecraft:reeds") {
+            validSugarCane = false;
+            break;
+          }
+        }
+        if (validSugarCane) {
+          return true;
+        }
+        return false;
+      }
+    });
+    Object.defineProperty(Block4.prototype, "isHarvestable", {
+      get() {
+        if (["minecraft:pumpkin", "minecraft:melon_block"].includes(this.typeId)) {
+          return true;
+        }
+        const blockGrowth = this.permutation.getState("growth");
+        if (blockGrowth === 7 && ["minecraft:wheat", "minecraft:carrots", "minecraft:potatoes", "minecraft:beetroot"].includes(this.typeId)) {
+          return true;
+        }
+        if (blockGrowth === 3 && this.typeId === "minecraft:sweet_berry_bush") {
+          return true;
+        }
+        if (this.isHarvestableSugarCane) {
+          return true;
+        }
+        return false;
+      }
+    });
+    system5.run(tickScanVillage);
+    system5.run(tickUpdateVillage);
+    system5.runInterval(() => {
+      if (!world4.loadedData) {
         return;
       }
-      const villageList = world3.getVillages();
+      const villageList = world4.getVillages();
       for (const village of villageList) {
-        const dimension = world3.getDimension(village.dimensionId);
+        const dimension = world4.getDimension(village.dimensionId);
         if (!village.searchingBlocks) {
           const doorBlock = dimension.getBlockSafe(village.doorLocation);
           if (doorBlock !== void 0) {
             village.searchingBlocks = true;
-            system4.runJob(
+            system5.runJob(
               village.searchBlocks(doorBlock, true, () => {
                 village.searchingBlocks = false;
               })
@@ -23420,13 +23694,16 @@ var init_village = __esm({
         }
         if (!village.deletingInvalidNodes) {
           village.deletingInvalidNodes = true;
-          system4.runJob(deleteInvalidPathNodes());
+          system5.runJob(deleteInvalidPathNodes());
           function* deleteInvalidPathNodes() {
             const allVillagePathNodes = Object.keys(village.pathNodes);
             try {
               for (const pathNodeLocation of allVillagePathNodes) {
                 if (!village.isValid) {
                   return;
+                }
+                while (village.searchingBlocks) {
+                  yield;
                 }
                 village.checkNodeValidity(pathNodeLocation);
                 yield;
@@ -23438,39 +23715,72 @@ var init_village = __esm({
         }
       }
     }, 100);
-    system4.runInterval(() => {
-      if (!world3.loadedData) {
+    BORDER_PARTICLE_RANGE = 20;
+    BORDER_PARTICLE_ID = "minecraft:rising_border_dust_particle";
+    Player2.prototype.spawnBorderParticles = function(bounds) {
+      const player = this;
+      const range = BORDER_PARTICLE_RANGE;
+      const { x: px, y: py, z: pz } = player.location;
+      const minX = Math.floor(bounds.start.x);
+      const maxX = Math.ceil(bounds.end.x);
+      const minZ = Math.floor(bounds.start.z);
+      const maxZ = Math.ceil(bounds.end.z);
+      if (px < minX - range || px > maxX + range || pz < minZ - range || pz > maxZ + range) {
         return;
       }
-      const players = world3.getAllPlayers();
-      for (const player of players) {
-        const playerLocation = player.location;
-        const villageList = world3.getVillages();
+      const emit = (x, z) => {
+        player.spawnParticle(BORDER_PARTICLE_ID, { x, y: py + randomInt(-10, 10), z });
+      };
+      for (const edgeZ of [minZ, maxZ]) {
+        const dz = pz - edgeZ;
+        if (Math.abs(dz) >= range) {
+          continue;
+        }
+        const half = Math.sqrt(range * range - dz * dz);
+        const from = Math.max(minX, Math.ceil(px - half));
+        const to = Math.min(maxX, Math.floor(px + half));
+        for (let x = from; x <= to; x++) {
+          emit(x, edgeZ);
+        }
+      }
+      for (const edgeX of [minX, maxX]) {
+        const dx = px - edgeX;
+        if (Math.abs(dx) >= range) {
+          continue;
+        }
+        const half = Math.sqrt(range * range - dx * dx);
+        const from = Math.max(minZ + 1, Math.ceil(pz - half));
+        const to = Math.min(maxZ - 1, Math.floor(pz + half));
+        for (let z = from; z <= to; z++) {
+          emit(edgeX, z);
+        }
+      }
+    };
+    system5.runInterval(() => {
+      if (!world4.loadedData) {
+        return;
+      }
+      const villageList = world4.getVillages();
+      if (villageList.length === 0) {
+        return;
+      }
+      for (const player of world4.getAllPlayers()) {
+        const dimensionId = player.dimension.id;
         for (const village of villageList) {
-          const boundaryLocationList = getBoundaryLocations(
-            village.bounds.start,
-            village.bounds.end,
-            true
-          );
-          for (const location of boundaryLocationList) {
-            location.y = playerLocation.y;
-            if (calculateDistance(location, playerLocation) < 20) {
-              try {
-                player.spawnParticle(
-                  "minecraft:rising_border_dust_particle",
-                  addVector(location, "y", randomInt(-10, 10))
-                );
-              } catch {
-              }
-            }
+          if (village.dimensionId !== dimensionId) {
+            continue;
+          }
+          try {
+            player.spawnBorderParticles(village.bounds);
+          } catch {
           }
         }
       }
     }, 20);
     Dimension2.prototype.getVillage = function(location) {
-      const villages = world3.getVillages();
+      const villages = world4.getVillages();
       for (const village of villages) {
-        if (isVectorBetween(location, village.bounds.start, village.bounds.end, true) && this === village.dimension) {
+        if (isVectorBetween(location, village.bounds.start, village.bounds.end, true) && this.id === village.dimensionId) {
           return village;
         }
       }
@@ -23481,12 +23791,12 @@ var init_village = __esm({
 
 // src/saves.ts
 import {
-  system as system5,
+  system as system6,
   World as World4,
-  world as world4
+  world as world5
 } from "@minecraft/server";
-function main() {
-  world4.loadData();
+function main2() {
+  world5.loadData();
 }
 var import_lz_string, worldSaveDataList;
 var init_saves = __esm({
@@ -23585,14 +23895,14 @@ var init_saves = __esm({
         }
       }
     };
-    system5.beforeEvents.shutdown.subscribe(() => {
-      world4.saveData();
+    system6.beforeEvents.shutdown.subscribe(() => {
+      world5.saveData();
     });
-    system5.runInterval(() => {
-      world4.saveData();
+    system6.runInterval(() => {
+      world5.saveData();
     }, 1200);
-    world4.afterEvents.worldLoad.subscribe(() => {
-      main();
+    world5.afterEvents.worldLoad.subscribe(() => {
+      main2();
     });
   }
 });
@@ -23602,8 +23912,8 @@ import {
   Block as Block5,
   Dimension as Dimension3,
   ItemComponentTypes,
-  system as system6,
-  world as world5
+  system as system7,
+  world as world6
 } from "@minecraft/server";
 var require_item_frames = __commonJS({
   "src/item_frames.ts"() {
@@ -23619,14 +23929,14 @@ var require_item_frames = __commonJS({
     };
     var cardinalDirectionList = ["north", "east", "south", "west"];
     function tickScanItemFrames() {
-      system6.runJob(scanItemFrames(() => system6.runTimeout(tickScanItemFrames, 100)));
+      system7.runJob(scanItemFrames(() => system7.runTimeout(tickScanItemFrames, 100)));
     }
-    system6.run(tickScanItemFrames);
+    system7.run(tickScanItemFrames);
     function* scanItemFrames(callback) {
       try {
         const villageItemFrameLocations = [];
-        for (const itemFrame of world5.itemFrameList) {
-          const dimension = world5.getDimension(itemFrame.dimensionId);
+        for (const itemFrame of world6.itemFrameList) {
+          const dimension = world6.getDimension(itemFrame.dimensionId);
           const itemFrameBlock = dimension.getBlockSafe(itemFrame.location);
           if (itemFrameBlock !== void 0) {
             const block = itemFrameBlock;
@@ -23682,7 +23992,7 @@ var require_item_frames = __commonJS({
                 if (!Registry.doorTypes.includes(doorBlock.typeId)) {
                   return false;
                 }
-                const villageList = world5.getVillages();
+                const villageList = world6.getVillages();
                 if (structureId === "townhall") {
                   if (villageList.filter((village) => village.centerString !== blockCenterString).some((village) => calculateSquareDistance(village.center, blockCenter, true) < 200)) {
                     return false;
@@ -23781,12 +24091,12 @@ var require_item_frames = __commonJS({
                 if (result && doorLocation !== void 0) {
                   if (structureId === "townhall") {
                     villageItemFrameLocations.push(blockCenterString);
-                    const villageList = world5.getVillages();
+                    const villageList = world6.getVillages();
                     const villageStringCenterList = villageList.map(
                       (village) => village.centerString
                     );
                     if (!villageStringCenterList.includes(blockCenterString)) {
-                      world5.villageList.push(
+                      world6.villageList.push(
                         Village.createData(blockCenter, dimension.id, doorLocation)
                       );
                     }
@@ -23812,9 +24122,9 @@ var require_item_frames = __commonJS({
           yield;
         }
         const keep = new Set(villageItemFrameLocations);
-        for (let i = world5.villageList.length - 1; i >= 0; i--) {
-          if (!keep.has(vectorToString(world5.villageList[i].center))) {
-            world5.villageList.splice(i, 1);
+        for (let i = world6.villageList.length - 1; i >= 0; i--) {
+          if (!keep.has(vectorToString(world6.villageList[i].center))) {
+            world6.villageList.splice(i, 1);
           }
         }
       } finally {
@@ -23824,7 +24134,7 @@ var require_item_frames = __commonJS({
       }
     }
     Dimension3.prototype.placeStructureFrame = function(location, structureType, isEnchanted, rotation = "north") {
-      const structureManager = world5.structureManager;
+      const structureManager = world6.structureManager;
       const block = this.getBlockSafe(location);
       if (block !== void 0) {
         const item = block.getFrameItem();
@@ -23853,50 +24163,50 @@ var require_item_frames = __commonJS({
       }
       return void 0;
     };
-    world5.afterEvents.playerInteractWithBlock.subscribe((event) => {
+    world6.afterEvents.playerInteractWithBlock.subscribe((event) => {
       const block = event.block;
       const blockLocation = block.location;
       const blockDimension = block.dimension;
-      if (minecraftFrameTypes.includes(block.typeId) && !world5.itemFrameList.some((itemFrame) => areVectorsEqual(itemFrame.location, blockLocation))) {
-        world5.itemFrameList.push({
+      if (minecraftFrameTypes.includes(block.typeId) && !world6.itemFrameList.some((itemFrame) => areVectorsEqual(itemFrame.location, blockLocation))) {
+        world6.itemFrameList.push({
           dimensionId: blockDimension.id,
           location: blockLocation
         });
       }
     });
-    world5.afterEvents.playerPlaceBlock.subscribe((event) => {
+    world6.afterEvents.playerPlaceBlock.subscribe((event) => {
       const block = event.block;
       const blockLocation = block.location;
       const blockDimension = event.dimension;
-      if (minecraftFrameTypes.includes(block.typeId) && !world5.itemFrameList.some(
+      if (minecraftFrameTypes.includes(block.typeId) && !world6.itemFrameList.some(
         (itemFrame) => areVectorsEqual(itemFrame.location, blockLocation)
       )) {
-        world5.itemFrameList.push({
+        world6.itemFrameList.push({
           dimensionId: blockDimension.id,
           location: blockLocation
         });
       }
     });
-    world5.afterEvents.playerBreakBlock.subscribe((event) => {
+    world6.afterEvents.playerBreakBlock.subscribe((event) => {
       const block = event.block;
       const blockLocation = block.location;
       const brokenBlockPermutation = event.brokenBlockPermutation;
       const beforeBlockTypeId = brokenBlockPermutation.type.id;
       if (minecraftFrameTypes.includes(beforeBlockTypeId)) {
-        const itemFrameIndex = world5.itemFrameList.findIndex(
+        const itemFrameIndex = world6.itemFrameList.findIndex(
           (itemFrame) => areVectorsEqual(itemFrame.location, blockLocation)
         );
         if (itemFrameIndex >= 0) {
-          world5.itemFrameList.splice(itemFrameIndex, 1);
+          world6.itemFrameList.splice(itemFrameIndex, 1);
         }
       }
     });
-    system6.runInterval(() => {
-      if (!world5.loadedData) {
+    system7.runInterval(() => {
+      if (!world6.loadedData) {
         return;
       }
-      world5.itemFrameList = world5.itemFrameList.filter((itemFrame) => {
-        const dimension = world5.getDimension(itemFrame.dimensionId);
+      world6.itemFrameList = world6.itemFrameList.filter((itemFrame) => {
+        const dimension = world6.getDimension(itemFrame.dimensionId);
         const block = dimension.getBlockSafe(itemFrame.location);
         return block === void 0 || minecraftFrameTypes.includes(block.typeId);
       });
@@ -23906,8 +24216,8 @@ var require_item_frames = __commonJS({
 
 // src/performance.ts
 import {
-  system as system7,
-  world as world6
+  system as system8,
+  world as world7
 } from "@minecraft/server";
 var require_performance = __commonJS({
   "src/performance.ts"() {
@@ -23915,8 +24225,8 @@ var require_performance = __commonJS({
     init_utils();
     var averageTickRateList = [];
     var lastTickTime = Date.now();
-    system7.runInterval(() => {
-      if (!world6.loadedData) {
+    system8.runInterval(() => {
+      if (!world7.loadedData) {
         return;
       }
       const tickSpeed = Math.floor(1e3 / (Date.now() - lastTickTime));
@@ -23926,187 +24236,11 @@ var require_performance = __commonJS({
         averageTickRateList.shift();
       }
       const averageTickRate = calculateAverage(averageTickRateList);
-      const players = world6.getAllPlayers();
+      const players = world7.getAllPlayers();
       for (const player of players) {
         player.onScreenDisplay.setActionBar(fix(averageTickRate).toString());
       }
     });
-  }
-});
-
-// src/debug.ts
-import {
-  MolangVariableMap,
-  system as system8,
-  world as world7
-} from "@minecraft/server";
-function _tickDrawDebug() {
-  system8.runJob(drawDebug(_tickDrawDebug));
-}
-function* drawDebug(callback) {
-  try {
-    if (!world7.loadedData) {
-      if (callback !== void 0) {
-        callback();
-      }
-      return;
-    }
-    const players = world7.getAllPlayers();
-    const rotate45 = new MolangVariableMap();
-    rotate45.setFloat("rotation", 45);
-    const rotate90 = new MolangVariableMap();
-    rotate90.setFloat("rotation", 90);
-    const rotate135 = new MolangVariableMap();
-    rotate135.setFloat("rotation", 135);
-    const villageList = world7.getVillages();
-    for (const player of players) {
-      const playerPos = player.location;
-      const nearbyRange = 4;
-      const minY = Math.floor(playerPos.y) - 1;
-      const maxY = Math.floor(playerPos.y) + 1;
-      for (const village of villageList) {
-        for (let dx = -nearbyRange; dx <= nearbyRange; dx++) {
-          for (let dy = minY - Math.floor(playerPos.y); dy <= maxY - Math.floor(playerPos.y); dy++) {
-            for (let dz = -nearbyRange; dz <= nearbyRange; dz++) {
-              const checkPos = {
-                x: Math.floor(playerPos.x + dx),
-                y: Math.floor(playerPos.y + dy),
-                z: Math.floor(playerPos.z + dz)
-              };
-              const key = vectorToString(checkPos);
-              if (!village.pathNodes.hasOwnProperty(key)) {
-                continue;
-              }
-              const node = village.pathNodes[key];
-              if (node === void 0) {
-                continue;
-              }
-              const particlePos = addVector(
-                centerVector(checkPos, true),
-                "y",
-                0.01
-              );
-              const colorMap = new MolangVariableMap();
-              let color;
-              if (node.requirement !== void 0) {
-                color = requirementColor(node.requirement);
-              }
-              color ??= {
-                red: 122 / 255,
-                green: 122 / 255,
-                blue: 122 / 255
-              };
-              colorMap.setColorRGB("color", color);
-              player.spawnParticle("tektopia:path_node", particlePos, colorMap);
-              const directionSet = new Set(
-                node.neighbors.map(
-                  (neighborString) => vectorToDirection(
-                    subtractVectors(stringToVector(neighborString), checkPos)
-                  )
-                )
-              );
-              const spawnConnection = (offsetX, offsetY, offsetZ, dir) => {
-                const pos = addVectors(
-                  addVector(centerVector(checkPos, true), "y", 0.02),
-                  { x: offsetX, y: offsetY, z: offsetZ }
-                );
-                try {
-                  if (typeof dir === "string") {
-                    player.spawnParticle(`tektopia:node_connection_${dir}`, pos);
-                  } else {
-                    player.spawnParticle("tektopia:node_connection", pos, dir);
-                  }
-                } catch {
-                }
-              };
-              if (directionSet.has("north")) {
-                spawnConnection(-0.1, 0, -0.5);
-              }
-              if (directionSet.has("east")) {
-                spawnConnection(0.5, 0, -0.1, rotate90);
-              }
-              if (directionSet.has("south")) {
-                spawnConnection(0.1, 0, 0.5);
-              }
-              if (directionSet.has("west")) {
-                spawnConnection(-0.5, 0, 0.1, rotate90);
-              }
-              if (directionSet.has("northeast")) {
-                spawnConnection(0.43, 0, -0.57, rotate135);
-              }
-              if (directionSet.has("northwest")) {
-                spawnConnection(-0.57, 0, -0.43, rotate45);
-              }
-              if (directionSet.has("southeast")) {
-                spawnConnection(0.57, 0, 0.43, rotate45);
-              }
-              if (directionSet.has("southwest")) {
-                spawnConnection(-0.43, 0, 0.57, rotate135);
-              }
-              if (directionSet.has("northdown")) {
-                spawnConnection(-0.1, -0.5, -0.5, "north");
-              }
-              if (directionSet.has("eastdown")) {
-                spawnConnection(0.5, -0.5, -0.1, "east");
-              }
-              if (directionSet.has("southdown")) {
-                spawnConnection(0.1, -0.5, 0.5, "south");
-              }
-              if (directionSet.has("westdown")) {
-                spawnConnection(-0.5, -0.5, 0.1, "west");
-              }
-              if (directionSet.has("northup")) {
-                spawnConnection(-0.1, 0.5, -0.5, "south");
-              }
-              if (directionSet.has("eastup")) {
-                spawnConnection(0.5, 0.5, -0.1, "west");
-              }
-              if (directionSet.has("southup")) {
-                spawnConnection(0.1, 0.5, 0.5, "north");
-              }
-              if (directionSet.has("westup")) {
-                spawnConnection(-0.5, 0.5, 0.1, "east");
-              }
-              yield;
-            }
-          }
-        }
-      }
-    }
-  } finally {
-    if (callback !== void 0) {
-      callback();
-    }
-  }
-}
-function requirementColor(requirement) {
-  if (requirement === void 0 || requirement.types.length === 0) {
-    return { red: 0, green: 0, blue: 0 };
-  }
-  const key = [...requirement.types].sort().join(",") + (requirement.whiteList ? "+w" : "+b");
-  const hash = hashString(key);
-  let red = hash * 197 % 256;
-  let green = hash * 293 % 256;
-  let blue = hash * 503 % 256;
-  if (!requirement.whiteList) {
-    red = red ^ 137;
-    green = green ^ 251;
-    blue = blue ^ 61;
-  }
-  return { red: red / 255, green: green / 255, blue: blue / 255 };
-  function hashString(str) {
-    let hashStr = 0;
-    for (let i = 0; i < str.length; i++) {
-      hashStr = hashStr * 31 + str.charCodeAt(i) | 0;
-    }
-    return hashStr >>> 0;
-  }
-}
-var init_debug = __esm({
-  "src/debug.ts"() {
-    "use strict";
-    init_utils();
-    system8.run(_tickDrawDebug);
   }
 });
 
