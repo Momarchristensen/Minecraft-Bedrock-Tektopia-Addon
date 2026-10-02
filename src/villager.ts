@@ -629,18 +629,20 @@ export class Villager {
 
         if (foundHarvest !== undefined) {
             const harvestBlock = dimension.getBlockSafe(foundHarvest)
+            const harvestLocationString = locationToString(foundHarvest)
+
             if (harvestBlock?.isHarvestable) {
                 const harvestLocationDist = calculateDistance(centerVector(foundHarvest, true), villager.location)
                 if (harvestLocationDist < 2) {
                     villager.setAnimation("harvesting")
-                    villager.holdingItem = "wooden_hoe"
                     villager.lookAt(centerVector(foundHarvest))
                     villager.taskProgress++
                     if (villager.taskProgress > 100 && !villager.isWaiting) {
                         if (harvestBlock.isHarvestableCrop) {
-                            const savedPermutation = harvestBlock.permutation.withState("growth", 0)
                             harvestBlock.destroy()
-                            harvestBlock.setPermutation(savedPermutation)
+                            if (!village.plantLocations.includes(harvestLocationString)) {
+                                village.plantLocations.push(harvestLocationString)
+                            }
                         }
                         else if (harvestBlock.isHarvestableGourd) {
                             harvestBlock.destroy()
@@ -657,12 +659,12 @@ export class Villager {
                             harvestBlock.setPermutation(savedPermutation)
                         }
 
-
                         updatePathNodes([harvestBlock, harvestBlock.aboveSafe(), harvestBlock.belowSafe()].filter(checkBlock => checkBlock !== undefined))
 
                         villager.waiting = 20
                         villager.setAnimation(undefined)
                         villager.currentTask = undefined
+
                     }
                 }
                 else {
@@ -670,7 +672,7 @@ export class Villager {
                 }
             }
             else {
-                village.harvestLocations.remove(locationToString(foundHarvest))
+                village.harvestLocations.remove(harvestLocationString)
                 villager.currentTask = undefined
             }
         }

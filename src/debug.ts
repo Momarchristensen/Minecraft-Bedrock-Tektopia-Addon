@@ -42,7 +42,8 @@ const VILLAGE_LOCATION_PROPERTIES = [
     "farmLocations",
     "harvestLocations",
     "sweetBerryLocations",
-    "treeLocations"
+    "treeLocations",
+    "plantLocations"
 ] as const
 
 export function isDebugFlag(value: string): value is DebugFlag {

@@ -41,6 +41,7 @@ import type {
     LocationString,
     VillageBounds
 } from "."
+import { blockSounds } from "./generated";
 
 system.beforeEvents.startup.subscribe(event => {
     const customCommandRegistry = event.customCommandRegistry
@@ -92,6 +93,7 @@ export interface VillageSaveData {
     saplingLocations: LocationString[]
     farmLocations: LocationString[]
     harvestLocations: LocationString[]
+    plantLocations: LocationString[]
     sweetBerryLocations: LocationString[]
     treeLocations: LocationString[]
 }
@@ -134,6 +136,7 @@ export class Village {
             saplingLocations: [],
             farmLocations: [],
             harvestLocations: [],
+            plantLocations: [],
             sweetBerryLocations: [],
             treeLocations: []
         }
@@ -173,6 +176,10 @@ export class Village {
 
     get harvestLocations() {
         return this.data.harvestLocations
+    }
+
+    get plantLocations() {
+        return this.data.plantLocations
     }
 
     get sweetBerryLocations() {
@@ -549,11 +556,17 @@ Object.defineProperty(Block.prototype, "isHarvestableGourd", {
     }
 })
 
+Object.defineProperty(Block.prototype, "isCrop", {
+    get(this: Block) {
+        return ["minecraft:wheat", "minecraft:carrots", "minecraft:potatoes", "minecraft:beetroot"].includes(this.typeId)
+    }
+})
+
 Object.defineProperty(Block.prototype, "isHarvestableCrop", {
     get(this: Block) {
         const blockGrowth = this.permutation.getState("growth")
 
-        return blockGrowth === 7 && ["minecraft:wheat", "minecraft:carrots", "minecraft:potatoes", "minecraft:beetroot"].includes(this.typeId)
+        return blockGrowth === 7 && this.isCrop
     }
 })
 
@@ -571,6 +584,53 @@ Object.defineProperty(Block.prototype, "isHarvestable", {
             this.isHarvestableCrop ||
             this.isHarvestableSweetBerryBush ||
             this.isHarvestableSugarCane
+    }
+})
+
+Object.defineProperty(Block.prototype, "plantableType", {
+    get(this: Block) {
+        const neighborBlocks = [
+            this.northSafe(),
+            this.eastSafe(),
+            this.southSafe(),
+            this.westSafe()
+        ]
+
+        const seedCounts: Record<string, number> = {}
+
+        for (const neighborBlock of neighborBlocks) {
+            if (neighborBlock === undefined) {
+                continue
+            }
+
+            const belowBlock = neighborBlock.belowSafe()
+
+            if (belowBlock === undefined) {
+                continue
+            }
+
+            if (!belowBlock.isFarm) {
+                continue
+            }
+
+            if (neighborBlock.isCrop) {
+                seedCounts[neighborBlock.typeId] = (seedCounts[neighborBlock.typeId] ?? 0) + 1
+            }
+        }
+
+        const highestCount = Math.max(...Object.values(seedCounts), 0)
+
+        const highestSeedCounts = Object.entries(seedCounts)
+            .filter(([, count]) => count === highestCount)
+            .map(([key]) => key)
+
+        return highestSeedCounts
+    }
+})
+
+Object.defineProperty(Block.prototype, "isPlantable", {
+    get(this: Block) {
+        return this.plantableType !== undefined
     }
 })
 
@@ -676,6 +736,35 @@ function* updateVillageBlocks(callback?: () => void) {
                         }
                     }
                 }
+
+                if (aboveBlock?.isCrop) {
+                    const neighboringFarms = [
+                        block.northSafe(),
+                        block.eastSafe(),
+                        block.southSafe(),
+                        block.westSafe()
+                    ]
+
+                    for (const neighborBlock of neighboringFarms) {
+                        if (neighborBlock === undefined) {
+                            continue
+                        }
+
+                        if (!neighborBlock.isFarm) {
+                            continue
+                        }
+
+                        const plantBlock = neighborBlock.aboveSafe()
+                        if (plantBlock === undefined) {
+                            continue
+                        }
+                        const plantLocationString = locationToString(plantBlock.location)
+                        if (!village.plantLocations.includes(plantLocationString)) {
+                            village.plantLocations.push(plantLocationString)
+                        }
+                    }
+                }
+
                 return !block.isFarm
             })
 

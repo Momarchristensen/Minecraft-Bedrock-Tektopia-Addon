@@ -18,7 +18,7 @@
                 ]
             },
             "geometry": {
-                "default": "geometry.tektopia_lumberjack_male"
+                "default": "geometry.tektopia_lumberjack"
             },
             "sound_effects": {
                 "hit.wood": "hit.wood"

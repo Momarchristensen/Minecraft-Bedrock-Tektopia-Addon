@@ -104,6 +104,9 @@ declare module "@minecraft/server" {
         readonly isHarvestableCrop: boolean
         readonly isHarvestableSweetBerryBush: boolean
         readonly isValidSugarCane: boolean
+        readonly isCrop: boolean
+        readonly plantableType: string[]
+        readonly isPlantable: boolean
     }
 
     interface Container {
