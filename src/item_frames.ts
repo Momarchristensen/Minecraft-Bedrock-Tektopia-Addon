@@ -21,7 +21,7 @@ import {
     directionToVector,
     getOppositeDirection,
     rotationToStructureRotation,
-    vectorToString
+    locationToString
 } from "./utils"
 
 import { Village } from "./village"
@@ -47,10 +47,12 @@ function* validateStructure(
     structureId: string
 ): Generator<void, StructureValidationResult, void> {
     const blockCenter = block.center()
-    const blockCenterString = vectorToString(blockCenter)
-    let doorLocation: Vector3 | undefined
+    const blockCenterString = locationToString(blockCenter)
 
-    const fail = (result: boolean | undefined): StructureValidationResult => ({ result, doorLocation })
+    const fail = (
+        result: boolean | undefined,
+        door?: Vector3
+    ): StructureValidationResult => ({ result, doorLocation: door })
 
     function getFloorBlock(location: Vector3) {
         return dimension.getBlockBelow(location, {
@@ -77,7 +79,6 @@ function* validateStructure(
         return fail(false)
     }
 
-    // Look for a door around the block the frame is mounted on
     const oppositeRotation = getOppositeDirection(rotation)
     const itemFrameOffsetList = [{ x: 0, y: -1, z: 0 }].concat(
         cardinalDirectionList
@@ -99,30 +100,28 @@ function* validateStructure(
         return fail(false)
     }
 
-    doorLocation = addVector(foundDoor.location, "y", -1)
+    const doorLocation = addVector(foundDoor.location, "y", -1)
     const doorBlock = dimension.getBlockSafe(doorLocation)
     if (doorBlock === undefined) {
-        return fail(undefined)
+        return fail(undefined, doorLocation)
     }
     if (!Registry.doorTypes.includes(doorBlock.typeId)) {
-        return fail(false)
+        return fail(false, doorLocation)
     }
 
-    // Village proximity rules
     const villageList = world.getVillages()
     if (structureId === "townhall") {
         const tooCloseToAnotherVillage = villageList
             .filter(village => village.centerString !== blockCenterString)
             .some(village => calculateSquareDistance(village.center, blockCenter, true) < 200)
         if (tooCloseToAnotherVillage) {
-            return fail(false)
+            return fail(false, doorLocation)
         }
     }
     else if (!villageList.some(village => calculateSquareDistance(village.center, blockCenter, true) <= 100)) {
-        return fail(false)
+        return fail(false, doorLocation)
     }
 
-    // Flood fill the interior to make sure it's big enough
     const floorBlockList = []
     const startingLocation = addVectors(doorBlock, directionToVector(rotation))
     const checkLocationList = [
@@ -131,7 +130,7 @@ function* validateStructure(
             ceiling: getCeilingBlock(startingLocation)
         }
     ]
-    const alreadyCheckedLocations = new Set([vectorToString(addVector(doorLocation, "y", -1))])
+    const alreadyCheckedLocations = new Set([locationToString(addVector(doorLocation, "y", -1))])
 
     let steps = 0
     while (checkLocationList.length > 0) {
@@ -141,7 +140,7 @@ function* validateStructure(
             currentLocation.floor !== undefined &&
             currentLocation.ceiling.y - currentLocation.floor.y > 2
         ) {
-            const floorLocationString = vectorToString(currentLocation.floor)
+            const floorLocationString = locationToString(currentLocation.floor)
             if (!alreadyCheckedLocations.has(floorLocationString)) {
                 alreadyCheckedLocations.add(floorLocationString)
 
@@ -166,7 +165,7 @@ function* validateStructure(
 
                 for (const offset of floorOffsetList) {
                     const offsetLocation = addVectors(currentLocation.floor, offset)
-                    if (alreadyCheckedLocations.has(vectorToString(offsetLocation))) {
+                    if (alreadyCheckedLocations.has(locationToString(offsetLocation))) {
                         continue
                     }
 
@@ -177,7 +176,7 @@ function* validateStructure(
                         floorBlock = floorBlock.aboveSafe()
                     }
                     if (floorBlock === undefined) {
-                        return fail(undefined)
+                        return fail(undefined, doorLocation)
                     }
 
                     const ceilingBlock = getCeilingBlock(floorBlock.location)
@@ -203,7 +202,7 @@ function* validateStructure(
         }
     }
 
-    return fail(floorBlockList.length >= 9)
+    return fail(floorBlockList.length >= 9, doorLocation)
 }
 
 function tickScanItemFrames() {
@@ -222,7 +221,7 @@ function* scanItemFrames(callback?: () => void) {
 
             if (block === undefined) {
                 if (itemFrame.structureId === "townhall") {
-                    villageItemFrameLocations.push(vectorToString(centerVector(itemFrame.location)))
+                    villageItemFrameLocations.push(locationToString(centerVector(itemFrame.location)))
                 }
                 yield
                 continue
@@ -230,7 +229,7 @@ function* scanItemFrames(callback?: () => void) {
 
             const item = block.getFrameItem()
             const blockCenter = block.center()
-            const blockCenterString = vectorToString(blockCenter)
+            const blockCenterString = locationToString(blockCenter)
 
             if (!item?.typeId.startsWith("tektopia:structure_")) {
                 itemFrame.structureId = undefined
@@ -283,7 +282,7 @@ function* scanItemFrames(callback?: () => void) {
         // Remove villages whose townhall frame no longer exists
         const keep = new Set(villageItemFrameLocations)
         for (let i = world.villageList.length - 1; i >= 0; i--) {
-            if (!keep.has(vectorToString(world.villageList[i].center))) {
+            if (!keep.has(locationToString(world.villageList[i].center))) {
                 world.villageList.splice(i, 1)
             }
         }

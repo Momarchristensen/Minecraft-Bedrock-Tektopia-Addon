@@ -101,7 +101,11 @@ module.exports = [
         allowConstantLoopConditions: "only-allowed-literals"
       }],
       "@typescript-eslint/no-unnecessary-type-assertion": "warn",
-      "@typescript-eslint/prefer-nullish-coalescing": "warn",
+
+      "@typescript-eslint/prefer-nullish-coalescing": ["warn", {
+        ignorePrimitives: { boolean: true }
+      }],
+
       "@typescript-eslint/prefer-optional-chain": "warn",
       "@typescript-eslint/only-throw-error": ["warn", {
         allow: [

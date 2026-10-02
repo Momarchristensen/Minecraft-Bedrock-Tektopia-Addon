@@ -5,12 +5,15 @@
             "identifier": "tektopia:farmer",
             "enable_attachables": true,
             "animations": {
-                "walk": "animation.tektopia_villager.walk"
+                "main": "controller.animation.tektopia_villager",
+                "walk": "animation.tektopia_villager.walk",
+                "harvest": "animation.tektopia_villager.pickup"
             },
             "scripts": {
                 "animate": [
+                    "main",
                     {
-                        "walk": "query.property('property:animation') == 'walking'"
+                        "harvest": "query.property('property:animation') == 'harvesting'"
                     }
                 ]
             },

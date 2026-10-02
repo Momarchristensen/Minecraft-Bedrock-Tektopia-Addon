@@ -21,9 +21,9 @@ import {
     isVectorBetween,
     randomInt,
     randomItem,
-    stringToVector,
+    stringToLocation,
     subtractVectors,
-    vectorToString
+    locationToString
 } from "./utils"
 
 import { minecraftDirtTypes } from "./variables"
@@ -35,9 +35,10 @@ import {
 } from "./village_serialization"
 
 import type {
+    NodeRequirement,
     PathNode,
     UndefinedRecord,
-    VectorString,
+    LocationString,
     VillageBounds
 } from "."
 
@@ -86,13 +87,13 @@ export interface VillageSaveData {
     center: Vector3
     dimensionId: string
     doorLocation: Vector3
-    pathNodes: UndefinedRecord<VectorString, PathNode>
-    sugarCaneLocations: VectorString[]
-    saplingLocations: VectorString[]
-    farmLocations: VectorString[]
-    harvestLocations: VectorString[]
-    sweetBerryLocations: VectorString[]
-    treeLocations: VectorString[]
+    pathNodes: UndefinedRecord<LocationString, PathNode>
+    sugarCaneLocations: LocationString[]
+    saplingLocations: LocationString[]
+    farmLocations: LocationString[]
+    harvestLocations: LocationString[]
+    sweetBerryLocations: LocationString[]
+    treeLocations: LocationString[]
 }
 
 export class Village {
@@ -107,7 +108,7 @@ export class Village {
 
     private constructor(readonly data: VillageSaveData) {
         this.center = data.center
-        this.centerString = vectorToString(data.center)
+        this.centerString = locationToString(data.center)
         this.bounds = {
             start: { x: data.center.x - VILLAGE_RADIUS, y: -64, z: data.center.z - VILLAGE_RADIUS },
             end: { x: data.center.x + VILLAGE_RADIUS, y: 320, z: data.center.z + VILLAGE_RADIUS }
@@ -190,7 +191,7 @@ export class Village {
         return world.villageList.includes(this.data)
     }
 
-    public link(aKey: VectorString, bKey: VectorString) {
+    public link(aKey: LocationString, bKey: LocationString) {
         const village = this
         if (aKey === bKey) {
             return
@@ -208,7 +209,7 @@ export class Village {
         }
     }
 
-    public unlink(aKey: VectorString, bKey: VectorString) {
+    public unlink(aKey: LocationString, bKey: LocationString) {
         const village = this
         const node1 = village.pathNodes[aKey]
         const node2 = village.pathNodes[bKey]
@@ -220,7 +221,7 @@ export class Village {
         }
     }
 
-    public removeNode(key: VectorString) {
+    public removeNode(key: LocationString) {
         const village = this
         const node = village.pathNodes[key]
         if (node === undefined) {
@@ -243,7 +244,7 @@ export class Village {
             if (!startingBlock.isValidPath(village.bounds)) {
                 return
             }
-            const startingBlockLocationString = vectorToString(startingBlock)
+            const startingBlockLocationString = locationToString(startingBlock)
             const alreadyCheckedLocations = new Set([startingBlockLocationString])
             const villageBounds = village.bounds
             const dimension = world.getDimension(village.dimensionId)
@@ -257,7 +258,7 @@ export class Village {
                     continue
                 }
 
-                const key = vectorToString(checkBlock)
+                const key = locationToString(checkBlock)
                 village.pathNodes[key] ??= { neighbors: [] }
                 const node = village.pathNodes[key]
 
@@ -274,7 +275,7 @@ export class Village {
 
                 const checkBlockNeighbors = checkBlock.getNodeNeighbors()
                 for (const block of checkBlockNeighbors) {
-                    const blockString = vectorToString(block)
+                    const blockString = locationToString(block)
                     let isValid = pathCache.get(blockString)
                     if (isValid === undefined) {
                         isValid = block.isValidPath(villageBounds)
@@ -304,7 +305,7 @@ export class Village {
                     }
                     village.unlink(key, oldKey)
                     if (!overwrite && !alreadyCheckedLocations.has(oldKey)) {
-                        const neighbor = dimension.getBlockSafe(stringToVector(oldKey))
+                        const neighbor = dimension.getBlockSafe(stringToLocation(oldKey))
                         if (neighbor?.isValidPath(villageBounds)) {
                             alreadyCheckedLocations.add(oldKey)
                             checkBlockList.push(neighbor)
@@ -325,7 +326,7 @@ export class Village {
         const flooredLocation = floorVector(location)
         const village = this
         const dimension = world.getDimension(village.dimensionId)
-        const locationStringList = [vectorToString(flooredLocation)]
+        const locationStringList = [locationToString(flooredLocation)]
         const alreadyCheckedLocations = new Set()
         while (locationStringList.length > 0) {
             const locationString = locationStringList.pop()
@@ -333,11 +334,11 @@ export class Village {
                 continue
             }
             alreadyCheckedLocations.add(locationString)
-            const node = village.pathNodes[locationString]
-            const currentLocation = stringToVector(locationString)
+            let node = village.pathNodes[locationString]
+            const currentLocation = stringToLocation(locationString)
             const block = dimension.getBlockSafe(currentLocation)
 
-            if (block === undefined || node === undefined) {
+            if (block === undefined) {
                 continue
             }
 
@@ -362,14 +363,20 @@ export class Village {
                         continue
                     }
                     let checkNearbyNodes = false
-                    const checkBlockString = vectorToString(checkBlock)
+                    const checkBlockString = locationToString(checkBlock)
                     if (checkBlock.isFarm) {
                         checkNearbyNodes = true
                         if (!village.farmLocations.includes(checkBlockString)) {
                             village.farmLocations.push(checkBlockString)
                         }
+
+                        const aboveCheckBlock = checkBlock.aboveSafe()
+
+                        if (aboveCheckBlock !== undefined) {
+                            node = village.pathNodes[locationToString(aboveCheckBlock)]
+                        }
                     }
-                    else if (checkBlock.typeId === "minecraft:reeds") {
+                    else if (checkBlock.isValidSugarCane) {
                         checkNearbyNodes = true
                         if (!village.sugarCaneLocations.includes(checkBlockString)) {
                             village.sugarCaneLocations.push(checkBlockString)
@@ -394,7 +401,7 @@ export class Village {
                         }
                     }
 
-                    if (checkNearbyNodes) {
+                    if (checkNearbyNodes && node !== undefined) {
                         locationStringList.push(...node.neighbors)
                     }
                 }
@@ -405,10 +412,10 @@ export class Village {
         }
     }
 
-    checkNodeValidity(pathNodeLocation: VectorString) {
+    checkNodeValidity(pathNodeLocation: LocationString) {
         const village = this
         const dimension = world.getDimension(village.dimensionId)
-        const block = dimension.getBlockSafe(stringToVector(pathNodeLocation))
+        const block = dimension.getBlockSafe(stringToLocation(pathNodeLocation))
         const pathNode = village.pathNodes[pathNodeLocation]
         if (block === undefined || pathNode === undefined) {
             return
@@ -420,16 +427,45 @@ export class Village {
         }
 
         for (const neighborKey of [...pathNode.neighbors]) {
-            const neighborBlock = dimension.getBlockSafe(stringToVector(neighborKey))
+            const neighborBlock = dimension.getBlockSafe(stringToLocation(neighborKey))
             if (neighborBlock !== undefined && !isValidConnection(block, neighborBlock)) {
                 village.unlink(pathNodeLocation, neighborKey)
-                if (debugFlags.nodeDeletionWarnings) {
+                if (debugFlags.nodeUpdatedWarnings) {
                     console.warn("Node connection deleted: ", pathNodeLocation, neighborKey)
                 }
             }
         }
+
+        const requirement = block.getNodeRequirement()
+        if (!requirementsEqual(pathNode.requirement, requirement)) {
+            if (requirement !== undefined) {
+                pathNode.requirement = requirement
+            }
+            else {
+                delete pathNode.requirement
+            }
+            if (debugFlags.nodeUpdatedWarnings) {
+                console.warn("Node requirement updated: ", pathNodeLocation)
+            }
+        }
     }
 
+}
+
+Block.prototype.getVillage = function () {
+    return this.dimension.getVillage(this.location)
+}
+
+function requirementsEqual(a: NodeRequirement | undefined, b: NodeRequirement | undefined) {
+    if (a === undefined || b === undefined) {
+        return a === b
+    }
+    if (a.whiteList !== b.whiteList || a.types.length !== b.types.length) {
+        return false
+    }
+    const sortedA = a.types.slice().sort()
+    const sortedB = b.types.slice().sort()
+    return sortedA.every((type, index) => type === sortedB[index])
 }
 
 World.prototype.getVillages = function () {
@@ -474,6 +510,13 @@ Object.defineProperty(Block.prototype, "isTree", {
     }
 })
 
+Object.defineProperty(Block.prototype, "isValidSugarCane", {
+    get(this: Block) {
+        const belowBlock = this.belowSafe()
+        return belowBlock !== undefined && belowBlock.isSolid && this.typeId === "minecraft:reeds"
+    }
+})
+
 Object.defineProperty(Block.prototype, "isFarm", {
     get(this: Block) {
         return this.typeId === "minecraft:farmland"
@@ -500,27 +543,34 @@ Object.defineProperty(Block.prototype, "isHarvestableSugarCane", {
     }
 })
 
-Object.defineProperty(Block.prototype, "isHarvestable", {
+Object.defineProperty(Block.prototype, "isHarvestableGourd", {
     get(this: Block) {
-        if (["minecraft:pumpkin", "minecraft:melon_block"].includes(this.typeId)) {
-            return true
-        }
+        return ["minecraft:pumpkin", "minecraft:melon_block"].includes(this.typeId)
+    }
+})
 
+Object.defineProperty(Block.prototype, "isHarvestableCrop", {
+    get(this: Block) {
         const blockGrowth = this.permutation.getState("growth")
 
-        if (blockGrowth === 7 && ["minecraft:wheat", "minecraft:carrots", "minecraft:potatoes", "minecraft:beetroot"].includes(this.typeId)) {
-            return true
-        }
+        return blockGrowth === 7 && ["minecraft:wheat", "minecraft:carrots", "minecraft:potatoes", "minecraft:beetroot"].includes(this.typeId)
+    }
+})
 
-        if (blockGrowth === 3 && this.typeId === "minecraft:sweet_berry_bush") {
-            return true
-        }
+Object.defineProperty(Block.prototype, "isHarvestableSweetBerryBush", {
+    get(this: Block) {
+        const blockGrowth = this.permutation.getState("growth")
 
-        if (this.isHarvestableSugarCane) {
-            return true
-        }
+        return blockGrowth === 3 && this.typeId === "minecraft:sweet_berry_bush"
+    }
+})
 
-        return false
+Object.defineProperty(Block.prototype, "isHarvestable", {
+    get(this: Block) {
+        return this.isHarvestableGourd ||
+            this.isHarvestableCrop ||
+            this.isHarvestableSweetBerryBush ||
+            this.isHarvestableSugarCane
     }
 })
 
@@ -537,12 +587,12 @@ function* scanVillageBlocks(callback?: () => void) {
         }
         const villageList = world.getVillages()
         for (const village of villageList) {
-            const randomLocationString = randomItem(Object.keys(village.pathNodes) as VectorString[])
+            const randomLocationString = randomItem(Object.keys(village.pathNodes) as LocationString[])
             if (randomLocationString === undefined) {
                 continue
             }
 
-            const randomLocation = stringToVector(randomLocationString)
+            const randomLocation = stringToLocation(randomLocationString)
 
             yield* village.scanLocation(randomLocation)
         }
@@ -554,7 +604,7 @@ function* scanVillageBlocks(callback?: () => void) {
     }
 }
 
-function* pruneLocations(dimension: Dimension, locations: VectorString[], shouldRemove: (block: Block, locationString: VectorString) => boolean) {
+function* pruneLocations(dimension: Dimension, locations: LocationString[], shouldRemove: (block: Block, locationString: LocationString) => boolean) {
     for (let i = locations.length - 1; i >= 0; i--) {
         if (i >= locations.length) {
             i = locations.length
@@ -562,7 +612,7 @@ function* pruneLocations(dimension: Dimension, locations: VectorString[], should
         }
 
         const locationString = locations[i]
-        const block = dimension.getBlockSafe(stringToVector(locationString))
+        const block = dimension.getBlockSafe(stringToLocation(locationString))
 
         if (block !== undefined && shouldRemove(block, locationString)) {
             locations[i] = locations[locations.length - 1]
@@ -602,10 +652,28 @@ function* updateVillageBlocks(callback?: () => void) {
 
             yield* pruneLocations(dimension, village.farmLocations, block => {
                 const aboveBlock = block.aboveSafe()
-                if (aboveBlock?.isHarvestable) {
-                    const aboveLocationString = vectorToString(aboveBlock.location)
+                if (aboveBlock?.isHarvestableCrop) {
+                    const aboveLocationString = locationToString(aboveBlock.location)
                     if (!village.harvestLocations.includes(aboveLocationString)) {
                         village.harvestLocations.push(aboveLocationString)
+                    }
+                }
+
+                if (aboveBlock !== undefined) {
+                    const gourdBlocks = [
+                        aboveBlock.northSafe(),
+                        aboveBlock.eastSafe(),
+                        aboveBlock.southSafe(),
+                        aboveBlock.westSafe()
+                    ]
+
+                    for (const gourdBlock of gourdBlocks) {
+                        if (gourdBlock?.isHarvestableGourd) {
+                            const gourdLocationString = locationToString(gourdBlock.location)
+                            if (!village.harvestLocations.includes(gourdLocationString)) {
+                                village.harvestLocations.push(gourdLocationString)
+                            }
+                        }
                     }
                 }
                 return !block.isFarm
@@ -622,7 +690,7 @@ function* updateVillageBlocks(callback?: () => void) {
             })
 
             yield* pruneLocations(dimension, village.sweetBerryLocations, (block, locationString) => {
-                if (block.isHarvestable) {
+                if (block.isHarvestableSweetBerryBush) {
                     if (!village.harvestLocations.includes(locationString)) {
                         village.harvestLocations.push(locationString)
                     }
@@ -665,10 +733,10 @@ system.runInterval(() => {
 
         if (!village.deletingInvalidNodes) {
             village.deletingInvalidNodes = true
-            system.runJob(deleteInvalidPathNodes())
+            system.runJob(checkVillagePathNodes())
 
-            function* deleteInvalidPathNodes() {
-                const allVillagePathNodes = Object.keys(village.pathNodes) as VectorString[]
+            function* checkVillagePathNodes() {
+                const allVillagePathNodes = Object.keys(village.pathNodes) as LocationString[]
                 try {
                     for (const pathNodeLocation of allVillagePathNodes) {
                         if (!village.isValid) {

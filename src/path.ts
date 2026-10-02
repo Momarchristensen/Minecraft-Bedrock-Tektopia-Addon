@@ -18,12 +18,14 @@ import { Registry } from "./registry"
 
 import {
     addVectors,
+    calculateDistance,
     calculateSquareDistance,
     centerVector,
     floorVector,
     isVectorBetween,
-    stringToVector,
-    vectorToString
+    stringToLocation,
+    locationToString,
+    addVector
 } from "./utils"
 
 import {
@@ -36,7 +38,7 @@ import type {
     NodeRequirement,
     PathNode,
     UndefinedRecord,
-    VectorString,
+    LocationString,
     VillageBounds
 } from "."
 
@@ -134,6 +136,34 @@ class PriorityQueue<T> {
     }
 }
 
+function checkDiagonalRequirements(
+    nodeList: UndefinedRecord<string, PathNode>,
+    from: Vector3,
+    to: Vector3,
+    villagerType: string
+) {
+    if (from.x === to.x || from.z === to.z) {
+        return true
+    }
+
+    const corners: Vector3[] = [
+        { x: to.x, y: from.y, z: from.z },
+        { x: from.x, y: from.y, z: to.z }
+    ]
+
+    for (const corner of corners) {
+        const cornerNode = nodeList[locationToString(corner)]
+        if (cornerNode?.requirement === undefined) {
+            continue
+        }
+        if (!checkRequirement(villagerType, cornerNode.requirement)) {
+            return false
+        }
+    }
+
+    return true
+}
+
 export function generatePath(entity: Villager, start: Vector3, end: Vector3, token: { cancelled: boolean }) {
     return new Promise<PathResult>(resolve => {
         const village = entity.getVillage()
@@ -186,8 +216,8 @@ export function generatePath(entity: Villager, start: Vector3, end: Vector3, tok
         }
 
         function* tickGeneratePath() {
-            let startKey = vectorToString(startLocation)
-            let endKey = vectorToString(endLocation)
+            let startKey = locationToString(startLocation)
+            let endKey = locationToString(endLocation)
 
             if (nodeList[startKey] === undefined) {
                 const nearestStart = findNearestNodeLocation(nodeList, startLocation)
@@ -195,7 +225,7 @@ export function generatePath(entity: Villager, start: Vector3, end: Vector3, tok
                     resolve("no_path")
                     return
                 }
-                startKey = vectorToString(nearestStart)
+                startKey = locationToString(nearestStart)
             }
             if (nodeList[endKey] === undefined) {
                 const nearestEnd = findNearestNodeLocation(nodeList, endLocation)
@@ -203,11 +233,11 @@ export function generatePath(entity: Villager, start: Vector3, end: Vector3, tok
                     resolve("no_path")
                     return
                 }
-                endKey = vectorToString(nearestEnd)
+                endKey = locationToString(nearestEnd)
             }
 
-            const startVec = stringToVector(startKey)
-            const endVec = stringToVector(endKey)
+            const startVec = stringToLocation(startKey)
+            const endVec = stringToLocation(endKey)
 
             if (startKey === endKey) {
                 resolve([startVec])
@@ -220,8 +250,8 @@ export function generatePath(entity: Villager, start: Vector3, end: Vector3, tok
 
             const closedSet = new Set<string>()
             const gScore = new Map<string, number>([[startKey, 0]])
-            const cameFrom = new Map<string, VectorString>()
-            const openSet = new PriorityQueue<VectorString>()
+            const cameFrom = new Map<string, LocationString>()
+            const openSet = new PriorityQueue<LocationString>()
             openSet.enqueue(startKey, heuristic(startVec, endVec) * HEURISTIC_WEIGHT)
 
             const checkEntityList = getCheckPathEntities(dimensionId, entity)
@@ -237,9 +267,9 @@ export function generatePath(entity: Villager, start: Vector3, end: Vector3, tok
 
                 if (currentKey === endKey) {
                     const path: Vector3[] = []
-                    let key: VectorString | undefined = currentKey
+                    let key: LocationString | undefined = currentKey
                     while (key !== undefined) {
-                        path.push(stringToVector(key))
+                        path.push(stringToLocation(key))
                         key = cameFrom.get(key)
                     }
                     path.reverse()
@@ -257,7 +287,7 @@ export function generatePath(entity: Villager, start: Vector3, end: Vector3, tok
                     return
                 }
 
-                const currentVec = stringToVector(currentKey)
+                const currentVec = stringToLocation(currentKey)
                 const currentNode = nodeList[currentKey]
                 if (currentNode === undefined) {
                     continue
@@ -276,7 +306,12 @@ export function generatePath(entity: Villager, start: Vector3, end: Vector3, tok
                         continue
                     }
 
-                    const neighborLocation = stringToVector(neighborKey)
+                    const neighborLocation = stringToLocation(neighborKey)
+
+                    if (!checkDiagonalRequirements(nodeList, currentVec, neighborLocation, entity.typeId)) {
+                        continue
+                    }
+
                     const neighborCenter = centerVector(neighborLocation, true)
 
                     let isBlocked = false
@@ -313,8 +348,8 @@ export function generatePath(entity: Villager, start: Vector3, end: Vector3, tok
     })
 }
 
-function findNearestNodeLocation(nodeList: UndefinedRecord<string, PathNode>, location: Vector3, maxRadius = 6) {
-    if (nodeList[vectorToString(location)] !== undefined) {
+function findNearestNodeLocation(nodeList: UndefinedRecord<string, PathNode>, location: Vector3, maxRadius = 1.5) {
+    if (nodeList[locationToString(location)] !== undefined) {
         return location
     }
     for (let radius = 1; radius <= maxRadius; radius++) {
@@ -327,10 +362,10 @@ function findNearestNodeLocation(nodeList: UndefinedRecord<string, PathNode>, lo
                         continue
                     }
                     const candidate = addVectors(location, { x: dx, y: dy, z: dz })
-                    if (nodeList[vectorToString(candidate)] === undefined) {
+                    if (nodeList[locationToString(candidate)] === undefined) {
                         continue
                     }
-                    const dist = calculateSquareDistance(candidate, location)
+                    const dist = calculateDistance(centerVector(addVector(candidate, "y", 0.25), true), location)
                     if (dist < closestDist) {
                         closestDist = dist
                         closest = candidate
@@ -458,21 +493,23 @@ function* updateNodesBlocks(callback?: () => void) {
                     continue
                 }
                 const neighborList = checkBlock.getNodeNeighbors()
-                const checkBlockStringLocation = vectorToString(checkBlock)
+                const checkBlockStringLocation = locationToString(checkBlock)
                 const villageList = world.getVillages()
                 for (const village of villageList) {
                     const alreadyCheckedLocations = new Set()
                     const villageBounds = village.bounds
                     village.removeNode(checkBlockStringLocation)
                     for (const neighborBlock of neighborList) {
-                        const neighborLocationString = vectorToString(neighborBlock)
+                        const neighborLocationString = locationToString(neighborBlock)
                         if (!alreadyCheckedLocations.has(neighborLocationString)) {
                             alreadyCheckedLocations.add(neighborLocationString)
                             if (village.pathNodes[neighborLocationString] !== undefined && neighborBlock.isValidPath(villageBounds)) {
-                                system.runJob(village.searchBlocks(neighborBlock))
+                                yield* village.searchBlocks(neighborBlock)
                             }
                         }
                     }
+
+                    yield* village.scanLocation(checkBlock.location)
                 }
 
                 if (i % 3 === 0) {

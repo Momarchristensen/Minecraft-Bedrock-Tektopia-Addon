@@ -13,7 +13,7 @@ import type {
     VillageSaveData
 } from "./village"
 
-export type VectorString = string & {
+export type LocationString = string & {
     readonly __vectorString: unique symbol
 }
 
@@ -95,10 +95,15 @@ declare module "@minecraft/server" {
         isValidPath(villageBounds?: VillageBounds): boolean
         getNodeRequirement(): NodeRequirement | undefined
         scanBlock(village: Village): boolean
+        getVillage(): Village | undefined
         readonly isTree: boolean
         readonly isFarm: boolean
         readonly isHarvestable: boolean
         readonly isHarvestableSugarCane: boolean
+        readonly isHarvestableGourd: boolean
+        readonly isHarvestableCrop: boolean
+        readonly isHarvestableSweetBerryBush: boolean
+        readonly isValidSugarCane: boolean
     }
 
     interface Container {
@@ -131,7 +136,7 @@ export interface NodeRequirement {
 }
 
 export interface PathNode {
-    neighbors: VectorString[]
+    neighbors: LocationString[]
     requirement?: NodeRequirement
 }
 

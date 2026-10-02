@@ -39,7 +39,8 @@ export const tektopiaVillagers: UndefinedRecord<string, VillagerConfig> = {
                 id: "harvest",
                 name: "Harvest",
                 required: false,
-                condition: () => false
+                condition: (villager: Villager, village: Village) => villager.findHarvest(village) !== undefined,
+                tick: (villager: Villager, village: Village) => villager.tickHarvest(village)
             }
         ],
         pickupItems: [
@@ -47,11 +48,15 @@ export const tektopiaVillagers: UndefinedRecord<string, VillagerConfig> = {
             "minecraft:beetroot_seeds",
             "minecraft:pumpkin_seeds",
             "minecraft:melon_seeds",
-            "minecraft:sugarcane",
+            "minecraft:sugar_cane",
             "minecraft:potato",
             "minecraft:carrot",
             "minecraft:pumpkin",
-            "minecraft:melon_slice"
+            "minecraft:melon_slice",
+
+            "minecraft:wheat",
+            "minecraft:beetroot",
+            "minecraft:sweet_berries"
         ]
     },
     "tektopia:lumberjack": {

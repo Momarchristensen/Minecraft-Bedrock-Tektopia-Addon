@@ -10,7 +10,7 @@ import {
     areVectorsEqual,
     calculateDistance,
     removeIdentifier,
-    vectorToString
+    locationToString
 } from "./utils"
 
 export function destroyTree(startingBlock: Block, callback?: () => void) {
@@ -70,7 +70,7 @@ export function destroyTree(startingBlock: Block, callback?: () => void) {
                 if (checkBlock === undefined) {
                     continue
                 }
-                const checkBlockString = vectorToString(checkBlock)
+                const checkBlockString = locationToString(checkBlock)
                 if (alreadyCheckedLocations.has(checkBlockString)) {
                     continue
                 }
@@ -116,7 +116,7 @@ export function destroyTree(startingBlock: Block, callback?: () => void) {
                 if (checkBlock === undefined) {
                     continue
                 }
-                const checkBlockString = vectorToString(checkBlock)
+                const checkBlockString = locationToString(checkBlock)
                 if (alreadyCheckedLocations.has(checkBlockString)) {
                     continue
                 }
@@ -198,7 +198,7 @@ export function destroyTree(startingBlock: Block, callback?: () => void) {
                         if (neighborBlock === undefined) {
                             continue
                         }
-                        const blockString = vectorToString(neighborBlock)
+                        const blockString = locationToString(neighborBlock)
                         if (!checkedBlocks.has(blockString)) {
                             checkedBlocks.add(blockString)
                             blocksToUpdate.push(neighborBlock, neighborBlock.aboveSafe())

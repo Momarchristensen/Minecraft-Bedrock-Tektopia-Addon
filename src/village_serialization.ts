@@ -1,12 +1,12 @@
 import {
-    stringToVector,
-    vectorToString
+    stringToLocation,
+    locationToString
 } from "./utils"
 
 import type {
     PathNode,
     UndefinedRecord,
-    VectorString
+    LocationString
 } from "."
 
 import type { VillageSaveData } from "./village"
@@ -153,14 +153,14 @@ function unpackPoints(text: string, origin: Vector3): Vector3[] {
     return points
 }
 
-function packLocations(locationList: VectorString[], origin: Vector3): string {
-    const points = locationList.map(location => stringToVector(location))
+function packLocations(locationList: LocationString[], origin: Vector3): string {
+    const points = locationList.map(location => stringToLocation(location))
     points.sort(comparePoints)
     return packPoints(points, origin)
 }
 
-function unpackLocations(text: string, origin: Vector3): VectorString[] {
-    return unpackPoints(text, origin).map(point => vectorToString(point))
+function unpackLocations(text: string, origin: Vector3): LocationString[] {
+    return unpackPoints(text, origin).map(point => locationToString(point))
 }
 
 function originOf(center: Vector3): Vector3 {
@@ -185,7 +185,7 @@ function offsetIndex(dx: number, dy: number, dz: number) {
 }
 
 function offsetKey(location: Vector3, offset: Vector3) {
-    return vectorToString({
+    return locationToString({
         x: location.x + offset.x,
         y: location.y + offset.y,
         z: location.z + offset.z
@@ -195,7 +195,7 @@ function offsetKey(location: Vector3, offset: Vector3) {
 export function compressVillage(data: VillageSaveData): CompressedVillage {
     const center = data.center
     const origin = originOf(center)
-    const nodeEntries = SAVE_PATH_NODES ? (Object.keys(data.pathNodes) as VectorString[]).map(key => ({ key, location: stringToVector(key) })) : []
+    const nodeEntries = SAVE_PATH_NODES ? (Object.keys(data.pathNodes) as LocationString[]).map(key => ({ key, location: stringToLocation(key) })) : []
     nodeEntries.sort((a, b) => comparePoints(a.location, b.location))
 
     const indexByKey = new Map<string, number>()
@@ -320,7 +320,7 @@ export function decompressVillage(compressed: CompressedVillage): VillageSaveDat
     const origin = originOf(center)
 
     const nodePoints = unpackPoints(packedNodeLocations, origin)
-    const nodeKeys = nodePoints.map(point => vectorToString(point))
+    const nodeKeys = nodePoints.map(point => locationToString(point))
     const pathNodes: UndefinedRecord<string, PathNode> = {}
 
     for (const key of nodeKeys) {

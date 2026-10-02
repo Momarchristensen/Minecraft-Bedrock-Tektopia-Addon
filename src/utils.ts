@@ -3,7 +3,7 @@ import {
     type Vector3
 } from "@minecraft/server"
 
-import type { VectorString } from "."
+import type { LocationString } from "."
 
 export type Direction = "north" | "south" | "east" | "west" | "up" | "down"
 
@@ -87,8 +87,16 @@ export function randomItem<T>(list: T[]): T | undefined {
     return list[randomInt(0, list.length - 1)]
 }
 
-export function vectorToString(vector: Vector3): VectorString {
-    return `${vector.x},${vector.y},${vector.z}` as VectorString
+export function locationToString(vector: Vector3): LocationString {
+    return `${vector.x},${vector.y},${vector.z}` as LocationString
+}
+
+export function fixVector(vector: Vector3, decimalPlaces = 0): Vector3 {
+    return {
+        x: fix(vector.x, decimalPlaces),
+        y: fix(vector.y, decimalPlaces),
+        z: fix(vector.z, decimalPlaces)
+    }
 }
 
 export function centerVector(vector: Vector3, floorY = false): Vector3 {
@@ -157,7 +165,7 @@ export function rotationToStructureRotation(rotation: string): StructureRotation
     return undefined
 }
 
-export function stringToVector(string: VectorString): Vector3 {
+export function stringToLocation(string: LocationString): Vector3 {
     const index1 = string.indexOf(",")
     const index2 = string.indexOf(",", index1 + 1)
     return {
@@ -243,7 +251,7 @@ const directionMap: Record<string, string> = {
 }
 
 export function vectorToDirection(vector: Vector3): string | undefined {
-    return directionMap[vectorToString(vector)]
+    return directionMap[locationToString(vector)]
 }
 
 export function subtractVectors(vector1: Vector3, vector2: Vector3): Vector3 {
