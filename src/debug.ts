@@ -27,7 +27,8 @@ import type {
 import type { RGB, Vector3 } from "@minecraft/server"
 
 export const debugFlags = {
-    scanParticles: false,
+    locationScanParticles: false,
+    searchBlocksParticles: false,
     pathNodeParticles: false,
     villageLocationParticles: false,
     villagerDebugNameTags: false,

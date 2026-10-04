@@ -1,3 +1,10 @@
+import type {
+    StructureType,
+    StructureValidationResult
+} from "./structure"
+
+import type { CardinalDirection } from "./utils"
+
 import type { TillResult } from "./variables"
 
 import type {
@@ -62,7 +69,7 @@ declare module "@minecraft/server" {
 
     interface Dimension {
         getBlockSafe(...args: Parameters<Dimension["getBlock"]>): ReturnType<Dimension["getBlock"]> | undefined
-
+        validateStructure(block: Block, rotation: CardinalDirection, structureId: StructureType): Generator<void, StructureValidationResult, void>
         placeStructureFrame(location: Vector3, structureId: string, isEnchanted: boolean, rotation: string): void
         getVillage(location: Vector3): Village | undefined
     }

@@ -32,7 +32,6 @@ import {
     floorVector,
     formatTypeId,
     fix,
-    isVectorBetween,
     multiplyVector,
     randomInt,
     removeIdentifier,
@@ -354,7 +353,7 @@ export class Villager {
                 continue
             }
 
-            if (!isVectorBetween(item.location, village.bounds.start, village.bounds.end)) {
+            if (!village.isInBounds(item.location)) {
                 continue
             }
 
@@ -746,10 +745,11 @@ export class Villager {
             }
 
             mineBlock.destroy()
-            updatePathNodes([mineBlock, mineBlock.aboveSafe(), mineBlock.belowSafe()].filter(checkBlock => checkBlock !== undefined))
             villager.waiting = 15
             villager.setAnimation(undefined)
             villager.currentTask = undefined
+
+            updatePathNodes([mineBlock, mineBlock.aboveSafe(), mineBlock.belowSafe()].filter(checkBlock => checkBlock !== undefined))
         }
         else if (mineTask.type === "light") {
             const torchBlock = mineTask.block

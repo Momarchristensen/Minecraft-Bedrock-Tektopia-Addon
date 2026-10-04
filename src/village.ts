@@ -219,6 +219,24 @@ export class Village {
         this.data.structures[locationString] = structureData
     }
 
+    removeStructure(locationString: LocationString) {
+        delete this.data.structures[locationString]
+    }
+
+    getStructures(): Structure[] {
+        const resultList: Structure[] = []
+
+        for (const [locationString, structureData] of Object.entries(this.data.structures)) {
+            if (structureData === undefined) {
+                continue
+            }
+
+            resultList.push(Structure.from(locationString as LocationString, structureData, this.dimension))
+        }
+
+        return resultList
+    }
+
     findStructures<K extends StructureType>(type: K): Array<StructureTypeMap[K]> {
         const resultList: Array<StructureTypeMap[K]> = []
 
@@ -284,22 +302,32 @@ export class Village {
         delete village.pathNodes[key]
     }
 
+    isInBounds(location: Vector3) {
+        return isVectorBetween(location, this.bounds.start, this.bounds.end, true)
+    }
+
     *searchBlocks(
-        startingBlock: Block,
+        startingBlock: Block | Block[],
         overwrite = false,
         callback?: () => void
     ) {
         const village = this
         try {
-            const checkBlockList = [startingBlock]
-            if (!startingBlock.isValidPath(village.bounds)) {
-                return
-            }
-            const startingBlockLocationString = locationToString(startingBlock)
-            const alreadyCheckedLocations = new Set([startingBlockLocationString])
             const villageBounds = village.bounds
             const dimension = world.getDimension(village.dimensionId)
             const pathCache = new Map<string, boolean>()
+            const checkBlockList: Block[] = []
+            const alreadyCheckedLocations = new Set<string>()
+
+            for (const seedBlock of Array.isArray(startingBlock) ? startingBlock : [startingBlock]) {
+                const seedString = locationToString(seedBlock)
+                if (alreadyCheckedLocations.has(seedString) || !seedBlock.isValidPath(villageBounds)) {
+                    continue
+                }
+                alreadyCheckedLocations.add(seedString)
+                pathCache.set(seedString, true)
+                checkBlockList.push(seedBlock)
+            }
             while (checkBlockList.length > 0) {
                 if (!village.isValid) {
                     return
@@ -307,6 +335,13 @@ export class Village {
                 const checkBlock = checkBlockList.shift()
                 if (!checkBlock?.isValid) {
                     continue
+                }
+
+                if (debugFlags.searchBlocksParticles) {
+                    dimension.spawnParticle(
+                        "minecraft:heart_particle",
+                        centerVector(checkBlock.location)
+                    )
                 }
 
                 const key = locationToString(checkBlock)
@@ -386,7 +421,7 @@ export class Village {
         }
     }
 
-    *scanLocation(location: Vector3) {
+    *scanLocation(location: Vector3, flood = true) {
         const flooredLocation = floorVector(location)
         const village = this
         const dimension = world.getDimension(village.dimensionId)
@@ -406,7 +441,7 @@ export class Village {
                 continue
             }
 
-            if (debugFlags.scanParticles) {
+            if (debugFlags.locationScanParticles) {
                 try {
                     dimension.spawnParticle("minecraft:basic_flame_particle", centerVector(block.location))
                 }
@@ -471,7 +506,7 @@ export class Village {
                         }
                     }
 
-                    if (checkNearbyNodes && node !== undefined) {
+                    if (flood && checkNearbyNodes && node !== undefined) {
                         locationStringList.push(...node.neighbors)
                     }
                 }
@@ -1116,7 +1151,7 @@ function isValidConnection(currentBlock: Block, neighborBlock: Block) {
 Dimension.prototype.getVillage = function (location) {
     const villages = world.getVillages()
     for (const village of villages) {
-        if (isVectorBetween(location, village.bounds.start, village.bounds.end, true) && this.id === village.dimensionId) {
+        if (this.id === village.dimensionId && village.isInBounds(location)) {
             return village
         }
     }

@@ -113,7 +113,7 @@ export function destroyTree(startingBlock: Block, callback?: () => void) {
             let leafChecks = 0
             while (checkLeafBlocks.length > 0) {
                 const checkBlock = checkLeafBlocks.pop()
-                if (checkBlock === undefined) {
+                if (!checkBlock?.isValid) {
                     continue
                 }
                 const checkBlockString = locationToString(checkBlock)
@@ -125,7 +125,7 @@ export function destroyTree(startingBlock: Block, callback?: () => void) {
                 if (checkBlock.typeId !== leafTypeId) {
                     continue
                 }
-                if (checkBlock.permutation.getState("persistent_bit")) {
+                if (checkBlock.permutation.getState("persistent_bit") !== false) {
                     continue
                 }
 

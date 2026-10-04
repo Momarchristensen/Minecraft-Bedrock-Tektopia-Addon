@@ -228,7 +228,6 @@ export function generatePath(entity: Villager, start: Vector3, end: Vector3, tok
             return straightSteps + (diagonalSteps * DIAGONAL_COST) + dy
         }
 
-
         function estimate(vector1: Vector3, vector2: Vector3) {
             const dx = Math.abs(vector1.x - vector2.x)
             const dz = Math.abs(vector1.z - vector2.z)
@@ -525,10 +524,21 @@ function checkRequirement(villagerType: string, requirement?: NodeRequirement) {
     return !typeSet.has(villagerType)
 }
 
-const updatePathNodeList: Block[][] = []
+const pendingNodeUpdates = new Map<string, Block>()
 
 export function updatePathNodes(blockList: Block[]) {
-    updatePathNodeList.push(blockList)
+    for (const block of blockList) {
+        pendingNodeUpdates.set(`${block.dimension.id}|${locationToString(block)}`, block)
+    }
+}
+
+function isNearVillageBounds(location: Vector3, bounds: VillageBounds, margin = 1) {
+    return (
+        location.x >= Math.floor(Math.min(bounds.start.x, bounds.end.x)) - margin &&
+        location.x <= Math.ceil(Math.max(bounds.start.x, bounds.end.x)) + margin &&
+        location.z >= Math.floor(Math.min(bounds.start.z, bounds.end.z)) - margin &&
+        location.z <= Math.ceil(Math.max(bounds.start.z, bounds.end.z)) + margin
+    )
 }
 
 world.afterEvents.playerInteractWithBlock.subscribe(event => {
@@ -573,41 +583,61 @@ function* updateNodesBlocks(callback?: () => void) {
         if (!world.loadedData) {
             return
         }
-        let index = 0
-        while (updatePathNodeList.length > 0) {
-            const blockList = updatePathNodeList.shift() as Block[]
-            for (let i = 0; i < blockList.length; i++) {
-                const checkBlock = blockList[i]
-                if (!checkBlock.isValid) {
+
+        while (pendingNodeUpdates.size > 0) {
+            // take everything queued so far, anything queued while yielding becomes the next batch
+            const batch = [...pendingNodeUpdates.values()].filter(block => block.isValid)
+            pendingNodeUpdates.clear()
+
+            for (const village of world.getVillages()) {
+                if (!village.isValid) {
                     continue
                 }
-                const neighborList = checkBlock.getNodeNeighbors()
-                const checkBlockStringLocation = locationToString(checkBlock)
-                const villageList = world.getVillages()
-                for (const village of villageList) {
-                    const alreadyCheckedLocations = new Set()
-                    const villageBounds = village.bounds
-                    village.removeNode(checkBlockStringLocation)
-                    for (const neighborBlock of neighborList) {
+
+                const villageBounds = village.bounds
+                const villageBlocks = batch.filter(block =>
+                    block.dimension.id === village.dimensionId &&
+                    isNearVillageBounds(block.location, villageBounds)
+                )
+                if (villageBlocks.length === 0) {
+                    continue
+                }
+
+                // drop every changed node first, then rebuild outward from the untouched nodes around them
+                for (const block of villageBlocks) {
+                    village.removeNode(locationToString(block))
+                }
+
+                const seedBlocks = new Map<string, Block>()
+                const checkedNeighbors = new Set<string>()
+                let count = 0
+                for (const block of villageBlocks) {
+                    if (!block.isValid) {
+                        continue
+                    }
+
+                    for (const neighborBlock of block.getNodeNeighbors()) {
                         const neighborLocationString = locationToString(neighborBlock)
-                        if (!alreadyCheckedLocations.has(neighborLocationString)) {
-                            alreadyCheckedLocations.add(neighborLocationString)
-                            if (village.pathNodes[neighborLocationString] !== undefined && neighborBlock.isValidPath(villageBounds)) {
-                                yield* village.searchBlocks(neighborBlock)
-                            }
+                        if (checkedNeighbors.has(neighborLocationString)) {
+                            continue
+                        }
+                        checkedNeighbors.add(neighborLocationString)
+
+                        if (village.pathNodes[neighborLocationString] !== undefined && neighborBlock.isValidPath(villageBounds)) {
+                            seedBlocks.set(neighborLocationString, neighborBlock)
                         }
                     }
 
-                    yield* village.scanLocation(checkBlock.location)
+                    if (++count % 20 === 0) {
+                        yield
+                    }
                 }
 
-                if (i % 3 === 0) {
-                    yield
+                yield* village.searchBlocks([...seedBlocks.values()])
+
+                for (const block of villageBlocks) {
+                    yield* village.scanLocation(block.location, false)
                 }
-            }
-            index++
-            if (index % 5 === 0) {
-                yield
             }
         }
     }
