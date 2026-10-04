@@ -19,6 +19,8 @@ import "./performance"
 
 import "./debug"
 
+import "./minecraft_extensions"
+
 system.beforeEvents.watchdogTerminate.subscribe(event => {
     event.cancel = true
     world.sendMessage(`§cWatch dog tried to terminate: ${event.terminateReason}`)

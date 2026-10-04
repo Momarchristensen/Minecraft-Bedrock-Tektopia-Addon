@@ -4,10 +4,13 @@ import {
 } from "./utils"
 
 import type {
+    NodeRequirement,
     PathNode,
     UndefinedRecord,
     LocationString
-} from "."
+} from "./minecraft_extensions"
+
+import type { StructureData } from "./structure"
 
 import type { VillageSaveData } from "./village"
 
@@ -27,6 +30,11 @@ export type CompressedRequirement = [
     nodeIndexDeltas: string
 ]
 
+export type CompressedCost = [
+    cost: number,
+    nodeIndexDeltas: string
+]
+
 export type CompressedVillage = [
     dimensionId: string,
     center: Triple,
@@ -37,10 +45,17 @@ export type CompressedVillage = [
     treeLocations: string,
     harvestLocations: string,
     sweetBerryLocations: string,
+    tillLocations: string,
+    plantLocations: string,
     nodeLocations: string,
     neighborMaskPalette: string,
     neighborMaskIndices: string,
-    nodeRequirements: CompressedRequirement[]
+    nodeRequirements: CompressedRequirement[],
+    plantTypes: string[] | undefined,
+    plantTypeIndices: string | undefined,
+    stepRequirements: CompressedRequirement[] | undefined,
+    structures: UndefinedRecord<LocationString, StructureData> | undefined,
+    nodeCosts: CompressedCost[] | undefined
 ]
 
 const DIGITS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
@@ -163,6 +178,46 @@ function unpackLocations(text: string, origin: Vector3): LocationString[] {
     return unpackPoints(text, origin).map(point => locationToString(point))
 }
 
+function packTypedLocations(locationRecord: Record<LocationString, string>, origin: Vector3): [locations: string, types: string[], typeIndices: string] {
+    const entries: Array<{ point: Vector3, type: string }> = []
+    for (const key of Object.keys(locationRecord) as LocationString[]) {
+        entries.push({ point: stringToLocation(key), type: locationRecord[key] })
+    }
+    entries.sort((a, b) => comparePoints(a.point, b.point))
+
+    const types: string[] = []
+    const typeIndexByType = new Map<string, number>()
+    const typeIndices: number[] = []
+    for (const entry of entries) {
+        let typeIndex = typeIndexByType.get(entry.type)
+        if (typeIndex === undefined) {
+            typeIndex = types.length
+            types.push(entry.type)
+            typeIndexByType.set(entry.type, typeIndex)
+        }
+        typeIndices.push(typeIndex)
+    }
+
+    return [packPoints(entries.map(entry => entry.point), origin), types, packUnsigned(typeIndices)]
+}
+
+function unpackTypedLocations(text: string, types: string[] | undefined, typeIndices: string | undefined, origin: Vector3): Record<LocationString, string> {
+    const result: Record<LocationString, string> = {}
+    if (types === undefined || typeIndices === undefined) {
+        return result
+    }
+
+    const points = unpackPoints(text, origin)
+    const indices = unpackUnsigned(typeIndices)
+    for (let i = 0; i < points.length; i++) {
+        const type = types[indices[i]] as string | undefined
+        if (type !== undefined) {
+            result[locationToString(points[i])] = type
+        }
+    }
+    return result
+}
+
 function originOf(center: Vector3): Vector3 {
     return { x: Math.floor(center.x), y: Math.floor(center.y), z: Math.floor(center.z) }
 }
@@ -204,12 +259,36 @@ export function compressVillage(data: VillageSaveData): CompressedVillage {
     }
     const forwardMasks: number[] = new Array(nodeEntries.length).fill(0)
 
-    const requirementGroups = new Map<string, {
+    type RequirementGroups = Map<string, {
         whiteList: 0 | 1
         types: string[]
         deltas: number[]
         last: number
-    }>()
+    }>
+
+    const requirementGroups: RequirementGroups = new Map()
+    const stepRequirementGroups: RequirementGroups = new Map()
+    const costGroups = new Map<number, { deltas: number[], last: number }>()
+
+    function addToRequirementGroup(groups: RequirementGroups, requirement: NodeRequirement, index: number) {
+        const types = requirement.types.slice().sort()
+        const groupKey = (requirement.whiteList ? "1" : "0") + types.join(",")
+        let group = groups.get(groupKey)
+        if (group === undefined) {
+            group = { whiteList: requirement.whiteList ? 1 : 0, types, deltas: [], last: 0 }
+            groups.set(groupKey, group)
+        }
+        group.deltas.push(index - group.last)
+        group.last = index
+    }
+
+    function packRequirementGroups(groups: RequirementGroups) {
+        const result: CompressedRequirement[] = []
+        for (const group of groups.values()) {
+            result.push([group.whiteList, group.types, packUnsigned(group.deltas)])
+        }
+        return result
+    }
 
     for (let i = 0; i < nodeEntries.length; i++) {
         const { key, location } = nodeEntries[i]
@@ -244,17 +323,20 @@ export function compressVillage(data: VillageSaveData): CompressedVillage {
             }
         }
 
-        const requirement = node.requirement
-        if (requirement !== undefined) {
-            const types = requirement.types.slice().sort()
-            const groupKey = (requirement.whiteList ? "1" : "0") + types.join(",")
-            let group = requirementGroups.get(groupKey)
-            if (group === undefined) {
-                group = { whiteList: requirement.whiteList ? 1 : 0, types, deltas: [], last: 0 }
-                requirementGroups.set(groupKey, group)
+        if (node.requirement !== undefined) {
+            addToRequirementGroup(requirementGroups, node.requirement, i)
+        }
+        if (node.stepRequirement !== undefined) {
+            addToRequirementGroup(stepRequirementGroups, node.stepRequirement, i)
+        }
+        if (node.cost !== undefined && node.cost !== 0) {
+            let costGroup = costGroups.get(node.cost)
+            if (costGroup === undefined) {
+                costGroup = { deltas: [], last: 0 }
+                costGroups.set(node.cost, costGroup)
             }
-            group.deltas.push(i - group.last)
-            group.last = i
+            costGroup.deltas.push(i - costGroup.last)
+            costGroup.last = i
         }
     }
 
@@ -275,10 +357,15 @@ export function compressVillage(data: VillageSaveData): CompressedVillage {
     }
     const maskIndices = forwardMasks.map(mask => paletteIndexByMask.get(mask)).filter(mask => mask !== undefined)
 
-    const nodeRequirements: CompressedRequirement[] = []
-    for (const group of requirementGroups.values()) {
-        nodeRequirements.push([group.whiteList, group.types, packUnsigned(group.deltas)])
+    const nodeRequirements = packRequirementGroups(requirementGroups)
+    const stepRequirements = packRequirementGroups(stepRequirementGroups)
+
+    const nodeCosts: CompressedCost[] = []
+    for (const [cost, costGroup] of costGroups) {
+        nodeCosts.push([cost, packUnsigned(costGroup.deltas)])
     }
+
+    const [packedPlantLocations, plantTypes, plantTypeIndices]: ReturnType<typeof packTypedLocations> = SAVE_RESOURCE_LOCATIONS ? packTypedLocations(data.plantLocations, origin) : ["", [], ""]
 
     const dimensionId = data.dimensionId
     const door = data.doorLocation
@@ -292,10 +379,17 @@ export function compressVillage(data: VillageSaveData): CompressedVillage {
         SAVE_RESOURCE_LOCATIONS ? packLocations(data.treeLocations, origin) : "",
         SAVE_RESOURCE_LOCATIONS ? packLocations(data.harvestLocations, origin) : "",
         SAVE_RESOURCE_LOCATIONS ? packLocations(data.sweetBerryLocations, origin) : "",
+        SAVE_RESOURCE_LOCATIONS ? packLocations(data.tillLocations, origin) : "",
+        packedPlantLocations,
         packPoints(nodeEntries.map(entry => entry.location), origin),
         packUnsigned(palette),
         packUnsigned(maskIndices),
-        nodeRequirements
+        nodeRequirements,
+        plantTypes,
+        plantTypeIndices,
+        stepRequirements,
+        data.structures,
+        nodeCosts
     ]
 }
 
@@ -310,10 +404,17 @@ export function decompressVillage(compressed: CompressedVillage): VillageSaveDat
         packedTreeLocations,
         packedHarvestLocations,
         packedSweetBerryLocations,
+        packedTillLocations,
+        packedPlantLocations,
         packedNodeLocations,
         packedMaskPalette,
         packedMaskIndices,
-        compressedRequirements
+        compressedRequirements,
+        plantTypes,
+        plantTypeIndices,
+        compressedStepRequirements,
+        structures,
+        compressedNodeCosts
     ] = compressed
 
     const center: Vector3 = { x: centerCoords[0], y: centerCoords[1], z: centerCoords[2] }
@@ -361,18 +462,34 @@ export function decompressVillage(compressed: CompressedVillage): VillageSaveDat
         }
     }
 
-    for (const [whiteListFlag, requiredTypes, packedIndexDeltas] of compressedRequirements) {
-        const indexDeltas = unpackUnsigned(packedIndexDeltas)
-        let nodeIndex = 0
+    function applyCompressedRequirements(groups: CompressedRequirement[], field: "requirement" | "stepRequirement") {
+        for (const [whiteListFlag, requiredTypes, packedIndexDeltas] of groups) {
+            const indexDeltas = unpackUnsigned(packedIndexDeltas)
+            let nodeIndex = 0
 
-        for (const delta of indexDeltas) {
+            for (const delta of indexDeltas) {
+                nodeIndex += delta
+                const node = pathNodes[nodeKeys[nodeIndex]]
+                if (node !== undefined) {
+                    node[field] = {
+                        whiteList: whiteListFlag === 1,
+                        types: requiredTypes.slice()
+                    }
+                }
+            }
+        }
+    }
+
+    applyCompressedRequirements(compressedRequirements, "requirement")
+    applyCompressedRequirements(compressedStepRequirements ?? [], "stepRequirement")
+
+    for (const [cost, packedIndexDeltas] of compressedNodeCosts ?? []) {
+        let nodeIndex = 0
+        for (const delta of unpackUnsigned(packedIndexDeltas)) {
             nodeIndex += delta
             const node = pathNodes[nodeKeys[nodeIndex]]
             if (node !== undefined) {
-                node.requirement = {
-                    whiteList: whiteListFlag === 1,
-                    types: requiredTypes.slice()
-                }
+                node.cost = cost
             }
         }
     }
@@ -391,6 +508,9 @@ export function decompressVillage(compressed: CompressedVillage): VillageSaveDat
         farmLocations: unpackLocations(packedFarmLocations, origin),
         treeLocations: unpackLocations(packedTreeLocations, origin),
         harvestLocations: unpackLocations(packedHarvestLocations, origin),
-        sweetBerryLocations: unpackLocations(packedSweetBerryLocations, origin)
+        sweetBerryLocations: unpackLocations(packedSweetBerryLocations, origin),
+        plantLocations: unpackTypedLocations(packedPlantLocations, plantTypes, plantTypeIndices, origin),
+        tillLocations: unpackLocations(packedTillLocations, origin),
+        structures: structures ?? {}
     }
 }

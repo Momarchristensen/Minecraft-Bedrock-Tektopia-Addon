@@ -1,5 +1,6 @@
 import {
     Block,
+    BlockPermutation,
     type Entity,
     EntityComponentTypes,
     ItemStack,
@@ -37,13 +38,20 @@ import {
     removeIdentifier,
     stringToLocation,
     locationToString,
-    fixVector
+    fixVector,
+    addVector,
+    getOppositeDirection,
+    directionToVector
 } from "./utils"
 
 import {
     globalTasks,
     tektopiaVillagers
 } from "./villager_tasks"
+
+import type { LocationString } from "./minecraft_extensions"
+
+import type { Mineshaft } from "./structure"
 
 import type { Village } from "./village"
 
@@ -61,6 +69,7 @@ export class Villager {
     public blockedTimer = 0
     public isPathing = false
     public unblockTimer = 0
+    public totalBlockTimer = 0
     public pathTickId?: number
     public pathError?: string
     private nextPathNode?: Vector3
@@ -74,6 +83,13 @@ export class Villager {
     private foundItem?: Entity
     private foundTree?: Vector3
     private foundHarvest?: Vector3
+    private foundTill?: Vector3
+    private foundPlant?: {
+        location: Vector3
+        type: string
+    }
+
+    private foundMine?: Vector3
 
     constructor(private readonly entity: Entity) {
         return new Proxy(this, {
@@ -181,7 +197,40 @@ export class Villager {
         return closestTree
     }
 
-    findHarvest(village: Village): Vector3 | undefined {
+    findMine(village: Village) {
+        const takenMines = new Set<string>()
+        const villagers = world.getVillagers()
+        for (const villager of villagers) {
+            if (villager.id === this.id) {
+                continue
+            }
+            const mine = villager.foundMine
+            if (mine !== undefined) {
+                takenMines.add(locationToString(mine))
+            }
+        }
+
+        const villagerLocation = this.location
+        let closestMine: Vector3 | undefined
+        let minDist = Infinity
+
+        const mineshaftStructures = village.findStructures("mineshaft")
+        for (const mineshaft of mineshaftStructures) {
+            if (takenMines.has(mineshaft.locationString)) {
+                continue
+            }
+            const dist = calculateDistance(villagerLocation, mineshaft.location)
+            if (dist < minDist) {
+                minDist = dist
+                closestMine = mineshaft.location
+            }
+        }
+
+        this.foundMine = closestMine
+        return closestMine
+    }
+
+    findHarvestLocation(village: Village): Vector3 | undefined {
         const takenHarvestLocation = new Set<string>()
         const villagers = world.getVillagers()
         for (const villager of villagers) {
@@ -211,6 +260,73 @@ export class Villager {
 
         this.foundHarvest = closestHarvest
         return closestHarvest
+    }
+
+    findTillLocation(village: Village): Vector3 | undefined {
+        const takenTillLocation = new Set<string>()
+        const villagers = world.getVillagers()
+        for (const villager of villagers) {
+            if (villager.id === this.id) {
+                continue
+            }
+            const tillLocation = villager.foundTill
+            if (tillLocation !== undefined) {
+                takenTillLocation.add(locationToString(tillLocation))
+            }
+        }
+
+        const villagerLocation = this.location
+        let closestTill: Vector3 | undefined
+        let minDist = Infinity
+        for (const tillLocationStr of village.tillLocations) {
+            if (takenTillLocation.has(tillLocationStr)) {
+                continue
+            }
+            const tillLocationLocation = stringToLocation(tillLocationStr)
+            const dist = calculateDistance(villagerLocation, tillLocationLocation)
+            if (dist < minDist) {
+                minDist = dist
+                closestTill = tillLocationLocation
+            }
+        }
+
+        this.foundTill = closestTill
+        return closestTill
+    }
+
+    findPlantLocation(village: Village) {
+        const takenPlantLocation = new Set<string>()
+        const villagers = world.getVillagers()
+        for (const villager of villagers) {
+            if (villager.id === this.id) {
+                continue
+            }
+            const plantLocation = villager.foundPlant
+            if (plantLocation !== undefined) {
+                takenPlantLocation.add(locationToString(plantLocation.location))
+            }
+        }
+
+        const villagerLocation = this.location
+        let closestPlant: {
+            location: Vector3
+            type: string
+        } | undefined
+        let minDist = Infinity
+        for (const [plantLocationStr, type] of Object.entries(village.plantLocations)) {
+            if (takenPlantLocation.has(plantLocationStr)) {
+                continue
+            }
+            const plantLocationLocation = stringToLocation(plantLocationStr as LocationString)
+            const dist = calculateDistance(villagerLocation, plantLocationLocation)
+            if (dist < minDist) {
+                minDist = dist
+                closestPlant = { location: plantLocationLocation, type }
+            }
+        }
+
+        this.foundPlant = closestPlant
+        return closestPlant
     }
 
     findItem(village: Village): Entity | undefined {
@@ -396,6 +512,7 @@ export class Villager {
         if (this.currentTask !== undefined) {
             const task = globalTasks.find(candidate => candidate.id === this.currentTask) ??
                 villagerProps?.customTasks.find(candidate => candidate.id === this.currentTask)
+
             taskName = task?.name ?? taskName
         }
 
@@ -437,6 +554,7 @@ export class Villager {
             `Blocked: ${this.isBlocked ? "Yes" : "No"}`,
             `Blocked timer: ${this.blockedTimer}`,
             `Unblock timer: ${this.unblockTimer}`,
+            `Total Block Timer: ${this.totalBlockTimer}`,
             `Waiting: ${waiting}`,
             `Target: ${target}`,
             `Target distance: ${targetDistance === undefined ? "None" : `${fix(targetDistance, 2)} blocks`}`,
@@ -566,6 +684,108 @@ export class Villager {
         return this.currentTask !== undefined
     }
 
+    tickMine(village: Village) {
+        const villager = this
+        if (villager.foundMine === undefined) {
+            villager.currentTask = undefined
+            return
+        }
+
+        const structure = village.getStructure(villager.foundMine) as Mineshaft | undefined
+
+        if (structure === undefined) {
+            villager.currentTask = undefined
+            return
+        }
+
+        const rotation = structure.rotation
+        const oppositeRotation = getOppositeDirection(rotation)
+
+        if (oppositeRotation === undefined) {
+            villager.currentTask = undefined
+            return
+        }
+
+        const mineTask = structure.getNextTask()
+
+        if (mineTask === undefined) {
+            villager.currentTask = undefined
+            return
+        }
+
+        if (mineTask.type === "mine") {
+            const mineBlock = mineTask.block
+            const mineBlockBelow = mineBlock.belowSafe()
+            if (mineBlockBelow === undefined) {
+                villager.currentTask = undefined
+                return
+            }
+
+            let pathLocation = addVectors(mineBlock.location, directionToVector(oppositeRotation))
+            if (mineBlockBelow.canPathThrough()) {
+                pathLocation = addVector(pathLocation, "y", -1)
+            }
+
+            const pathLocationDistance = calculateDistance(pathLocation, villager.location)
+
+            if (pathLocationDistance >= 1) {
+                villager.pathFindTo(pathLocation)
+                return
+            }
+
+            villager.lookAt(mineBlock.center(), false)
+
+            villager.setAnimation("mining")
+            villager.holdingItem = "wooden_pickaxe"
+            villager.stopPath()
+
+            villager.taskProgress++
+
+            if (villager.taskProgress <= 100 || villager.isWaiting) {
+                return
+            }
+
+            mineBlock.destroy()
+            updatePathNodes([mineBlock, mineBlock.aboveSafe(), mineBlock.belowSafe()].filter(checkBlock => checkBlock !== undefined))
+            villager.waiting = 15
+            villager.setAnimation(undefined)
+            villager.currentTask = undefined
+        }
+        else if (mineTask.type === "light") {
+            const torchBlock = mineTask.block
+            villager.dimension.spawnParticle(
+                "minecraft:basic_flame_particle",
+                torchBlock.center()
+            )
+
+            const torchBlockDistance = calculateDistance(torchBlock.location, villager.location)
+
+            if (torchBlockDistance >= 1.5) {
+                villager.pathFindTo(torchBlock.location)
+                return
+            }
+
+            torchBlock.replace(BlockPermutation.resolve("torch", { torch_facing_direction: "top" }))
+        }
+        else {
+            const fillBlock = mineTask.block
+            const pathLocation = addVectors(fillBlock.location, multiplyVector(mineTask.offset, "xyz", -1))
+
+            const pathLocationDistance = calculateDistance(pathLocation, villager.location)
+
+            if (pathLocationDistance >= 1 && (villager.isPathing || pathLocationDistance >= 3)) {
+                villager.pathFindTo(pathLocation)
+                return
+            }
+
+            fillBlock.replace("cobblestone")
+            villager.waiting = 5
+            villager.currentTask = undefined
+
+            updatePathNodes([fillBlock, fillBlock.aboveSafe(), fillBlock.belowSafe()].filter(checkBlock => checkBlock !== undefined))
+        }
+    }
+
     tickChop(village: Village) {
         const villager = this
 
@@ -586,6 +806,8 @@ export class Villager {
                     villager.setAnimation("chopping")
                     villager.lookAt(centerVector(foundTree))
                     villager.taskProgress++
+                    villager.stopPath()
+
                     if (villager.taskProgress > 100 && !villager.isWaiting) {
                         const saplingTypeId = treeBlock.typeId.replace(
                             "_log",
@@ -633,16 +855,16 @@ export class Villager {
 
             if (harvestBlock?.isHarvestable) {
                 const harvestLocationDist = calculateDistance(centerVector(foundHarvest, true), villager.location)
-                if (harvestLocationDist < 2) {
+                if (harvestLocationDist < 1 || (!villager.isPathing && harvestLocationDist < 2)) {
                     villager.setAnimation("harvesting")
                     villager.lookAt(centerVector(foundHarvest))
                     villager.taskProgress++
+                    villager.stopPath()
+
                     if (villager.taskProgress > 100 && !villager.isWaiting) {
                         if (harvestBlock.isHarvestableCrop) {
+                            village.plantLocations[harvestLocationString] = harvestBlock.typeId
                             harvestBlock.destroy()
-                            if (!village.plantLocations.includes(harvestLocationString)) {
-                                village.plantLocations.push(harvestLocationString)
-                            }
                         }
                         else if (harvestBlock.isHarvestableGourd) {
                             harvestBlock.destroy()
@@ -664,7 +886,6 @@ export class Villager {
                         villager.waiting = 20
                         villager.setAnimation(undefined)
                         villager.currentTask = undefined
-
                     }
                 }
                 else {
@@ -681,12 +902,107 @@ export class Villager {
         }
     }
 
+    tickPlant(village: Village) {
+        const villager = this
+
+        const foundPlant = villager.foundPlant
+        const dimension = villager.dimension
+
+        if (foundPlant !== undefined) {
+            const plantBlock = dimension.getBlockSafe(foundPlant.location)
+            const plantLocationString = locationToString(foundPlant.location)
+
+            if (plantBlock?.isAir) {
+                const plantLocationDist = calculateDistance(centerVector(foundPlant.location, true), villager.location)
+                if (plantLocationDist < 1.25) {
+                    villager.setAnimation("planting")
+                    villager.lookAt(centerVector(foundPlant.location))
+                    villager.taskProgress++
+                    villager.stopPath()
+
+                    if (villager.taskProgress > 100 && !villager.isWaiting) {
+                        plantBlock.replace(foundPlant.type)
+
+                        villager.waiting = 20
+                        villager.setAnimation(undefined)
+                        villager.currentTask = undefined
+                    }
+                }
+                else {
+                    villager.pathFindTo(foundPlant.location)
+                }
+            }
+            else {
+                delete village.plantLocations[plantLocationString]
+                villager.currentTask = undefined
+            }
+        }
+        else {
+            villager.currentTask = undefined
+        }
+    }
+
+    tickTill(village: Village) {
+        const villager = this
+
+        const foundTill = villager.foundTill
+        const dimension = villager.dimension
+
+        if (foundTill !== undefined) {
+            const tillBlock = dimension.getBlockSafe(foundTill)
+            const tillLocationString = locationToString(foundTill)
+            const pathLocation = addVector(foundTill, "y", 1)
+            const tillResult = tillBlock?.tillResult
+
+            if (tillBlock !== undefined && tillResult !== undefined) {
+                const pathLocationDist = calculateDistance(centerVector(pathLocation, true), villager.location)
+                if (pathLocationDist <= 5) {
+                    villager.holdingItem = "wooden_hoe"
+                }
+                else {
+                    villager.holdingItem = undefined
+                }
+                if (pathLocationDist < 2) {
+                    villager.setAnimation("tilling")
+                    villager.lookAt(centerVector(foundTill))
+                    villager.stopPath()
+
+                    villager.taskProgress++
+                    if (villager.taskProgress > 100 && !villager.isWaiting) {
+                        villager.waiting = 20
+                        villager.setAnimation(undefined)
+                        villager.currentTask = undefined
+
+                        tillBlock.playSound("use.gravel", { pitch: 0.8 })
+                        tillBlock.setType(tillResult)
+
+                        if (tillResult === "minecraft:farmland") {
+                            village.tillLocations.remove(tillLocationString)
+                            village.farmLocations.add(tillLocationString)
+                        }
+                    }
+                }
+                else {
+                    villager.pathFindTo(pathLocation)
+                }
+            }
+            else {
+                village.tillLocations.remove(tillLocationString)
+                villager.currentTask = undefined
+            }
+        }
+        else {
+            villager.currentTask = undefined
+        }
+    }
+
     tickPickupItem() {
         const villager = this
         const foundItem = villager.foundItem
         const pathError = villager.pathError
         if (foundItem?.isValid) {
-            if (calculateDistance(foundItem.location, villager.location) < 1.75) {
+            const itemDistance = calculateDistance(foundItem.location, villager.location)
+            if (itemDistance < 1.75 || (!villager.isPathing && itemDistance < 3)) {
                 if (villager.getMoveSpeed() < 0.01) {
                     const item = foundItem.getComponent(EntityComponentTypes.Item)?.itemStack
                     if (item !== undefined) {
@@ -826,18 +1142,37 @@ export class Villager {
                 }
 
                 if (blockedByTektopiaVillager) {
-                    villager.unblockTimer = 20
+                    villager.unblockTimer += 4
+                    if (villager.unblockTimer > 20) {
+                        villager.unblockTimer = 20
+                    }
                 }
                 else if (!isBlocked && villager.unblockTimer > 0) {
                     villager.unblockTimer--
                     isBlocked = true
                 }
 
+                if (!isBlocked) {
+                    villager.totalBlockTimer = 0
+                }
+
+                if (villager.totalBlockTimer < 0) {
+                    villager.totalBlockTimer = 0
+                }
+
+                if (villager.totalBlockTimer > 100) {
+                    isBlocked = false
+                }
+
                 villager.isBlocked = isBlocked
+
+                if (isBlocked) {
+                    villager.totalBlockTimer++
+                }
 
                 const isMoving = villager.getMoveSpeed(true) > 0.0001
                 if (!isMoving || isBlocked) {
-                    villager.blockedTimer = (villager.blockedTimer | 0) + 1
+                    villager.blockedTimer++
                 }
                 else {
                     villager.blockedTimer = 0
@@ -863,7 +1198,8 @@ export class Villager {
                     cancelPath()
                     return
                 }
-                if (calculateSquareDistance(currentPathNode, villager.location) <= 0.5) {
+
+                if (Math.abs(currentPathNode.y - villager.location.y) <= 0.25 ? calculateSquareDistance(currentPathNode, villager.location) <= 0.25 : calculateSquareDistance(currentPathNode, villager.location) <= 0.5) {
                     pathNodeList.shift()
                 }
             }
@@ -913,7 +1249,7 @@ Block.prototype.destroy = function () {
         return
     }
     const lootTableManager = world.getLootTableManager()
-    const itemList = lootTableManager.generateLootFromBlock(this) ?? []
+    const itemList = lootTableManager.generateLootFromBlock(this, new ItemStack("minecraft:netherite_pickaxe")) ?? []
     const dimension = this.dimension
     for (const item of itemList) {
         item.makeVillageItem()
@@ -924,7 +1260,13 @@ Block.prototype.destroy = function () {
 }
 
 Block.prototype.replace = function (blockType) {
-    this.setType(blockType)
+    if (blockType instanceof BlockPermutation) {
+        this.setPermutation(blockType)
+    }
+    else {
+        this.setType(blockType)
+    }
+
     this.soundEvent("place")
 }
 

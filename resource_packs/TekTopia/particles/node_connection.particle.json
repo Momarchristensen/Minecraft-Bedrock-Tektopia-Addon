@@ -25,6 +25,9 @@
 			"minecraft:particle_appearance_billboard": {
 				"size": [0.07, 0.25],
 				"facing_camera_mode": "emitter_transform_xz"
+			},
+			"minecraft:particle_appearance_tinting": {
+				"color": ["variable.color.r", "variable.color.g", "variable.color.b", 1]
 			}
 		}
 	}

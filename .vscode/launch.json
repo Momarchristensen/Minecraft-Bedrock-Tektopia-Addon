@@ -9,7 +9,8 @@
             "localRoot": "${workspaceFolder}/behavior_packs/Tektopia/scripts/",
             "generatedSourceRoot": "${workspaceFolder}/behavior_packs/Tektopia/scripts/",
             "sourceMapRoot": "${workspaceFolder}/behavior_packs/Tektopia/scripts/",
-            "port": 19144
+            "port": 19144,
+            "restart": true
         }
     ]
 }

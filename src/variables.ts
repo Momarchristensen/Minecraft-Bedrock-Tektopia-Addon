@@ -12,6 +12,30 @@ export const minecraftDirtTypes = [
     "minecraft:mud"
 ]
 
+export const pathBlockCosts = new Map<string, number>([
+    ["minecraft:dirt_path", -0.25],
+    ["minecraft:cobbled_deepslate", -0.25],
+    ["minecraft:deepslate", -0.25],
+    ["minecraft:stone_bricks", -0.5],
+    ["minecraft:grass_path", -1],
+    ["minecraft:farmland", 3],
+    ["minecraft:web", 12]
+])
+
+export const MIN_MOVE_COST = 0.25
+
+const _tillBlocks = {
+    "minecraft:dirt": "minecraft:farmland",
+    "minecraft:grass_block": "minecraft:farmland",
+    "minecraft:grass_path": "minecraft:farmland",
+    "minecraft:coarse_dirt": "minecraft:dirt",
+    "minecraft:dirt_with_roots": "minecraft:dirt"
+} as const
+
+export type TillResult = (typeof _tillBlocks)[keyof typeof _tillBlocks] | undefined
+
+export const tillBlocks: Record<string, TillResult> = _tillBlocks
+
 export const minecraftDangerousBlockTypes = [
     "minecraft:lava",
     "minecraft:flowing_lava",

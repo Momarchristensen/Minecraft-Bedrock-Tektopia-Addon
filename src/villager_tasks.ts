@@ -1,6 +1,6 @@
 import { Registry } from "./registry"
 
-import type { UndefinedRecord } from "."
+import type { UndefinedRecord } from "./minecraft_extensions"
 
 import type { Village } from "./village"
 
@@ -27,19 +27,21 @@ export const tektopiaVillagers: UndefinedRecord<string, VillagerConfig> = {
                 id: "till",
                 name: "Till",
                 required: false,
-                condition: () => false
+                condition: (villager: Villager, village: Village) => villager.findTillLocation(village) !== undefined,
+                tick: (villager: Villager, village: Village) => villager.tickTill(village)
             },
             {
                 id: "plant",
                 name: "Plant",
                 required: false,
-                condition: () => false
+                condition: (villager: Villager, village: Village) => villager.findPlantLocation(village) !== undefined,
+                tick: (villager: Villager, village: Village) => villager.tickPlant(village)
             },
             {
                 id: "harvest",
                 name: "Harvest",
                 required: false,
-                condition: (villager: Villager, village: Village) => villager.findHarvest(village) !== undefined,
+                condition: (villager: Villager, village: Village) => villager.findHarvestLocation(village) !== undefined,
                 tick: (villager: Villager, village: Village) => villager.tickHarvest(village)
             }
         ],
@@ -70,6 +72,33 @@ export const tektopiaVillagers: UndefinedRecord<string, VillagerConfig> = {
             }
         ],
         pickupItems: () => ["minecraft:apple", ...Registry.saplingTypes, ...Registry.logTypes]
+    },
+    "tektopia:miner": {
+        customTasks: [
+            {
+                id: "chop",
+                name: "Mine",
+                required: false,
+                condition: (villager: Villager, village: Village) => villager.findMine(village) !== undefined,
+                tick: (villager: Villager, village: Village) => villager.tickMine(village)
+            }
+        ],
+        pickupItems: () => [
+            "minecraft:cobblestone",
+            "minecraft:redstone",
+            "minecraft:redstone",
+            "minecraft:raw_iron",
+            "minecraft:raw_gold",
+            "minecraft:lapis_lazuli",
+            "minecraft:raw_copper",
+            "minecraft:emerald",
+            "minecraft:coal",
+            "minecraft:dirt",
+            "minecraft:granite",
+            "minecraft:diorite",
+            "minecraft:andesite",
+            "minecraft:gravel"
+        ]
     }
 }
 

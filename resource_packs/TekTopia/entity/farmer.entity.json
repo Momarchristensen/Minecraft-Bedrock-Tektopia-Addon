@@ -7,23 +7,25 @@
             "animations": {
                 "main": "controller.animation.tektopia_villager",
                 "walk": "animation.tektopia_villager.walk",
-                "harvest": "animation.tektopia_villager.pickup"
+                "chop": "animation.tektopia_villager.chop",
+                "harvest": "animation.tektopia_villager.pickup",
+                "planting": "animation.tektopia_villager.take",
+                "tilling": "animation.tektopia_villager.hoe",
+                "mining": "animation.tektopia_villager.hammer"
             },
             "scripts": {
                 "animate": [
-                    "main",
-                    {
-                        "harvest": "query.property('property:animation') == 'harvesting'"
-                    }
+                    "main"
                 ]
             },
             "geometry": {
-                "male": "geometry.tektopia_farmer_male",
-                "female": "geometry.tektopia_farmer_female"
+                "default": "geometry.tektopia_farmer_male"
+            },
+            "sound_effects": {
+                "hit.wood": "hit.wood"
             },
             "textures": {
-                "male": "textures/entity/farmer_male",
-                "female": "textures/entity/farmer_female"
+                "default": "textures/entity/farmer_male"
             },
             "materials": {
                 "default": "entity"

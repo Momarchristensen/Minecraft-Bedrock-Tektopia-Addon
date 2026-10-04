@@ -13,8 +13,17 @@ Array.prototype.includesFast = function (value) {
 
 Array.prototype.remove = function (value) {
     const index = this.indexOf(value)
-    if (index !== -1) {
-        this.splice(index, 1)
+    if (index === -1) {
+        return false
     }
-    return this
+    this.splice(index, 1)
+    return true
+}
+
+Array.prototype.add = function (...values) {
+    for (const value of values) {
+        if (!this.includes(value)) {
+            this.push(value)
+        }
+    }
 }

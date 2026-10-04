@@ -197,7 +197,7 @@ module.exports = [
         allowNullableString: false,
         allowNullableNumber: false,
         allowNullableEnum: false,
-        allowAny: true
+        allowAny: false
       }],
 
       "@typescript-eslint/prefer-for-of": "warn",

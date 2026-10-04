@@ -16,6 +16,13 @@ import { debugFlags } from "./debug"
 import { Registry } from "./registry"
 
 import {
+    Structure,
+    type StructureType,
+    type StructureTypeMap,
+    type StructureData
+} from "./structure"
+
+import {
     centerVector,
     floorVector,
     isVectorBetween,
@@ -26,7 +33,11 @@ import {
     locationToString
 } from "./utils"
 
-import { minecraftDirtTypes } from "./variables"
+import {
+    minecraftDirtTypes,
+    pathBlockCosts,
+    tillBlocks
+} from "./variables"
 
 import {
     type CompressedVillage,
@@ -40,8 +51,7 @@ import type {
     UndefinedRecord,
     LocationString,
     VillageBounds
-} from "."
-import { blockSounds } from "./generated";
+} from "./minecraft_extensions"
 
 system.beforeEvents.startup.subscribe(event => {
     const customCommandRegistry = event.customCommandRegistry
@@ -93,9 +103,11 @@ export interface VillageSaveData {
     saplingLocations: LocationString[]
     farmLocations: LocationString[]
     harvestLocations: LocationString[]
-    plantLocations: LocationString[]
+    plantLocations: Record<LocationString, string>
+    tillLocations: LocationString[]
     sweetBerryLocations: LocationString[]
     treeLocations: LocationString[]
+    structures: UndefinedRecord<LocationString, StructureData>
 }
 
 export class Village {
@@ -136,9 +148,11 @@ export class Village {
             saplingLocations: [],
             farmLocations: [],
             harvestLocations: [],
-            plantLocations: [],
+            plantLocations: {},
+            tillLocations: [],
             sweetBerryLocations: [],
-            treeLocations: []
+            treeLocations: [],
+            structures: {}
         }
     }
 
@@ -182,12 +196,42 @@ export class Village {
         return this.data.plantLocations
     }
 
+    get tillLocations() {
+        return this.data.tillLocations
+    }
+
     get sweetBerryLocations() {
         return this.data.sweetBerryLocations
     }
 
     get treeLocations() {
         return this.data.treeLocations
+    }
+
+    getStructure(location: Vector3) {
+        const locationString = locationToString(location)
+        const data = this.data.structures[locationString]
+        return data !== undefined ? Structure.from(locationString, data, this.dimension) : undefined
+    }
+
+    addStructure(location: Vector3, structureData: StructureData) {
+        const locationString = locationToString(location)
+        this.data.structures[locationString] = structureData
+    }
+
+    findStructures<K extends StructureType>(type: K): Array<StructureTypeMap[K]> {
+        const resultList: Array<StructureTypeMap[K]> = []
+
+        for (const [locationString, structureData] of Object.entries(this.data.structures)) {
+            if (structureData?.type !== type) {
+                continue
+            }
+
+            const structure = Structure.from(locationString as LocationString, structureData, this.dimension)
+            resultList.push(structure as StructureTypeMap[K])
+        }
+
+        return resultList
     }
 
     get dimension(): Dimension {
@@ -269,12 +313,25 @@ export class Village {
                 village.pathNodes[key] ??= { neighbors: [] }
                 const node = village.pathNodes[key]
 
+                const pathCost = checkBlock.getPathCost()
+                if (pathCost !== 0) {
+                    node.cost = pathCost
+                }
+
                 const requirement = checkBlock.getNodeRequirement()
                 if (requirement !== undefined) {
                     node.requirement = requirement
                 }
                 else {
                     delete node.requirement
+                }
+
+                const stepRequirement = checkBlock.getStepRequirement()
+                if (stepRequirement !== undefined) {
+                    node.stepRequirement = stepRequirement
+                }
+                else {
+                    delete node.stepRequirement
                 }
 
                 const before = new Set(node.neighbors)
@@ -407,6 +464,12 @@ export class Village {
                             village.sweetBerryLocations.push(checkBlockString)
                         }
                     }
+                    else if (checkBlock.isHarvestableGourd) {
+                        checkNearbyNodes = true
+                        if (!village.harvestLocations.includes(checkBlockString)) {
+                            village.harvestLocations.push(checkBlockString)
+                        }
+                    }
 
                     if (checkNearbyNodes && node !== undefined) {
                         locationStringList.push(...node.neighbors)
@@ -455,8 +518,42 @@ export class Village {
                 console.warn("Node requirement updated: ", pathNodeLocation)
             }
         }
+
+        const stepRequirement = block.getStepRequirement()
+        if (!requirementsEqual(pathNode.stepRequirement, stepRequirement)) {
+            if (stepRequirement !== undefined) {
+                pathNode.stepRequirement = stepRequirement
+            }
+            else {
+                delete pathNode.stepRequirement
+            }
+            if (debugFlags.nodeUpdatedWarnings) {
+                console.warn("Node step requirement updated: ", pathNodeLocation)
+            }
+        }
+
+        const nodeCost = block.getPathCost()
+        if ((pathNode.cost ?? 0) !== nodeCost) {
+            if (nodeCost !== 0) {
+                pathNode.cost = nodeCost
+            }
+            else {
+                delete pathNode.cost
+            }
+
+            if (debugFlags.nodeUpdatedWarnings) {
+                console.warn("Node cost updated: ", pathNodeLocation)
+            }
+        }
     }
 
+}
+
+Block.prototype.getPathCost = function () {
+    const feetCost = pathBlockCosts.get(this.typeId) ?? 0
+    const below = this.belowSafe()
+    const floorCost = below === undefined ? 0 : pathBlockCosts.get(below.typeId) ?? 0
+    return feetCost + floorCost
 }
 
 Block.prototype.getVillage = function () {
@@ -494,6 +591,28 @@ Block.prototype.getNodeRequirement = function () {
 
     return undefined
 }
+
+Block.prototype.getStepRequirement = function () {
+    const ceiling = this.aboveSafe()?.aboveSafe()
+    if (ceiling?.destroyableLeaf()) {
+        return { whiteList: true, types: ["tektopia:lumberjack"] }
+    }
+
+    return undefined
+}
+
+Object.defineProperty(Block.prototype, "tillResult", {
+    get(this: Block) {
+        return tillBlocks[this.typeId]
+    }
+})
+
+Object.defineProperty(Block.prototype, "isTillable", {
+    get(this: Block) {
+        const blockAbove = this.aboveSafe()
+        return this.tillResult !== undefined && blockAbove?.canPathThrough()
+    }
+})
 
 Object.defineProperty(Block.prototype, "isTree", {
     get(this: Block) {
@@ -630,7 +749,7 @@ Object.defineProperty(Block.prototype, "plantableType", {
 
 Object.defineProperty(Block.prototype, "isPlantable", {
     get(this: Block) {
-        return this.plantableType !== undefined
+        return this.plantableType.length > 0
     }
 })
 
@@ -677,6 +796,17 @@ function* pruneLocations(dimension: Dimension, locations: LocationString[], shou
         if (block !== undefined && shouldRemove(block, locationString)) {
             locations[i] = locations[locations.length - 1]
             locations.pop()
+        }
+        yield
+    }
+}
+
+function* pruneLocationRecord<T>(dimension: Dimension, locations: UndefinedRecord<LocationString, T>, shouldRemove: (block: Block, locationString: LocationString) => boolean) {
+    for (const locationString of Object.keys(locations) as LocationString[]) {
+        const block = dimension.getBlockSafe(stringToLocation(locationString))
+
+        if (block !== undefined && shouldRemove(block, locationString)) {
+            delete locations[locationString]
         }
         yield
     }
@@ -755,12 +885,43 @@ function* updateVillageBlocks(callback?: () => void) {
                         }
 
                         const plantBlock = neighborBlock.aboveSafe()
-                        if (plantBlock === undefined) {
+                        if (!plantBlock?.isAir) {
                             continue
                         }
                         const plantLocationString = locationToString(plantBlock.location)
-                        if (!village.plantLocations.includes(plantLocationString)) {
-                            village.plantLocations.push(plantLocationString)
+
+                        village.plantLocations[plantLocationString] ??= aboveBlock.typeId
+                    }
+                }
+
+                for (let x = -1; x <= 1; x += 2) {
+                    for (let z = -1; z <= 1; z += 2) {
+                        const neighborBlock = block.offsetSafe({ x, y: 0, z })
+                        if (neighborBlock === undefined) {
+                            continue
+                        }
+
+                        const neighborLocationString = locationToString(neighborBlock.location)
+                        if (!village.farmLocations.includes(neighborLocationString)) {
+                            continue
+                        }
+
+                        const newTillBlocks = [
+                            block.offsetSafe({ x, y: 0, z: 0 }),
+                            block.offsetSafe({ x: 0, y: 0, z })
+                        ]
+
+                        for (const newTillBlock of newTillBlocks) {
+                            if (newTillBlock === undefined) {
+                                continue
+                            }
+
+                            if (!newTillBlock.isTillable) {
+                                continue
+                            }
+
+                            const tillLocationString = locationToString(newTillBlock.location)
+                            village.tillLocations.add(tillLocationString)
                         }
                     }
                 }
@@ -770,9 +931,7 @@ function* updateVillageBlocks(callback?: () => void) {
 
             yield* pruneLocations(dimension, village.sugarCaneLocations, (block, locationString) => {
                 if (block.isHarvestableSugarCane) {
-                    if (!village.harvestLocations.includes(locationString)) {
-                        village.harvestLocations.push(locationString)
-                    }
+                    village.harvestLocations.add(locationString)
                 }
 
                 return block.typeId !== "minecraft:reeds"
@@ -780,15 +939,19 @@ function* updateVillageBlocks(callback?: () => void) {
 
             yield* pruneLocations(dimension, village.sweetBerryLocations, (block, locationString) => {
                 if (block.isHarvestableSweetBerryBush) {
-                    if (!village.harvestLocations.includes(locationString)) {
-                        village.harvestLocations.push(locationString)
-                    }
+                    village.harvestLocations.add(locationString)
                 }
 
                 return block.typeId !== "minecraft:sweet_berry_bush"
             })
 
             yield* pruneLocations(dimension, village.harvestLocations, block => !block.isHarvestable)
+
+            yield* pruneLocations(dimension, village.tillLocations, block => !block.isTillable)
+
+            yield* pruneLocationRecord(dimension, village.plantLocations, block => !block.isAir)
+
+            yield* pruneLocations(dimension, village.treeLocations, block => !block.isTree)
 
             yield
         }

@@ -2,7 +2,7 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "tektopia:lumberjack",
+            "identifier": "tektopia:miner",
             "enable_attachables": true,
             "animations": {
                 "main": "controller.animation.tektopia_villager",
@@ -19,13 +19,13 @@
                 ]
             },
             "geometry": {
-                "default": "geometry.tektopia_lumberjack"
+                "default": "geometry.tektopia_miner"
             },
             "sound_effects": {
                 "hit.wood": "hit.wood"
             },
             "textures": {
-                "default": "textures/entity/lumberjack_male"
+                "default": "textures/entity/miner_male"
             },
             "materials": {
                 "default": "entity"

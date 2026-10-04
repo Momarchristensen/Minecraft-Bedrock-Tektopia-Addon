@@ -58,7 +58,7 @@
 					]
 				},
 				{
-					"name": "ArmLeftWrist",
+					"name": "ArmRightWrist",
 					"parent": "ArmRightLower",
 					"pivot": [6, 11.5, 1],
 					"cubes": [
@@ -70,7 +70,7 @@
 				},
 				{
 					"name": "leftItem",
-					"parent": "ArmLeftWrist",
+					"parent": "ArmRightWrist",
 					"pivot": [6, 13, 1],
 					"binding": "'leftitem'"
 				},

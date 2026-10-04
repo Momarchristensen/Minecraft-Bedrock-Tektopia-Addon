@@ -1,4 +1,4 @@
-import type { UndefinedRecord } from "."
+import type { UndefinedRecord } from "./minecraft_extensions"
 
 interface SoundEvent {
     pitch?: [number, number] | number

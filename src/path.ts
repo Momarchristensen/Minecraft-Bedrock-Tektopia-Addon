@@ -29,6 +29,7 @@ import {
 } from "./utils"
 
 import {
+    MIN_MOVE_COST,
     minecraftDangerousBlockTypes,
     minecraftNonSolidBlocks
 } from "./variables"
@@ -40,9 +41,14 @@ import type {
     UndefinedRecord,
     LocationString,
     VillageBounds
-} from "."
+} from "./minecraft_extensions"
 
 import type { Villager } from "./villager"
+
+const Y_WEIGHT = 3
+const VERTICAL_TOWARD_PENALTY = 2
+const VERTICAL_AWAY_PENALTY = 10
+const DIAGONAL_COST = 1.75
 
 type PathResult = "no_path" | "no_village" | "timeout" | "cancelled" | "error" | Vector3[]
 
@@ -164,6 +170,23 @@ function checkDiagonalRequirements(
     return true
 }
 
+function checkStepRequirements(
+    nodeList: UndefinedRecord<string, PathNode>,
+    fromKey: LocationString,
+    from: Vector3,
+    toKey: LocationString,
+    to: Vector3,
+    villagerType: string
+) {
+    if (from.y === to.y) {
+        return true
+    }
+
+    const upperKey = to.y > from.y ? toKey : fromKey
+    const stepRequirement = nodeList[upperKey]?.stepRequirement
+    return stepRequirement === undefined || checkRequirement(villagerType, stepRequirement)
+}
+
 export function generatePath(entity: Villager, start: Vector3, end: Vector3, token: { cancelled: boolean }) {
     return new Promise<PathResult>(resolve => {
         const village = entity.getVillage()
@@ -196,9 +219,24 @@ export function generatePath(entity: Villager, start: Vector3, end: Vector3, tok
         }
 
         function heuristic(vector1: Vector3, vector2: Vector3) {
-            return (
-                Math.abs(vector1.x - vector2.x) + Math.abs(vector1.y - vector2.y) + Math.abs(vector1.z - vector2.z)
-            )
+            const dx = Math.abs(vector1.x - vector2.x)
+            const dz = Math.abs(vector1.z - vector2.z)
+            const dy = Math.abs(vector1.y - vector2.y)
+            const diagonalSteps = Math.min(dx, dz)
+            const straightSteps = Math.max(dx, dz) - diagonalSteps
+
+            return straightSteps + (diagonalSteps * DIAGONAL_COST) + dy
+        }
+
+
+        function estimate(vector1: Vector3, vector2: Vector3) {
+            const dx = Math.abs(vector1.x - vector2.x)
+            const dz = Math.abs(vector1.z - vector2.z)
+            const dy = Math.abs(vector1.y - vector2.y)
+            const diagonalSteps = Math.min(dx, dz)
+            const straightSteps = Math.max(dx, dz) - diagonalSteps
+
+            return straightSteps + (diagonalSteps * DIAGONAL_COST) + (dy * Y_WEIGHT)
         }
 
         system.runJob(safeTickGeneratePath())
@@ -252,10 +290,24 @@ export function generatePath(entity: Villager, start: Vector3, end: Vector3, tok
             const gScore = new Map<string, number>([[startKey, 0]])
             const cameFrom = new Map<string, LocationString>()
             const openSet = new PriorityQueue<LocationString>()
-            openSet.enqueue(startKey, heuristic(startVec, endVec) * HEURISTIC_WEIGHT)
+            openSet.enqueue(startKey, estimate(startVec, endVec) * HEURISTIC_WEIGHT)
+
+            const buildPath = (targetKey: LocationString) => {
+                const path: Vector3[] = []
+                let key: LocationString | undefined = targetKey
+                while (key !== undefined) {
+                    path.push(stringToLocation(key))
+                    key = cameFrom.get(key)
+                }
+                path.reverse()
+                return path
+            }
 
             const checkEntityList = getCheckPathEntities(dimensionId, entity)
             let expansions = 0
+            let bestKey = startKey
+            let bestHeuristic = estimate(startVec, endVec)
+            let bestG = 0
 
             while (!openSet.isEmpty()) {
                 const currentKey = openSet.dequeue()
@@ -266,14 +318,7 @@ export function generatePath(entity: Villager, start: Vector3, end: Vector3, tok
                 closedSet.add(currentKey)
 
                 if (currentKey === endKey) {
-                    const path: Vector3[] = []
-                    let key: LocationString | undefined = currentKey
-                    while (key !== undefined) {
-                        path.push(stringToLocation(key))
-                        key = cameFrom.get(key)
-                    }
-                    path.reverse()
-                    resolve(path)
+                    resolve(buildPath(currentKey))
                     return
                 }
 
@@ -282,17 +327,33 @@ export function generatePath(entity: Villager, start: Vector3, end: Vector3, tok
                     return
                 }
 
+                const currentVec = stringToLocation(currentKey)
+                const currentG = gScore.get(currentKey) ?? 0
+
+                const currentHeuristic = estimate(currentVec, endVec)
+                if (
+                    currentHeuristic < bestHeuristic ||
+                    (currentHeuristic === bestHeuristic && currentG < bestG)
+                ) {
+                    bestKey = currentKey
+                    bestHeuristic = currentHeuristic
+                    bestG = currentG
+                }
+
                 if (++expansions > MAX_EXPANSIONS) {
-                    resolve("timeout")
+                    if (bestKey === startKey) {
+                        resolve("timeout")
+                    }
+                    else {
+                        resolve(buildPath(bestKey))
+                    }
                     return
                 }
 
-                const currentVec = stringToLocation(currentKey)
                 const currentNode = nodeList[currentKey]
                 if (currentNode === undefined) {
                     continue
                 }
-                const currentG = gScore.get(currentKey) ?? 0
 
                 outerLoop: for (const neighborKey of currentNode.neighbors) {
                     if (closedSet.has(neighborKey)) {
@@ -302,6 +363,17 @@ export function generatePath(entity: Villager, start: Vector3, end: Vector3, tok
                     if (neighborNode === undefined) {
                         continue
                     }
+
+                    if (debugFlags.pathScanParticles) {
+                        try {
+                            dimension.spawnParticle(
+                                "minecraft:basic_flame_particle",
+                                centerVector(stringToLocation(neighborKey))
+                            )
+                        }
+                        catch { }
+                    }
+
                     if (neighborNode.requirement !== undefined && !checkRequirement(entity.typeId, neighborNode.requirement)) {
                         continue
                     }
@@ -309,6 +381,10 @@ export function generatePath(entity: Villager, start: Vector3, end: Vector3, tok
                     const neighborLocation = stringToLocation(neighborKey)
 
                     if (!checkDiagonalRequirements(nodeList, currentVec, neighborLocation, entity.typeId)) {
+                        continue
+                    }
+
+                    if (!checkStepRequirements(nodeList, currentKey, currentVec, neighborKey, neighborLocation, entity.typeId)) {
                         continue
                     }
 
@@ -325,7 +401,20 @@ export function generatePath(entity: Villager, start: Vector3, end: Vector3, tok
                         }
                     }
 
-                    const moveCost = heuristic(currentVec, neighborLocation) + (neighborLocation.y !== currentVec.y ? 10 : 0) + (isBlocked ? 50 : 0)
+                    const blockCost = neighborNode.cost ?? 0
+                    let verticalPenalty = 0
+                    if (neighborLocation.y !== currentVec.y) {
+                        const movesTowardTarget = Math.abs(neighborLocation.y - endVec.y) < Math.abs(currentVec.y - endVec.y)
+                        verticalPenalty = movesTowardTarget ? VERTICAL_TOWARD_PENALTY : VERTICAL_AWAY_PENALTY
+                    }
+                    const moveCost = Math.max(
+                        MIN_MOVE_COST,
+                        heuristic(currentVec, neighborLocation) +
+                        verticalPenalty +
+                        (isBlocked ? 50 : 0) +
+                        blockCost
+                    )
+
                     const tentativeG = currentG + moveCost
 
                     if (tentativeG < (gScore.get(neighborKey) ?? Infinity)) {
@@ -333,7 +422,7 @@ export function generatePath(entity: Villager, start: Vector3, end: Vector3, tok
                         gScore.set(neighborKey, tentativeG)
                         openSet.enqueue(
                             neighborKey,
-                            tentativeG + (heuristic(neighborLocation, endVec) * HEURISTIC_WEIGHT)
+                            tentativeG + (estimate(neighborLocation, endVec) * HEURISTIC_WEIGHT)
                         )
                     }
                 }
@@ -365,7 +454,7 @@ function findNearestNodeLocation(nodeList: UndefinedRecord<string, PathNode>, lo
                     if (nodeList[locationToString(candidate)] === undefined) {
                         continue
                     }
-                    const dist = calculateDistance(centerVector(addVector(candidate, "y", 0.25), true), location)
+                    const dist = calculateDistance(addVector(candidate, "y", 0.25), location)
                     if (dist < closestDist) {
                         closestDist = dist
                         closest = candidate
@@ -396,7 +485,7 @@ export function getCheckPathEntities(dimensionId: string, villager: Villager) {
         }
         result.push({
             ...checkEntityObject,
-            isBlocked: checkEntity instanceof VillagerClass && (checkEntity.isBlocked || !checkEntity.isPathing)
+            isBlocked: checkEntity instanceof VillagerClass && ((checkEntity.isBlocked || !checkEntity.isPathing) || checkEntity.totalBlockTimer > 100)
         })
     }
     return result
@@ -612,13 +701,13 @@ Block.prototype.getIsSolid = function () {
     return this.isSolid || Registry.solidBlocksSet.has(this.typeId)
 }
 
-Block.prototype.canPathThrough = function () {
-    return this.canWalkThrough() || Registry.doorTypes.includesFast(this.typeId)
-}
+const avoidBlockTypes = new Set(["minecraft:web"])
 
-Block.prototype.destroyableLeaf = function () {
+Block.prototype.canPathThrough = function () {
     return (
-        Registry.leafTypes.includesFast(this.typeId) && !this.permutation.getState("persistent_bit")
+        this.canWalkThrough() ||
+        Registry.doorTypes.includesFast(this.typeId) ||
+        avoidBlockTypes.has(this.typeId)
     )
 }
 
@@ -626,7 +715,15 @@ const minecraftNonSolidBlocksSet = new Set(minecraftNonSolidBlocks)
 
 Block.prototype.canWalkThrough = function () {
     return (
-        (this.isAir || minecraftNonSolidBlocksSet.has(this.typeId) || this.destroyableLeaf()) && !this.isDangerous() && !this.isLiquid && !this.isWaterlogged
+        (this.isAir || minecraftNonSolidBlocksSet.has(this.typeId) || this.destroyableLeaf()) &&
+        !avoidBlockTypes.has(this.typeId) &&
+        !this.isDangerous() && !this.isLiquid && !this.isWaterlogged
+    )
+}
+
+Block.prototype.destroyableLeaf = function () {
+    return (
+        Registry.leafTypes.includesFast(this.typeId) && this.permutation.getState("persistent_bit") === false
     )
 }
 

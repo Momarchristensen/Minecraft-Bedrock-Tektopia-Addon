@@ -17,39 +17,141 @@ import {
     areVectorsEqual,
     calculateSquareDistance,
     centerVector,
-    type Direction,
     directionToVector,
     getOppositeDirection,
     rotationToStructureRotation,
-    locationToString
+    locationToString,
+    type CardinalDirection
 } from "./utils"
 
 import { Village } from "./village"
 
-const itemFrameRotations: Record<string, Direction> = {
+import type { StructureType } from "./structure"
+
+const itemFrameRotations: Record<string, CardinalDirection> = {
     2: "south",
     3: "north",
     4: "east",
     5: "west"
 }
 
-const cardinalDirectionList = ["north", "east", "south", "west"]
+const cardinalDirectionList = ["north", "east", "south", "west"] as CardinalDirection[]
 
 interface StructureValidationResult {
     result: boolean | undefined
-    doorLocation: Vector3 | undefined
+    doorLocation?: Vector3 | undefined
+    village?: Village
 }
 
 function* validateStructure(
     dimension: Dimension,
     block: Block,
-    rotation: Direction,
-    structureId: string
-): Generator<void, StructureValidationResult, void> {
+    rotation: CardinalDirection,
+    structureId: StructureType
+) {
+    const parseResult = (
+        result: boolean | undefined,
+        door?: Vector3
+    ): StructureValidationResult => ({ result, doorLocation: door })
     const blockCenter = block.center()
     const blockCenterString = locationToString(blockCenter)
 
-    const fail = (
+    const villageList = world.getVillages()
+
+    let village: Village | undefined
+
+    if (structureId === "townhall") {
+        const tooCloseToAnotherVillage = villageList
+            .filter(checkVillage => checkVillage.centerString !== blockCenterString)
+            .some(checkVillage => calculateSquareDistance(checkVillage.center, blockCenter, true) < 200)
+
+        if (tooCloseToAnotherVillage) {
+            return parseResult(false)
+        }
+    }
+    else if (
+        !villageList.some(candidate => {
+            const isNearby = calculateSquareDistance(candidate.center, blockCenter, true) <= 100
+
+            if (isNearby) {
+                village = candidate
+            }
+
+            return isNearby
+        })
+    ) {
+        return parseResult(false)
+    }
+
+    let result
+    if (structureId === "mineshaft") {
+        result = yield* validateMineshaftStructure(
+            dimension,
+            block,
+            rotation
+        )
+    }
+    else {
+        result = yield* validateDefaultStructure(
+            dimension,
+            block,
+            rotation
+        )
+    }
+
+    result.village = village
+
+    return result
+}
+
+function* validateMineshaftStructure(
+    dimension: Dimension,
+    block: Block,
+    rotation: CardinalDirection
+): Generator<void, StructureValidationResult, void> {
+    const parseResult = (
+        result: boolean | undefined,
+        door?: Vector3
+    ): StructureValidationResult => ({ result, doorLocation: door })
+
+    if (!cardinalDirectionList.includes(rotation)) {
+        return parseResult(false)
+    }
+
+    const frameSupportLocation = addVectors(block.location, directionToVector(rotation))
+
+    const doorLocations = [
+        addVector(frameSupportLocation, "y", -1),
+        addVector(frameSupportLocation, "y", -2)
+    ]
+
+    for (const doorLocation of doorLocations) {
+        const doorBlock = dimension.getBlockSafe(doorLocation)
+        if (doorBlock === undefined) {
+            return parseResult(undefined)
+        }
+
+        if (!doorBlock.canPathThrough()) {
+            return parseResult(false)
+        }
+
+        if (debugFlags.structureScanParticles) {
+            dimension.spawnParticle(
+                "minecraft:basic_flame_particle",
+                centerVector(doorBlock.location)
+            )
+        }
+    }
+
+    return parseResult(true, doorLocations[1])
+}
+
+function* validateDefaultStructure(
+    dimension: Dimension,
+    block: Block,
+    rotation: CardinalDirection
+): Generator<void, StructureValidationResult, void> {
+    const parseResult = (
         result: boolean | undefined,
         door?: Vector3
     ): StructureValidationResult => ({ result, doorLocation: door })
@@ -71,12 +173,12 @@ function* validateStructure(
     }
 
     if (!cardinalDirectionList.includes(rotation)) {
-        return fail(false)
+        return parseResult(false)
     }
 
     const itemFrameOnBlock = block.offsetSafe(directionToVector(rotation))
     if (itemFrameOnBlock === undefined) {
-        return fail(false)
+        return parseResult(false)
     }
 
     const oppositeRotation = getOppositeDirection(rotation)
@@ -90,36 +192,23 @@ function* validateStructure(
     for (const offset of itemFrameOffsetList) {
         const checkBlock = itemFrameOnBlock.offsetSafe(offset)
         if (checkBlock === undefined) {
-            return fail(false)
+            return parseResult(false)
         }
         if (Registry.doorTypes.includes(checkBlock.typeId)) {
             foundDoor = checkBlock
         }
     }
     if (foundDoor === undefined) {
-        return fail(false)
+        return parseResult(false)
     }
 
     const doorLocation = addVector(foundDoor.location, "y", -1)
     const doorBlock = dimension.getBlockSafe(doorLocation)
     if (doorBlock === undefined) {
-        return fail(undefined, doorLocation)
+        return parseResult(undefined, doorLocation)
     }
     if (!Registry.doorTypes.includes(doorBlock.typeId)) {
-        return fail(false, doorLocation)
-    }
-
-    const villageList = world.getVillages()
-    if (structureId === "townhall") {
-        const tooCloseToAnotherVillage = villageList
-            .filter(village => village.centerString !== blockCenterString)
-            .some(village => calculateSquareDistance(village.center, blockCenter, true) < 200)
-        if (tooCloseToAnotherVillage) {
-            return fail(false, doorLocation)
-        }
-    }
-    else if (!villageList.some(village => calculateSquareDistance(village.center, blockCenter, true) <= 100)) {
-        return fail(false, doorLocation)
+        return parseResult(false, doorLocation)
     }
 
     const floorBlockList = []
@@ -144,14 +233,11 @@ function* validateStructure(
             if (!alreadyCheckedLocations.has(floorLocationString)) {
                 alreadyCheckedLocations.add(floorLocationString)
 
-                if (debugFlags.itemFrameScanParticles) {
-                    try {
-                        dimension.spawnParticle(
-                            "minecraft:basic_flame_particle",
-                            centerVector(currentLocation.floor)
-                        )
-                    }
-                    catch { }
+                if (debugFlags.structureScanParticles) {
+                    dimension.spawnParticle(
+                        "minecraft:basic_flame_particle",
+                        centerVector(addVector(currentLocation.floor, "y", 1))
+                    )
                 }
 
                 floorBlockList.push(currentLocation.floor.aboveSafe())
@@ -176,7 +262,7 @@ function* validateStructure(
                         floorBlock = floorBlock.aboveSafe()
                     }
                     if (floorBlock === undefined) {
-                        return fail(undefined, doorLocation)
+                        return parseResult(undefined, doorLocation)
                     }
 
                     const ceilingBlock = getCeilingBlock(floorBlock.location)
@@ -202,7 +288,7 @@ function* validateStructure(
         }
     }
 
-    return fail(floorBlockList.length >= 9, doorLocation)
+    return parseResult(floorBlockList.length >= 9, doorLocation)
 }
 
 function tickScanItemFrames() {
@@ -249,10 +335,12 @@ function* scanItemFrames(callback?: () => void) {
             }
 
             const rotation = itemFrameRotations[facingDirection]
-            const structureId = item.typeId.replace("tektopia:structure_", "")
+            const structureId = item.typeId.replace("tektopia:structure_", "") as StructureType
             itemFrame.structureId = structureId
 
-            const { result, doorLocation } = yield* validateStructure(dimension, block, rotation, structureId)
+            const structureValidation = yield* validateStructure(dimension, block, rotation, structureId)
+
+            const result = structureValidation.result
 
             if (!block.isValid) {
                 if (isTownhall) {
@@ -263,11 +351,23 @@ function* scanItemFrames(callback?: () => void) {
             }
 
             if (result !== undefined) {
-                if (result && doorLocation !== undefined && structureId === "townhall") {
-                    villageItemFrameLocations.push(blockCenterString)
-                    const villageStringCenterList = world.getVillages().map(village => village.centerString)
-                    if (!villageStringCenterList.includes(blockCenterString)) {
-                        world.villageList.push(Village.createData(blockCenter, dimension.id, doorLocation))
+                const doorLocation = structureValidation.doorLocation
+                if (result && doorLocation !== undefined) {
+                    if (isTownhall) {
+                        villageItemFrameLocations.push(blockCenterString)
+                        const villageStringCenterList = world.getVillages().map(village => village.centerString)
+                        if (!villageStringCenterList.includes(blockCenterString)) {
+                            world.villageList.push(Village.createData(blockCenter, dimension.id, doorLocation))
+                        }
+                    }
+                    else {
+                        const village = structureValidation.village
+                        if (village !== undefined) {
+                            village.addStructure(doorLocation, {
+                                type: structureId,
+                                rotation
+                            })
+                        }
                     }
                 }
                 dimension.placeStructureFrame(block.location, structureId, result, rotation)
@@ -279,7 +379,6 @@ function* scanItemFrames(callback?: () => void) {
             yield
         }
 
-        // Remove villages whose townhall frame no longer exists
         const keep = new Set(villageItemFrameLocations)
         for (let i = world.villageList.length - 1; i >= 0; i--) {
             if (!keep.has(locationToString(world.villageList[i].center))) {
@@ -303,12 +402,15 @@ Dimension.prototype.placeStructureFrame = function (location, structureType, isE
         )
         if (item?.typeId.replace("tektopia:structure_", "") !== structureType || itemIsEnchanted !== isEnchanted) {
             const structureRotation = rotationToStructureRotation(rotation)
-            structureManager.place(
-                `mystructure:structure_${structureType}${isEnchanted ? "_enchanted" : ""}`,
-                this,
-                location,
-                { rotation: structureRotation }
-            )
+            try {
+                structureManager.place(
+                    `mystructure:structure_${structureType}${isEnchanted ? "_enchanted" : ""}`,
+                    this,
+                    location,
+                    { rotation: structureRotation }
+                )
+            }
+            catch { }
         }
     }
 }

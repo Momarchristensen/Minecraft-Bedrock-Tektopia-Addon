@@ -18,14 +18,21 @@ import {
     locationToString
 } from "./utils"
 
-import type { NodeRequirement } from "."
+import type {
+    LocationString,
+    NodeRequirement,
+    PathNode
+} from "./minecraft_extensions"
+
+import type { RGB, Vector3 } from "@minecraft/server"
 
 export const debugFlags = {
     scanParticles: false,
     pathNodeParticles: false,
     villageLocationParticles: false,
     villagerDebugNameTags: false,
-    itemFrameScanParticles: false,
+    structureScanParticles: false,
+    pathScanParticles: false,
     villagerPathParticles: false,
     pathfindingWarnings: false,
     nodeUpdatedWarnings: false
@@ -36,6 +43,49 @@ export type DebugFlag = keyof typeof debugFlags
 export const debugFlagNames = Object.keys(debugFlags) as DebugFlag[]
 
 const PROPERTY_PREFIX = "tektopia:debug:"
+
+const DEFAULT_NODE_COLOR = {
+    red: 122 / 255,
+    green: 122 / 255,
+    blue: 122 / 255
+}
+
+const CONNECTION_LAYER_HEIGHT = 0.003
+
+const DEFAULT_CONNECTION_COLOR = {
+    red: 255 / 255,
+    green: 255 / 255,
+    blue: 108 / 255
+}
+
+const DIAGONAL_Y_OFFSET = 0.05
+
+interface ConnectionParticle {
+    direction: string
+    offset: Vector3
+    rotation?: number
+    particleDirection?: string
+}
+
+const CONNECTION_PARTICLES: ConnectionParticle[] = [
+    { direction: "north", offset: { x: -0.1, y: 0, z: -0.5 } },
+    { direction: "east", offset: { x: 0.5, y: 0, z: -0.1 }, rotation: 90 },
+    { direction: "south", offset: { x: 0.1, y: 0, z: 0.5 } },
+    { direction: "west", offset: { x: -0.5, y: 0, z: 0.1 }, rotation: 90 },
+    { direction: "northeast", offset: { x: 0.43, y: DIAGONAL_Y_OFFSET, z: -0.57 }, rotation: 135 },
+    { direction: "northwest", offset: { x: -0.57, y: 0, z: -0.43 }, rotation: 45 },
+    { direction: "southeast", offset: { x: 0.57, y: 0, z: 0.43 }, rotation: 45 },
+    { direction: "southwest", offset: { x: -0.43, y: DIAGONAL_Y_OFFSET, z: 0.57 }, rotation: 135 },
+    { direction: "northdown", offset: { x: -0.1, y: -0.5, z: -0.5 }, particleDirection: "north" },
+    { direction: "eastdown", offset: { x: 0.5, y: -0.5, z: -0.1 }, particleDirection: "east" },
+    { direction: "southdown", offset: { x: 0.1, y: -0.5, z: 0.5 }, particleDirection: "south" },
+    { direction: "westdown", offset: { x: -0.5, y: -0.5, z: 0.1 }, particleDirection: "west" },
+    { direction: "northup", offset: { x: -0.1, y: 0.5, z: -0.5 }, particleDirection: "south" },
+    { direction: "eastup", offset: { x: 0.5, y: 0.5, z: -0.1 }, particleDirection: "west" },
+    { direction: "southup", offset: { x: 0.1, y: 0.5, z: 0.5 }, particleDirection: "north" },
+    { direction: "westup", offset: { x: -0.5, y: 0.5, z: 0.1 }, particleDirection: "east" }
+]
+
 const VILLAGE_LOCATION_PROPERTIES = [
     "sugarCaneLocations",
     "saplingLocations",
@@ -43,7 +93,8 @@ const VILLAGE_LOCATION_PROPERTIES = [
     "harvestLocations",
     "sweetBerryLocations",
     "treeLocations",
-    "plantLocations"
+    "plantLocations",
+    "tillLocations"
 ] as const
 
 export function isDebugFlag(value: string): value is DebugFlag {
@@ -101,6 +152,38 @@ function tickDrawDebug() {
 
 system.run(tickDrawDebug)
 
+const COST_CHEAP_SATURATION = 1 
+const COST_EXPENSIVE_SATURATION = 12
+const COST_CHEAP = { red: 0.2, green: 0.5, blue: 1 }
+const COST_EXPENSIVE_MID = { red: 1, green: 0.8, blue: 0.2 } 
+const COST_EXPENSIVE = { red: 1, green: 0.1, blue: 0.1 }
+
+
+function lerpColor(from: RGB, to: RGB, amount: number): RGB {
+    return {
+        red: from.red + (to.red - from.red) * amount,
+        green: from.green + (to.green - from.green) * amount,
+        blue: from.blue + (to.blue - from.blue) * amount
+    }
+}
+
+function getCostColor(cost: number | undefined) {
+    if (cost === undefined) {
+        return undefined
+    }
+
+    if (cost < 0) {
+        const amount = Math.min(1, -cost / COST_CHEAP_SATURATION)
+        return lerpColor(DEFAULT_NODE_COLOR, COST_CHEAP, amount)
+    }
+
+    const t = Math.min(1, cost / COST_EXPENSIVE_SATURATION)
+    if (t < 0.5) {
+        return lerpColor(DEFAULT_NODE_COLOR, COST_EXPENSIVE_MID, t * 2)
+    }
+    return lerpColor(COST_EXPENSIVE_MID, COST_EXPENSIVE, (t - 0.5) * 2)
+}
+
 function* drawDebug(callback?: () => void) {
     try {
         if (!world.loadedData) {
@@ -127,7 +210,11 @@ function* drawDebug(callback?: () => void) {
                     colorMap.setColorRGB("color", stringColor(property))
                     colorMaps.set(property, colorMap)
 
-                    for (const location of village[property]) {
+                    const propertyLocations = property === "plantLocations" ?
+                        Object.keys(village.plantLocations) as LocationString[] :
+                        village[property]
+
+                    for (const location of propertyLocations) {
                         const locationVector = stringToLocation(location)
                         if (calculateDistance(playerLocation, locationVector) > 20) {
                             continue
@@ -153,7 +240,7 @@ function* drawDebug(callback?: () => void) {
                         try {
                             player.spawnParticle("tektopia:path_node", particlePos, colorMaps.get(property))
                         }
-                        catch {}
+                        catch { }
                         yield
                     }
                 }
@@ -204,97 +291,61 @@ function* drawDebug(callback?: () => void) {
                                 )
                                 const colorMap = new MolangVariableMap()
 
-                                let color
+                                let nodeColor
                                 if (node.requirement !== undefined) {
-                                    color = requirementColor(node.requirement)
+                                    nodeColor = requirementColor(node.requirement)
                                 }
 
-                                color ??= {
-                                    red: 122 / 255,
-                                    green: 122 / 255,
-                                    blue: 122 / 255
+                                nodeColor ??= DEFAULT_NODE_COLOR
+
+                                colorMap.setColorRGB("color", nodeColor)
+
+                                const costColor = getCostColor(node.cost)
+
+                                try {
+                                    player.spawnParticle("tektopia:path_node", particlePos, colorMap)
+                                }
+                                catch { }
+
+                                if (costColor !== undefined) {
+                                    const molangVars = new MolangVariableMap
+                                    molangVars.setColorRGBA("color", { ...costColor, alpha: 1 })
+                                    player.spawnParticle("minecraft:sparkler_emitter", addVector(particlePos, "y", 0.25), molangVars)
                                 }
 
-                                colorMap.setColorRGB("color", color)
-
-                                player.spawnParticle("tektopia:path_node", particlePos, colorMap)
-
-                                const directionSet = new Set(
-                                    node.neighbors.map(neighborString =>
-                                        vectorToDirection(
-                                            subtractVectors(stringToLocation(neighborString), checkPos)
-                                        )
+                                const directionColors = new Map<string, { red: number, green: number, blue: number }>()
+                                for (const neighborKey of node.neighbors) {
+                                    const neighborPos = stringToLocation(neighborKey)
+                                    const direction = vectorToDirection(subtractVectors(neighborPos, checkPos))
+                                    if (direction === undefined) {
+                                        continue
+                                    }
+                                    const requirement = connectionRequirement(
+                                        node,
+                                        checkPos,
+                                        village.pathNodes[neighborKey],
+                                        neighborPos
                                     )
-                                )
-
-                                const spawnConnection = (
-                                    offsetX: number,
-                                    offsetY: number,
-                                    offsetZ: number,
-                                    dir?: MolangVariableMap | string
-                                ) => {
-                                    const pos = addVectors(
-                                        addVector(centerVector(checkPos, true), "y", 0.02),
-                                        { x: offsetX, y: offsetY, z: offsetZ }
+                                    directionColors.set(
+                                        direction,
+                                        requirement === undefined ? DEFAULT_CONNECTION_COLOR : requirementColor(requirement)
                                     )
+                                }
+
+                                const connectionBase = addVector(centerVector(checkPos, true), "y", 0.02)
+                                for (const [layer, { direction, offset, rotation, particleDirection }] of CONNECTION_PARTICLES.entries()) {
+                                    const connectionColor = directionColors.get(direction)
+                                    if (connectionColor === undefined) {
+                                        continue
+                                    }
                                     try {
-                                        if (typeof dir === "string") {
-                                            player.spawnParticle(`tektopia:node_connection_${dir}`, pos)
-                                        }
-                                        else {
-                                            player.spawnParticle("tektopia:node_connection", pos, dir)
-                                        }
+                                        player.spawnParticle(
+                                            particleDirection === undefined ? "tektopia:node_connection" : `tektopia:node_connection_${particleDirection}`,
+                                            addVectors(connectionBase, { x: offset.x, y: offset.y + (layer * CONNECTION_LAYER_HEIGHT), z: offset.z }),
+                                            getConnectionMolangMap(connectionColor, particleDirection === undefined ? rotation : undefined)
+                                        )
                                     }
                                     catch { }
-                                }
-
-                                if (directionSet.has("north")) {
-                                    spawnConnection(-0.1, 0, -0.5)
-                                }
-                                if (directionSet.has("east")) {
-                                    spawnConnection(0.5, 0, -0.1, rotate90)
-                                }
-                                if (directionSet.has("south")) {
-                                    spawnConnection(0.1, 0, 0.5)
-                                }
-                                if (directionSet.has("west")) {
-                                    spawnConnection(-0.5, 0, 0.1, rotate90)
-                                }
-                                if (directionSet.has("northeast")) {
-                                    spawnConnection(0.43, 0, -0.57, rotate135)
-                                }
-                                if (directionSet.has("northwest")) {
-                                    spawnConnection(-0.57, 0, -0.43, rotate45)
-                                }
-                                if (directionSet.has("southeast")) {
-                                    spawnConnection(0.57, 0, 0.43, rotate45)
-                                }
-                                if (directionSet.has("southwest")) {
-                                    spawnConnection(-0.43, 0, 0.57, rotate135)
-                                }
-                                if (directionSet.has("northdown")) {
-                                    spawnConnection(-0.1, -0.5, -0.5, "north")
-                                }
-                                if (directionSet.has("eastdown")) {
-                                    spawnConnection(0.5, -0.5, -0.1, "east")
-                                }
-                                if (directionSet.has("southdown")) {
-                                    spawnConnection(0.1, -0.5, 0.5, "south")
-                                }
-                                if (directionSet.has("westdown")) {
-                                    spawnConnection(-0.5, -0.5, 0.1, "west")
-                                }
-                                if (directionSet.has("northup")) {
-                                    spawnConnection(-0.1, 0.5, -0.5, "south")
-                                }
-                                if (directionSet.has("eastup")) {
-                                    spawnConnection(0.5, 0.5, -0.1, "west")
-                                }
-                                if (directionSet.has("southup")) {
-                                    spawnConnection(0.1, 0.5, 0.5, "north")
-                                }
-                                if (directionSet.has("westup")) {
-                                    spawnConnection(-0.5, 0.5, 0.1, "east")
                                 }
 
                                 yield
@@ -310,6 +361,43 @@ function* drawDebug(callback?: () => void) {
             callback()
         }
     }
+}
+
+const connectionMolangMaps = new Map<string, MolangVariableMap>()
+
+function getConnectionMolangMap(color: { red: number, green: number, blue: number }, rotation?: number) {
+    const cacheKey = `${color.red},${color.green},${color.blue}:${rotation ?? ""}`
+    let molangMap = connectionMolangMaps.get(cacheKey)
+    if (molangMap === undefined) {
+        molangMap = new MolangVariableMap()
+        if (rotation !== undefined) {
+            molangMap.setFloat("rotation", rotation)
+        }
+        molangMap.setColorRGB("color", color)
+        connectionMolangMaps.set(cacheKey, molangMap)
+    }
+    return molangMap
+}
+
+function connectionRequirement(
+    node: PathNode,
+    position: Vector3,
+    neighborNode: PathNode | undefined,
+    neighborPosition: Vector3
+) {
+    if (neighborNode === undefined) {
+        return undefined
+    }
+    if (neighborNode.requirement !== undefined) {
+        return neighborNode.requirement
+    }
+    if (neighborPosition.y > position.y) {
+        return neighborNode.stepRequirement
+    }
+    if (neighborPosition.y < position.y) {
+        return node.stepRequirement
+    }
+    return undefined
 }
 
 function requirementColor(requirement?: NodeRequirement) {

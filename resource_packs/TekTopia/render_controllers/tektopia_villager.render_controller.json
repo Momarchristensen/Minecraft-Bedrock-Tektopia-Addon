@@ -1,49 +1,16 @@
 {
     "format_version": "1.10.0",
     "render_controllers": {
-        "controller.render.tektopia_villager_texture_only": {
-            "arrays": {
-                "textures": {
-                    "array.textures": [
-                        "texture.male",
-                        "texture.female"
-                    ]
-                }
-            },
+        "controller.render.tektopia_villager": {
             "materials": [
                 {
                     "*": "material.default"
                 }
             ],
             "textures": [
-                "array.textures[query.property('property:gender') == 'female']"
+                "texture.default"
             ],
             "geometry": "Geometry.default"
-        },
-        "controller.render.tektopia_villager": {
-            "arrays": {
-                "textures": {
-                    "Array.textures": [
-                        "Texture.male",
-                        "Texture.female"
-                    ]
-                },
-                "geometries": {
-                    "Array.geometries": [
-                        "Geometry.male",
-                        "Geometry.female"
-                    ]
-                }
-            },
-            "materials": [
-                {
-                    "*": "material.default"
-                }
-            ],
-            "textures": [
-                "Array.textures[query.property('property:gender') == 'female']"
-            ],
-            "geometry": "Array.geometries[query.property('property:gender') == 'female']"
         }
     }
 }

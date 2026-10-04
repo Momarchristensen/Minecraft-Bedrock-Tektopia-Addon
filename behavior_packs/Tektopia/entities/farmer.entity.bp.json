@@ -6,21 +6,16 @@
             "is_spawnable": true,
             "is_summonable": true,
             "properties": {
-                "property:gender": {
-                    "client_sync": true,
-                    "type": "enum",
-                    "values": [
-                        "male",
-                        "female"
-                    ],
-                    "default": "male"
-                },
                 "property:animation": {
                     "client_sync": true,
                     "type": "enum",
                     "values": [
                         "none",
-                        "harvesting"
+                        "harvesting",
+                        "planting",
+                        "tilling",
+                        "chopping",
+                        "mining"
                     ],
                     "default": "none"
                 }

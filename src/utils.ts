@@ -3,9 +3,9 @@ import {
     type Vector3
 } from "@minecraft/server"
 
-import type { LocationString } from "."
+import type { LocationString } from "./minecraft_extensions"
 
-export type Direction = "north" | "south" | "east" | "west" | "up" | "down"
+export type CardinalDirection = "north" | "south" | "east" | "west" | "up" | "down"
 
 export function isVectorBetween(vector: Vector3, vector1: Vector3, vector2: Vector3, ignoreY = false): boolean {
     const centeredVector = centerVector(vector)
@@ -193,7 +193,7 @@ export function areVectorsEqual(vector1: Vector3, vector2: Vector3): boolean {
     return vector1.x === vector2.x && vector1.y === vector2.y && vector1.z === vector2.z
 }
 
-export function directionToVector(direction: string): Vector3 {
+export function directionToVector(direction: CardinalDirection): Vector3 {
     switch (direction.toLowerCase()) {
         case "north":
             return { x: 0, y: 0, z: -1 }
@@ -211,7 +211,7 @@ export function directionToVector(direction: string): Vector3 {
     return { x: 0, y: 0, z: 0 }
 }
 
-export function getOppositeDirection(direction: string): Direction | undefined {
+export function getOppositeDirection(direction: CardinalDirection): CardinalDirection | undefined {
     switch (direction.toLowerCase()) {
         case "north":
             return "south"
