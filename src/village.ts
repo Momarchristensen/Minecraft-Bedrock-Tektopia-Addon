@@ -30,7 +30,9 @@ import {
     randomItem,
     stringToLocation,
     subtractVectors,
-    locationToString
+    locationToString,
+    addVector,
+    areVectorsEqual
 } from "./utils"
 
 import {
@@ -48,9 +50,8 @@ import {
 import type {
     NodeRequirement,
     PathNode,
-    UndefinedRecord,
     LocationString,
-    VillageBounds
+    Bounds
 } from "./minecraft_extensions"
 
 system.beforeEvents.startup.subscribe(event => {
@@ -98,7 +99,7 @@ export interface VillageSaveData {
     center: Vector3
     dimensionId: string
     doorLocation: Vector3
-    pathNodes: UndefinedRecord<LocationString, PathNode>
+    pathNodes: Record<LocationString, PathNode>
     sugarCaneLocations: LocationString[]
     saplingLocations: LocationString[]
     farmLocations: LocationString[]
@@ -107,7 +108,17 @@ export interface VillageSaveData {
     tillLocations: LocationString[]
     sweetBerryLocations: LocationString[]
     treeLocations: LocationString[]
-    structures: UndefinedRecord<LocationString, StructureData>
+    structures: Record<LocationString, StructureData>
+}
+
+export interface StructureFilter<K extends StructureType = StructureType> {
+    includedTypes?: readonly K[]
+    excludedTypes?: readonly StructureType[]
+}
+
+interface VillageRanchEntity {
+    inPen: boolean
+    typeId: string
 }
 
 export class Village {
@@ -115,7 +126,8 @@ export class Village {
 
     readonly center: Vector3
     readonly centerString: string
-    readonly bounds: VillageBounds
+    readonly bounds: Bounds
+    readonly ranchEntities: Record<string, VillageRanchEntity> = {}
 
     searchingBlocks = false
     deletingInvalidNodes = false
@@ -227,21 +239,37 @@ export class Village {
         const resultList: Structure[] = []
 
         for (const [locationString, structureData] of Object.entries(this.data.structures)) {
-            if (structureData === undefined) {
-                continue
-            }
-
             resultList.push(Structure.from(locationString as LocationString, structureData, this.dimension))
         }
 
         return resultList
     }
 
-    findStructures<K extends StructureType>(type: K): Array<StructureTypeMap[K]> {
+    matchesFilter(structureData: StructureData | undefined, filter: StructureFilter): boolean {
+        if (structureData === undefined) {
+            return false
+        }
+
+        const { type } = structureData
+
+        if (filter.includedTypes !== undefined && !filter.includedTypes.includes(type)) {
+            return false
+        }
+
+        if (filter.excludedTypes?.includes(type)) {
+            return false
+        }
+
+        return true
+    }
+
+    findStructures<K extends StructureType = StructureType>(
+        filter: StructureFilter<K>
+    ): Array<StructureTypeMap[K]> {
         const resultList: Array<StructureTypeMap[K]> = []
 
         for (const [locationString, structureData] of Object.entries(this.data.structures)) {
-            if (structureData?.type !== type) {
+            if (!this.matchesFilter(structureData, filter)) {
                 continue
             }
 
@@ -595,15 +623,15 @@ Block.prototype.getVillage = function () {
     return this.dimension.getVillage(this.location)
 }
 
-function requirementsEqual(a: NodeRequirement | undefined, b: NodeRequirement | undefined) {
-    if (a === undefined || b === undefined) {
-        return a === b
+function requirementsEqual(node1: NodeRequirement | undefined, node2: NodeRequirement | undefined) {
+    if (node1 === undefined || node2 === undefined) {
+        return node1 === node2
     }
-    if (a.whiteList !== b.whiteList || a.types.length !== b.types.length) {
+    if (node1.whiteList !== node2.whiteList || node1.types.length !== node2.types.length) {
         return false
     }
-    const sortedA = a.types.slice().sort()
-    const sortedB = b.types.slice().sort()
+    const sortedA = node1.types.slice().sort()
+    const sortedB = node2.types.slice().sort()
     return sortedA.every((type, index) => type === sortedB[index])
 }
 
@@ -830,17 +858,25 @@ function* pruneLocations(dimension: Dimension, locations: LocationString[], shou
         }
 
         const locationString = locations[i]
+        if (locationString === undefined) {
+            yield
+            continue
+        }
+
         const block = dimension.getBlockSafe(stringToLocation(locationString))
 
         if (block !== undefined && shouldRemove(block, locationString)) {
-            locations[i] = locations[locations.length - 1]
+            const lastLocationString = locations[locations.length - 1]
+            if (lastLocationString !== undefined) {
+                locations[i] = lastLocationString
+            }
             locations.pop()
         }
         yield
     }
 }
 
-function* pruneLocationRecord<T>(dimension: Dimension, locations: UndefinedRecord<LocationString, T>, shouldRemove: (block: Block, locationString: LocationString) => boolean) {
+function* pruneLocationRecord<T>(dimension: Dimension, locations: Record<LocationString, T>, shouldRemove: (block: Block, locationString: LocationString) => boolean) {
     for (const locationString of Object.keys(locations) as LocationString[]) {
         const block = dimension.getBlockSafe(stringToLocation(locationString))
 
@@ -1006,6 +1042,8 @@ system.runInterval(() => {
     if (!world.loadedData) {
         return
     }
+    const rancherEntities = world.getEntities().filter(entity => ["minecraft:pig", "minecraft:sheep", "minecraft:cow", "minecraft:chicken"].includes(entity.typeId))
+
     const villageList = world.getVillages()
     for (const village of villageList) {
 
@@ -1043,6 +1081,22 @@ system.runInterval(() => {
                 finally {
                     village.deletingInvalidNodes = false
                 }
+            }
+        }
+
+        const rancherStructure = village.findStructures({ includedTypes: ["pig_pen", "cow_pen", "chicken_coop", "sheep_pen"] })
+        for (const structure of rancherStructure) {
+            const structureFloorLocations = structure.getFloorLocations()
+            for (const rancherEntity of rancherEntities) {
+                const flooredEntityLocation = floorVector(addVector(rancherEntity.location, "y", 0.1))
+                let inPen = false
+                for (const location of structureFloorLocations) {
+                    if (areVectorsEqual(flooredEntityLocation, location)) {
+                        inPen = true
+                        break
+                    }
+                }
+                village.ranchEntities[rancherEntity.id] = { inPen, typeId: rancherEntity.typeId }
             }
         }
     }

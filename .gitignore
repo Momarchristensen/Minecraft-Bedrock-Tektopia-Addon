@@ -23,6 +23,7 @@ desktop.ini
 dist/
 build/
 behavior_packs/Tektopia/scripts/*
+src.zip
 
 # Generated dependency graph (make_dep_graph.py)
 dependencies.dot

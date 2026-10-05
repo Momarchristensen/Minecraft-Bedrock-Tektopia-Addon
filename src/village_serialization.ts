@@ -6,7 +6,7 @@ import {
 import type {
     NodeRequirement,
     PathNode,
-    UndefinedRecord,
+    Record,
     LocationString
 } from "./minecraft_extensions"
 
@@ -54,7 +54,7 @@ export type CompressedVillage = [
     plantTypes: string[] | undefined,
     plantTypeIndices: string | undefined,
     stepRequirements: CompressedRequirement[] | undefined,
-    structures: UndefinedRecord<LocationString, StructureData> | undefined,
+    structures: Record<LocationString, StructureData> | undefined,
     nodeCosts: CompressedCost[] | undefined
 ]
 
@@ -422,7 +422,7 @@ export function decompressVillage(compressed: CompressedVillage): VillageSaveDat
 
     const nodePoints = unpackPoints(packedNodeLocations, origin)
     const nodeKeys = nodePoints.map(point => locationToString(point))
-    const pathNodes: UndefinedRecord<string, PathNode> = {}
+    const pathNodes: Record<string, PathNode> = {}
 
     for (const key of nodeKeys) {
         pathNodes[key] = { neighbors: [] }

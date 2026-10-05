@@ -30,17 +30,15 @@ import {
 
 import {
     MIN_MOVE_COST,
-    minecraftDangerousBlockTypes,
-    minecraftNonSolidBlocks
+    minecraftDangerousBlockTypes
 } from "./variables"
 
 import type {
     CheckEntityData,
     NodeRequirement,
     PathNode,
-    UndefinedRecord,
     LocationString,
-    VillageBounds
+    Bounds
 } from "./minecraft_extensions"
 
 import type { Villager } from "./villager"
@@ -65,7 +63,7 @@ class PriorityQueue<T> {
         const min = this.heap[0]
         const end = this.heap.pop()
 
-        if (end === undefined) {
+        if (end === undefined || min === undefined) {
             return undefined
         }
 
@@ -85,7 +83,7 @@ class PriorityQueue<T> {
             const parentIndex = Math.floor((index - 1) / 2)
             const parent = this.heap[parentIndex]
 
-            if (element.priority >= parent.priority) {
+            if (element === undefined || parent === undefined || element.priority >= parent.priority) {
                 break
             }
 
@@ -93,25 +91,34 @@ class PriorityQueue<T> {
             index = parentIndex
         }
 
-        this.heap[index] = element
+        if (element !== undefined) {
+            this.heap[index] = element
+        }
     }
 
     private bubbleDown(): void {
+        const element = this.heap[0]
+
+        if (element === undefined) {
+            return
+        }
+
         let index = 0
         const length = this.heap.length
-        const element = this.heap[0]
 
         while (true) {
             const leftChildIndex = (2 * index) + 1
             const rightChildIndex = (2 * index) + 2
 
-            let swap: number | null = null
+            let swapIndex: number | undefined
+            let swapChild: typeof element | undefined
 
             if (leftChildIndex < length) {
                 const leftChild = this.heap[leftChildIndex]
 
-                if (leftChild.priority < element.priority) {
-                    swap = leftChildIndex
+                if (leftChild !== undefined && leftChild.priority < element.priority) {
+                    swapIndex = leftChildIndex
+                    swapChild = leftChild
                 }
             }
 
@@ -119,19 +126,20 @@ class PriorityQueue<T> {
                 const rightChild = this.heap[rightChildIndex]
 
                 if (
-                    (swap === null && rightChild.priority < element.priority) ||
-                    (swap !== null && rightChild.priority < this.heap[swap].priority)
+                    rightChild !== undefined &&
+                    rightChild.priority < (swapChild ?? element).priority
                 ) {
-                    swap = rightChildIndex
+                    swapIndex = rightChildIndex
+                    swapChild = rightChild
                 }
             }
 
-            if (swap === null) {
+            if (swapIndex === undefined || swapChild === undefined) {
                 break
             }
 
-            this.heap[index] = this.heap[swap]
-            index = swap
+            this.heap[index] = swapChild
+            index = swapIndex
         }
 
         this.heap[index] = element
@@ -143,7 +151,7 @@ class PriorityQueue<T> {
 }
 
 function checkDiagonalRequirements(
-    nodeList: UndefinedRecord<string, PathNode>,
+    nodeList: Record<string, PathNode>,
     from: Vector3,
     to: Vector3,
     villagerType: string
@@ -171,7 +179,7 @@ function checkDiagonalRequirements(
 }
 
 function checkStepRequirements(
-    nodeList: UndefinedRecord<string, PathNode>,
+    nodeList: Record<string, PathNode>,
     fromKey: LocationString,
     from: Vector3,
     toKey: LocationString,
@@ -191,8 +199,8 @@ type BlockState = 1 | 2
 
 function buildBlockedCells(
     entities: Array<{ location: Vector3, cancelPath?: boolean }>,
-    nodeList: UndefinedRecord<string, PathNode>,
-    bounds: VillageBounds
+    nodeList: Record<string, PathNode>,
+    bounds: Bounds
 ) {
     const RADIUS = 1.75
     const cells = new Map<LocationString, BlockState>()
@@ -479,7 +487,7 @@ export function generatePath(entity: Villager, start: Vector3, end: Vector3, tok
     })
 }
 
-function findNearestNodeLocation(nodeList: UndefinedRecord<string, PathNode>, location: Vector3, maxRadius = 1.5) {
+function findNearestNodeLocation(nodeList: Record<string, PathNode>, location: Vector3, maxRadius = 1.5) {
     if (nodeList[locationToString(location)] !== undefined) {
         return location
     }
@@ -511,7 +519,7 @@ function findNearestNodeLocation(nodeList: UndefinedRecord<string, PathNode>, lo
     return undefined
 }
 
-const pathCheckEntities: UndefinedRecord<string, CheckEntityData[]> = {}
+const pathCheckEntities: Record<string, CheckEntityData[]> = {}
 
 export function getCheckPathEntities(dimensionId: string, villager: Villager) {
     const VillagerClass = villager.constructor as typeof Villager
@@ -534,6 +542,10 @@ export function getCheckPathEntities(dimensionId: string, villager: Villager) {
 }
 
 system.runInterval(() => {
+    const villagers = world.getVillagers()
+    if (!villagers.some(villager => villager.isPathing)) {
+        return
+    }
     for (const dimensionId of Registry.dimensionTypes) {
         const dimension = world.getDimension(dimensionId)
         const entities = dimension.getEntities({
@@ -553,7 +565,7 @@ system.runInterval(() => {
             })
         }
     }
-})
+}, 5)
 
 function checkRequirement(villagerType: string, requirement?: NodeRequirement) {
     if (requirement === undefined) {
@@ -575,7 +587,7 @@ export function updatePathNodes(blockList: Block[]) {
     }
 }
 
-function isNearVillageBounds(location: Vector3, bounds: VillageBounds, margin = 1) {
+function isNearVillageBounds(location: Vector3, bounds: Bounds, margin = 1) {
     return (
         location.x >= Math.floor(Math.min(bounds.start.x, bounds.end.x)) - margin &&
         location.x <= Math.ceil(Math.max(bounds.start.x, bounds.end.x)) + margin &&
@@ -689,7 +701,7 @@ function* updateNodesBlocks(callback?: () => void) {
     }
 }
 
-Block.prototype.isValidPath = function (villageBounds?: VillageBounds) {
+Block.prototype.isValidPath = function (villageBounds?: Bounds) {
     const block = this
     const below = block.belowSafe()
     if (below === undefined) {

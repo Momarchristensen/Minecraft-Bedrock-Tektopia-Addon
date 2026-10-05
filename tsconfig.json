@@ -4,6 +4,7 @@
         "module": "ES2022",
         "moduleResolution": "Bundler",
         "allowSyntheticDefaultImports": true,
+        "noUncheckedIndexedAccess": true,
         "strict": true,
 
         "noLib": true,

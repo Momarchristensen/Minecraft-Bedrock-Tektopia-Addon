@@ -1,7 +1,5 @@
 import { Registry } from "./registry"
 
-import type { UndefinedRecord } from "./minecraft_extensions"
-
 import type { Village } from "./village"
 
 import type { Villager } from "./villager"
@@ -20,7 +18,7 @@ interface Task {
     tick?: (villager: Villager, village: Village) => void
 }
 
-export const tektopiaVillagers: UndefinedRecord<string, VillagerConfig> = {
+export const tektopiaVillagers: Record<string, VillagerConfig> = {
     "tektopia:farmer": {
         customTasks: [
             {

@@ -125,43 +125,51 @@ export function centerVector(vector: Vector3, floorY = false): Vector3 {
 
 export function addVectors(...vectors: Vector3[]): Vector3 {
     let x = 0, y = 0, z = 0
-    const len = vectors.length
-    for (let i = 0; i < len; i++) {
-        const v = vectors[i]
-        x += v.x
-        y += v.y
-        z += v.z
+
+    for (const vector of vectors) {
+        x += vector.x
+        y += vector.y
+        z += vector.z
     }
+
     return { x, y, z }
 }
 
-export function addVector(vector: Vector3, axises: string | string[], value: number): Vector3 {
-    const result: Vector3 = {
-        x: vector.x,
-        y: vector.y,
-        z: vector.z
+type Axis = "x" | "y" | "z"
+type Permutations<T extends string, U extends string = T> =
+    [T] extends [never] ?
+        never :
+        T extends unknown ?
+      T | `${T}${Permutations<Exclude<U, T>>}` :
+            never
+
+type Axes = Permutations<Axis>
+
+export function addVector(
+    vector: Vector3,
+    axes: Axes,
+    value: number
+): Vector3 {
+    const result = { ...vector }
+
+    for (const axis of axes) {
+        result[axis as Axis] += value
     }
 
-    for (const axis of axises) {
-        if (axis in result) {
-            (result as unknown as Record<string, number>)[axis] += value
-        }
-    }
     return result
 }
 
-export function multiplyVector(vector: Vector3, axises: string | string[], value: number): Vector3 {
-    const result: Vector3 = {
-        x: vector.x,
-        y: vector.y,
-        z: vector.z
+export function multiplyVector(
+    vector: Vector3,
+    axes: Axes,
+    value: number
+): Vector3 {
+    const result = { ...vector }
+
+    for (const axis of axes) {
+        result[axis as Axis] *= value
     }
 
-    for (const axis of axises) {
-        if (axis in result) {
-            (result as unknown as Record<string, number>)[axis] *= value
-        }
-    }
     return result
 }
 
@@ -194,14 +202,13 @@ export function stringToLocation(string: LocationString): Vector3 {
 export function subtractLists<T>(list1: T[], list2: T[]): T[] {
     const removalSet = new Set(list2)
     const result: T[] = []
-    const len1 = list1.length
-    const has = removalSet.has.bind(removalSet)
-    for (let i = 0; i < len1; ++i) {
-        const item = list1[i]
-        if (!has(item)) {
+
+    for (const item of list1) {
+        if (!removalSet.has(item)) {
             result.push(item)
         }
     }
+
     return result
 }
 
@@ -270,6 +277,10 @@ export function vectorToDirection(vector: Vector3): string | undefined {
     return directionMap[locationToString(vector)]
 }
 
+export function vectorsAreEqual(vector1: Vector3, vector2: Vector3) {
+    return vector1.x === vector2.x && vector1.y === vector2.y && vector1.z === vector2.z
+}
+
 export function subtractVectors(vector1: Vector3, vector2: Vector3): Vector3 {
     return {
         x: vector1.x - vector2.x,
@@ -300,7 +311,7 @@ export function calculateAverage(numbers: number[]): number {
 }
 
 export function removeIdentifier(string: string): string {
-    return string.includes(":") ? string.split(":")[1] : string
+    return string.includes(":") ? string.split(":")[1] ?? "" : string
 }
 
 export function exclusiveValues<T>(...lists: T[][]): T[] {

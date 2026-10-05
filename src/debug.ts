@@ -24,7 +24,10 @@ import type {
     PathNode
 } from "./minecraft_extensions"
 
-import type { RGB, Vector3 } from "@minecraft/server"
+import type {
+    RGB,
+    Vector3
+} from "@minecraft/server"
 
 export const debugFlags = {
     locationScanParticles: false,
@@ -153,18 +156,17 @@ function tickDrawDebug() {
 
 system.run(tickDrawDebug)
 
-const COST_CHEAP_SATURATION = 1 
+const COST_CHEAP_SATURATION = 1
 const COST_EXPENSIVE_SATURATION = 12
 const COST_CHEAP = { red: 0.2, green: 0.5, blue: 1 }
-const COST_EXPENSIVE_MID = { red: 1, green: 0.8, blue: 0.2 } 
+const COST_EXPENSIVE_MID = { red: 1, green: 0.8, blue: 0.2 }
 const COST_EXPENSIVE = { red: 1, green: 0.1, blue: 0.1 }
-
 
 function lerpColor(from: RGB, to: RGB, amount: number): RGB {
     return {
-        red: from.red + (to.red - from.red) * amount,
-        green: from.green + (to.green - from.green) * amount,
-        blue: from.blue + (to.blue - from.blue) * amount
+        red: from.red + ((to.red - from.red) * amount),
+        green: from.green + ((to.green - from.green) * amount),
+        blue: from.blue + ((to.blue - from.blue) * amount)
     }
 }
 

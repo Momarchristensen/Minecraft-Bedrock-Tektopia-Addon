@@ -102,9 +102,14 @@ export class Villager {
         type: string
     }
 
+    private index: number
+
     private foundMine?: Vector3
 
+    static villagerIndex = 0
+
     constructor(private readonly entity: Entity) {
+        this.index = Villager.villagerIndex++
         return new Proxy(this, {
             get(target, prop, receiver) {
                 if (!(prop in target) && prop in target.entity) {
@@ -227,7 +232,7 @@ export class Villager {
         let closestMine: Vector3 | undefined
         let minDist = Infinity
 
-        const mineshaftStructures = village.findStructures("mineshaft")
+        const mineshaftStructures = village.findStructures({ includedTypes: ["mineshaft"] })
         for (const mineshaft of mineshaftStructures) {
             if (takenMines.has(mineshaft.locationString)) {
                 continue
@@ -592,7 +597,7 @@ export class Villager {
         const allTaskList = globalTasks.concat(villagerProps.customTasks)
         const taskList = villager.currentTask !== undefined ? allTaskList.filter(task => task.canInterrupt) : allTaskList
 
-        if (villager.currentTask === undefined) {
+        if (villager.currentTask === undefined && (system.currentTick + villager.index) % 20 === 0) {
             villager.foundTree = undefined
             villager.foundItem = undefined
             villager.foundHarvest = undefined
@@ -655,7 +660,7 @@ export class Villager {
                 }
             }
         }
-        if (villager.isPathing && villager.typeId === "tektopia:lumberjack" && system.currentTick % 20 === 0) {
+        if (villager.isPathing && villager.typeId === "tektopia:lumberjack" && (system.currentTick + villager.index) % 20 === 0) {
             const minVector = addVectors(villagerLocation, { x: -2, y: -1, z: -2 })
             const maxVector = addVectors(villagerLocation, { x: 2, y: 2, z: 2 })
             const blocksToUpdate = []
@@ -1087,11 +1092,11 @@ export class Villager {
                     return
                 }
                 villager.pathTickId = system.run(tickFollowPath)
-                if (pathNodeList.length === 0) {
+                if (pathNodeList[0] === undefined) {
                     cancelPath()
                     return
                 }
-                if (debugFlags.villagerPathParticles && system.currentTick % 20 === 0) {
+                if (debugFlags.villagerPathParticles && (system.currentTick + villager.index) % 20 === 0) {
                     pathNodeList.forEach(pathNode => {
                         try {
                             dimension.spawnParticle(

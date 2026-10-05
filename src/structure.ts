@@ -1,7 +1,7 @@
 import {
     system,
     world,
-    type Block,
+    Block,
     Dimension,
     type Vector3
 } from "@minecraft/server"
@@ -208,18 +208,17 @@ function resolvePenFloor(dimension: Dimension, location: Vector3): Block | null 
             return undefined
         }
 
-        // A fence at the same height is a wall; never climb over it
-        if (yOffset === 0 && isFenceBlock(block)) {
+        if (yOffset === 0 && block.isRanchBoundary) {
             return null
         }
 
         if (
             block.canPathThrough() &&
-            !isFenceBlock(block) &&
+            !block.isRanchBoundary &&
             !block.isLiquid &&
             !below.canPathThrough() &&
             !below.isLiquid &&
-            !isFenceBlock(below)
+            !below.isRanchBoundary
         ) {
             return block
         }
@@ -272,7 +271,6 @@ function* collectPenFloorLocations(
 
             const current = fill.queue.shift()
             if (current === undefined) {
-                // This side ran out of floor without escaping, so it is the enclosed area
                 return fill.floor
             }
 
@@ -317,8 +315,15 @@ function* collectPenFloorLocations(
 const maxFenceSearchBlocks = 256
 const fenceSearchYieldInterval = 16
 
-function isFenceBlock(block: Block): boolean {
-    return Registry.fenceTypes.includes(block.typeId) || Registry.gateTypes.includes(block.typeId)
+Object.defineProperty(Block.prototype, "isRanchBoundary", {
+    get(this: Block) {
+        return Registry.fenceTypes.includes(this.typeId) || Registry.gateTypes.includes(this.typeId)
+    }
+})
+
+interface FenceScan {
+    enclosed: boolean | undefined
+    locations: Vector3[]
 }
 
 function* isFenceEnclosed(
@@ -326,10 +331,20 @@ function* isFenceEnclosed(
     gate: Block,
     axis: Vector3
 ): Generator<void, boolean | undefined, void> {
+    const scan = yield* scanFence(dimension, gate, axis)
+    return scan.enclosed
+}
+
+function* scanFence(
+    dimension: Dimension,
+    gate: Block,
+    axis: Vector3,
+    collectLocations = false
+): Generator<void, FenceScan, void> {
     const leftBlock = gate.offsetSafe(axis)
     const rightBlock = gate.offsetSafe(multiplyVector(axis, "xyz", -1))
     if (leftBlock === undefined || rightBlock === undefined) {
-        return undefined
+        return { enclosed: undefined, locations: [] }
     }
 
     const showScanParticle = (block: Block) => {
@@ -342,8 +357,8 @@ function* isFenceEnclosed(
     showScanParticle(leftBlock)
     showScanParticle(rightBlock)
 
-    if (!isFenceBlock(leftBlock) || !isFenceBlock(rightBlock)) {
-        return false
+    if (!leftBlock.isRanchBoundary || !rightBlock.isRanchBoundary) {
+        return { enclosed: false, locations: [] }
     }
 
     const gateString = locationToString(gate.location)
@@ -359,6 +374,8 @@ function* isFenceEnclosed(
 
     const visited = new Set<LocationString>([gateString, locationToString(leftBlock.location)])
     const queue: Block[] = [leftBlock]
+    const locations: Vector3[] = [gate.location, leftBlock.location]
+    let enclosed = false
 
     let checked = 0
     while (queue.length > 0) {
@@ -370,34 +387,38 @@ function* isFenceEnclosed(
         for (const offset of stepOffsets) {
             const next = dimension.getBlockSafe(addVectors(current.location, offset))
             if (next === undefined) {
-                return undefined
+                return { enclosed: undefined, locations: [] }
             }
 
             const nextString = locationToString(next.location)
-            if (visited.has(nextString) || !isFenceBlock(next)) {
+            if (visited.has(nextString) || !next.isRanchBoundary) {
                 continue
             }
 
             showScanParticle(next)
 
             if (nextString === targetString) {
-                return true
+                if (!collectLocations) {
+                    return { enclosed: true, locations: [] }
+                }
+                enclosed = true
             }
 
             visited.add(nextString)
             queue.push(next)
+            locations.push(next.location)
         }
 
         checked++
         if (checked > maxFenceSearchBlocks) {
-            return false
+            return { enclosed, locations }
         }
         if (checked % fenceSearchYieldInterval === 0) {
             yield
         }
     }
 
-    return false
+    return { enclosed, locations }
 }
 
 function* validateMineshaftStructure(
@@ -421,7 +442,7 @@ function* validateMineshaftStructure(
     const doorLocations = [
         addVector(frameSupportLocation, "y", -1),
         addVector(frameSupportLocation, "y", -2)
-    ]
+    ] as const
 
     for (const doorLocation of doorLocations) {
         const doorBlock = dimension.getBlockSafe(doorLocation)
@@ -825,8 +846,8 @@ export class Mineshaft extends Structure<MineshaftData> {
 
         let lightBlock = this.dimension.getBlockSafe(this.location)
         for (let step = 0; step < distanceToMineBlock; step++) {
-            for (let i = 0; i < checkBlocks.length; i++) {
-                const { offset, block } = checkBlocks[i]
+            for (const [i, entry] of checkBlocks.entries()) {
+                const { offset, block } = entry
                 if (block === undefined) {
                     return undefined
                 }
@@ -853,6 +874,14 @@ export class Mineshaft extends Structure<MineshaftData> {
     }
 }
 
+function runToCompletion<T>(generator: Generator<void, T, void>): T {
+    let step = generator.next()
+    while (!step.done) {
+        step = generator.next()
+    }
+    return step.value
+}
+
 export class AnimalPen extends Structure<AnimalPenData> {
     constructor(locationString: LocationString, data: AnimalPenData, dimension: Dimension) {
         super(locationString, data, dimension)
@@ -875,7 +904,7 @@ export class AnimalPen extends Structure<AnimalPenData> {
         return validation.result
     }
 
-    getFloorLocations(): Vector3[] {
+    getFenceLocations(): Vector3[] {
         const frameBlock = this.getFrameBlock()
         if (frameBlock === undefined) {
             return []
@@ -886,13 +915,33 @@ export class AnimalPen extends Structure<AnimalPenData> {
             return []
         }
 
-        const generator = collectPenFloorLocations(this.dimension, penGate.gate, penGate.direction)
-        let step = generator.next()
-        while (!step.done) {
-            step = generator.next()
+        const scan = runToCompletion(
+            scanFence(this.dimension, penGate.gate, penGate.axis, true)
+        )
+
+        return scan.enclosed === true ? scan.locations : []
+    }
+
+    getFloorLocations(includeFences = false): Vector3[] {
+        const frameBlock = this.getFrameBlock()
+        if (frameBlock === undefined) {
+            return []
         }
 
-        return step.value ?? []
+        const penGate = findAnimalPenGate(frameBlock, this.rotation)
+        if (penGate === undefined) {
+            return []
+        }
+
+        const floorLocations = runToCompletion(
+            collectPenFloorLocations(this.dimension, penGate.gate, penGate.direction)
+        ) ?? []
+
+        if (!includeFences) {
+            return floorLocations
+        }
+
+        return floorLocations.concat(this.getFenceLocations())
     }
 }
 

@@ -1,5 +1,3 @@
-import type { UndefinedRecord } from "./minecraft_extensions"
-
 interface SoundEvent {
     pitch?: [number, number] | number
     sound: string
@@ -9,7 +7,7 @@ interface SoundEvent {
 type SoundEventEntry = SoundEvent | string | null
 
 //Auto Generated Variables
-export const blockSounds: UndefinedRecord<string, {
+export const blockSounds: Record<string, {
     break: SoundEventEntry
     place: SoundEventEntry
 }> = {

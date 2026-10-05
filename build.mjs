@@ -1,12 +1,14 @@
 import * as esbuild from "esbuild"
 import { glob } from "tinyglobby"
 
+const watch = process.argv.includes("--watch")
+
 const entryPoints = await glob([
     "src/**/*.ts",
     "!src/**/*.d.ts"
 ])
 
-const ctx = await esbuild.context({
+const options = {
     entryPoints,
 
     bundle: true,
@@ -22,8 +24,13 @@ const ctx = await esbuild.context({
 
     sourcemap: true,
     sourcesContent: true
-})
+}
 
-await ctx.watch()
-
-console.log("Watching src/ for changes...")
+if (watch) {
+    const ctx = await esbuild.context(options)
+    await ctx.watch()
+    console.log("Watching src/ for changes...")
+} else {
+    await esbuild.build(options)
+    console.log("Build complete.")
+}

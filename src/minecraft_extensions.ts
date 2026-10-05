@@ -26,8 +26,6 @@ export type LocationString = string & {
     readonly __vectorString: unique symbol
 }
 
-export type UndefinedRecord<K extends PropertyKey, V> = Record<K, V | undefined>
-
 export interface ItemStackFilter {
     typeId?: string
     amount?: number
@@ -101,7 +99,7 @@ declare module "@minecraft/server" {
         soundEvent(eventId: SoundEvents, soundOptions?: WorldSoundOptions): void
         replace(blockType: string | BlockType | BlockPermutation): void
         getNodeNeighbors(): Block[]
-        isValidPath(villageBounds?: VillageBounds): boolean
+        isValidPath(villageBounds?: Bounds): boolean
         getNodeRequirement(): NodeRequirement | undefined
         getStepRequirement(): NodeRequirement | undefined
         scanBlock(village: Village): boolean
@@ -120,6 +118,7 @@ declare module "@minecraft/server" {
         readonly isPlantable: boolean
         readonly isTillable: boolean
         readonly tillResult: TillResult
+        readonly isRanchBoundary: boolean
     }
 
     interface ItemStack {
@@ -129,7 +128,7 @@ declare module "@minecraft/server" {
 
     interface Player {
         resetCache(): void
-        spawnBorderParticles(bounds: VillageBounds): void
+        spawnBorderParticles(bounds: Bounds): void
     }
 }
 
@@ -154,7 +153,7 @@ export interface PathNode {
     cost?: number
 }
 
-export interface VillageBounds {
+export interface Bounds {
     start: Vector3
     end: Vector3
 }
