@@ -76,7 +76,7 @@ export const tektopiaVillagers: UndefinedRecord<string, VillagerConfig> = {
     "tektopia:miner": {
         customTasks: [
             {
-                id: "chop",
+                id: "mine",
                 name: "Mine",
                 required: false,
                 condition: (villager: Villager, village: Village) => villager.findMine(village) !== undefined,
@@ -99,6 +99,18 @@ export const tektopiaVillagers: UndefinedRecord<string, VillagerConfig> = {
             "minecraft:andesite",
             "minecraft:gravel"
         ]
+    },
+    "tektopia:rancher": {
+        customTasks: [
+            // {
+            //     id: "herd",
+            //     name: "Herd",
+            //     required: false,
+            //     condition: (villager: Villager, village: Village) => villager.findMine(village) !== undefined,
+            //     tick: (villager: Villager, village: Village) => villager.tickMine(village)
+            // }
+        ],
+        pickupItems: () => []
     }
 }
 

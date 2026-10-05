@@ -1,0 +1,42 @@
+{
+    "format_version": "1.10.0",
+    "minecraft:client_entity": {
+        "description": {
+            "identifier": "tektopia:rancher",
+            "enable_attachables": true,
+            "animations": {
+                "main": "controller.animation.tektopia_villager",
+                "walk": "animation.tektopia_villager.walk",
+                "chop": "animation.tektopia_villager.chop",
+                "harvest": "animation.tektopia_villager.pickup",
+                "planting": "animation.tektopia_villager.take",
+                "tilling": "animation.tektopia_villager.hoe",
+                "mining": "animation.tektopia_villager.hammer"
+            },
+            "scripts": {
+                "animate": [
+                    "main"
+                ]
+            },
+            "geometry": {
+                "default": "geometry.tektopia_rancher"
+            },
+            "sound_effects": {
+                "hit.wood": "hit.wood"
+            },
+            "textures": {
+                "default": "textures/entity/rancher_male"
+            },
+            "materials": {
+                "default": "entity"
+            },
+            "render_controllers": [
+                "controller.render.tektopia_villager"
+            ],
+            "spawn_egg": {
+                "base_color": "#446600",
+                "overlay_color": "#00FF44"
+            }
+        }
+    }
+}

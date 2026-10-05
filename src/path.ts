@@ -19,7 +19,7 @@ import { Registry } from "./registry"
 import {
     addVectors,
     calculateDistance,
-    calculateSquareDistance,
+    calculateChebyshevDistance,
     centerVector,
     floorVector,
     isVectorBetween,
@@ -187,6 +187,49 @@ function checkStepRequirements(
     return stepRequirement === undefined || checkRequirement(villagerType, stepRequirement)
 }
 
+type BlockState = 1 | 2
+
+function buildBlockedCells(
+    entities: Array<{ location: Vector3, cancelPath?: boolean }>,
+    nodeList: UndefinedRecord<string, PathNode>,
+    bounds: VillageBounds
+) {
+    const RADIUS = 1.75
+    const cells = new Map<LocationString, BlockState>()
+
+    const minBX = Math.min(bounds.start.x, bounds.end.x) - RADIUS - 1
+    const maxBX = Math.max(bounds.start.x, bounds.end.x) + RADIUS + 1
+    const minBZ = Math.min(bounds.start.z, bounds.end.z) - RADIUS - 1
+    const maxBZ = Math.max(bounds.start.z, bounds.end.z) + RADIUS + 1
+
+    for (const other of entities) {
+        const loc = other.location
+        if (loc.x < minBX || loc.x > maxBX || loc.z < minBZ || loc.z > maxBZ) {
+            continue
+        }
+        const state: BlockState = other.cancelPath ? 2 : 1
+
+        for (let x = Math.floor(loc.x - RADIUS - 1); x <= Math.ceil(loc.x + RADIUS); x++) {
+            for (let y = Math.floor(loc.y - RADIUS - 1); y <= Math.ceil(loc.y + RADIUS); y++) {
+                for (let z = Math.floor(loc.z - RADIUS - 1); z <= Math.ceil(loc.z + RADIUS); z++) {
+                    const key = locationToString({ x, y, z })
+                    if (nodeList[key] === undefined) {
+                        continue
+                    }
+                    if (calculateChebyshevDistance(loc, centerVector({ x, y, z }, true)) >= RADIUS) {
+                        continue
+                    }
+                    const existing = cells.get(key)
+                    if (existing === undefined || state > existing) {
+                        cells.set(key, state)
+                    }
+                }
+            }
+        }
+    }
+    return cells
+}
+
 export function generatePath(entity: Villager, start: Vector3, end: Vector3, token: { cancelled: boolean }) {
     return new Promise<PathResult>(resolve => {
         const village = entity.getVillage()
@@ -253,6 +296,12 @@ export function generatePath(entity: Villager, start: Vector3, end: Vector3, tok
         }
 
         function* tickGeneratePath() {
+            const isCancelled = () => token.cancelled
+            if (isCancelled()) {
+                resolve("cancelled")
+                return
+            }
+
             let startKey = locationToString(startLocation)
             let endKey = locationToString(endLocation)
 
@@ -303,6 +352,7 @@ export function generatePath(entity: Villager, start: Vector3, end: Vector3, tok
             }
 
             const checkEntityList = getCheckPathEntities(dimensionId, entity)
+            const blockedCells = buildBlockedCells(checkEntityList, nodeList, villageBounds)
             let expansions = 0
             let bestKey = startKey
             let bestHeuristic = estimate(startVec, endVec)
@@ -321,7 +371,7 @@ export function generatePath(entity: Villager, start: Vector3, end: Vector3, tok
                     return
                 }
 
-                if (token.cancelled) {
+                if (isCancelled()) {
                     resolve("cancelled")
                     return
                 }
@@ -387,18 +437,11 @@ export function generatePath(entity: Villager, start: Vector3, end: Vector3, tok
                         continue
                     }
 
-                    const neighborCenter = centerVector(neighborLocation, true)
-
-                    let isBlocked = false
-                    for (const other of checkEntityList) {
-                        if (calculateSquareDistance(other.location, neighborCenter) < 1.75) {
-                            if (other.cancelPath) {
-                                continue outerLoop
-                            }
-                            isBlocked = true
-                            break
-                        }
+                    const blockState = blockedCells.get(neighborKey)
+                    if (blockState === 2) {
+                        continue
                     }
+                    const isBlocked = blockState === 1
 
                     const blockCost = neighborNode.cost ?? 0
                     let verticalPenalty = 0
@@ -585,7 +628,6 @@ function* updateNodesBlocks(callback?: () => void) {
         }
 
         while (pendingNodeUpdates.size > 0) {
-            // take everything queued so far, anything queued while yielding becomes the next batch
             const batch = [...pendingNodeUpdates.values()].filter(block => block.isValid)
             pendingNodeUpdates.clear()
 
@@ -603,7 +645,6 @@ function* updateNodesBlocks(callback?: () => void) {
                     continue
                 }
 
-                // drop every changed node first, then rebuild outward from the untouched nodes around them
                 for (const block of villageBlocks) {
                     village.removeNode(locationToString(block))
                 }
@@ -741,11 +782,9 @@ Block.prototype.canPathThrough = function () {
     )
 }
 
-const minecraftNonSolidBlocksSet = new Set(minecraftNonSolidBlocks)
-
 Block.prototype.canWalkThrough = function () {
     return (
-        (this.isAir || minecraftNonSolidBlocksSet.has(this.typeId) || this.destroyableLeaf()) &&
+        (this.isAir || Registry.nonSolidBlocksSet.has(this.typeId) || this.destroyableLeaf()) &&
         !avoidBlockTypes.has(this.typeId) &&
         !this.isDangerous() && !this.isLiquid && !this.isWaterlogged
     )

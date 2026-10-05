@@ -72,11 +72,27 @@ export function calculateDistance(v1: Vector3, v2: Vector3, ignoreY = false): nu
     return Math.sqrt((dx * dx) + (dy * dy) + (dz * dz))
 }
 
-export function calculateSquareDistance(v1: Vector3, v2: Vector3, ignoreY = false): number {
-    const dx = Math.abs(v1.x - v2.x)
-    const dy = ignoreY ? 0 : Math.abs(v1.y - v2.y)
-    const dz = Math.abs(v1.z - v2.z)
-    return Math.max(dx, dy, dz)
+export function calculateChebyshevDistance(v1: Vector3, v2: Vector3, ignoreY = false): number {
+    let dx = v1.x - v2.x
+    let dz = v1.z - v2.z
+    if (dx < 0) {
+        dx = -dx
+    }
+    if (dz < 0) {
+        dz = -dz
+    }
+    let max = dx > dz ? dx : dz
+
+    if (!ignoreY) {
+        let dy = v1.y - v2.y
+        if (dy < 0) {
+            dy = -dy
+        }
+        if (dy > max) {
+            max = dy
+        }
+    }
+    return max
 }
 
 export function randomInt(min: number, max: number): number {

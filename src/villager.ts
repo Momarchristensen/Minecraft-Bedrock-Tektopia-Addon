@@ -27,7 +27,7 @@ import { destroyTree } from "./tree"
 import {
     addVectors,
     calculateDistance,
-    calculateSquareDistance,
+    calculateChebyshevDistance,
     centerVector,
     floorVector,
     formatTypeId,
@@ -60,6 +60,20 @@ world.afterEvents.entityRemove.subscribe(event => {
     const removedEntityId = event.removedEntityId
     villagerCache.delete(removedEntityId)
 })
+
+const PATH_TIMEOUT_TICKS = 1200
+const activePaths = new Map<object, { deadline: number, cancel: () => void }>()
+
+system.runInterval(() => {
+    const now = system.currentTick
+    for (const [_, entry] of activePaths) {
+        if (now >= entry.deadline) {
+            entry.cancel()
+        }
+    }
+}, 20)
+
+const noop = () => { }
 
 export interface Villager extends Entity { }
 
@@ -389,18 +403,12 @@ export class Villager {
         const token = { cancelled: false }
         let finished = false
 
-        const timeoutId = system.runTimeout(() => {
-            if (!finished) {
-                cancelPath()
-            }
-        }, 1200)
-
         function cancelPath() {
             if (finished) {
                 return
             }
             finished = true
-            system.clearRun(timeoutId)
+            activePaths.delete(token)
             token.cancelled = true
             villager.blockedTimer = 0
             villager.setAnimation(undefined)
@@ -408,11 +416,12 @@ export class Villager {
             villager.nextPathNode = undefined
             if (villager.pathTickId !== undefined) {
                 system.clearRun(villager.pathTickId)
+                villager.pathTickId = undefined
             }
-            villager.pathTickId = undefined
-            villager.stopPath = () => { }
+            villager.stopPath = noop
         }
 
+        activePaths.set(token, { deadline: system.currentTick + PATH_TIMEOUT_TICKS, cancel: cancelPath })
         villager.stopPath = cancelPath
 
         try {
@@ -753,10 +762,6 @@ export class Villager {
         }
         else if (mineTask.type === "light") {
             const torchBlock = mineTask.block
-            villager.dimension.spawnParticle(
-                "minecraft:basic_flame_particle",
-                torchBlock.center()
-            )
 
             const torchBlockDistance = calculateDistance(torchBlock.location, villager.location)
 
@@ -1129,7 +1134,7 @@ export class Villager {
                     if (!checkEntity.isBlocked) {
                         const checkEntityLocation = checkEntity.location
                         const checkEntityIsTektopiaVillager = checkEntity.typeId.startsWith("tektopia:")
-                        if (calculateSquareDistance(checkEntityLocation, currentPathNode) < 1.75) {
+                        if (calculateChebyshevDistance(checkEntityLocation, currentPathNode) < 1.75) {
                             if (checkEntity.cancelPath) {
                                 cancelPath()
                                 return
@@ -1199,7 +1204,7 @@ export class Villager {
                     return
                 }
 
-                if (Math.abs(currentPathNode.y - villager.location.y) <= 0.25 ? calculateSquareDistance(currentPathNode, villager.location) <= 0.25 : calculateSquareDistance(currentPathNode, villager.location) <= 0.5) {
+                if (Math.abs(currentPathNode.y - villager.location.y) <= 0.25 ? calculateChebyshevDistance(currentPathNode, villager.location) <= 0.25 : calculateChebyshevDistance(currentPathNode, villager.location) <= 0.5) {
                     pathNodeList.shift()
                 }
             }

@@ -624,6 +624,10 @@ Block.prototype.getNodeRequirement = function () {
         return { whiteList: true, types: ["tektopia:lumberjack"] }
     }
 
+    if (Registry.gateTypes.includes(block.typeId)) {
+        return { whiteList: true, types: ["tektopia:rancher"] }
+    }
+
     return undefined
 }
 
