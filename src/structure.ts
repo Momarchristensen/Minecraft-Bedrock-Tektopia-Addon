@@ -904,44 +904,35 @@ export class AnimalPen extends Structure<AnimalPenData> {
         return validation.result
     }
 
-    getFenceLocations(): Vector3[] {
-        const frameBlock = this.getFrameBlock()
-        if (frameBlock === undefined) {
-            return []
+    private getPenGate(): AnimalPenGate | undefined {
+        const gate = this.dimension.getBlockSafe(this.location)
+        if (gate === undefined || !Registry.gateTypes.includes(gate.typeId)) {
+            return undefined
         }
 
-        const penGate = findAnimalPenGate(frameBlock, this.rotation)
+        const direction = directionToVector(this.rotation)
+        const axis = { x: direction.z, y: direction.y, z: direction.x }
+        return { gate, axis, direction }
+    }
+
+    getFenceLocations(): Vector3[] {
+        const penGate = this.getPenGate()
         if (penGate === undefined) {
             return []
         }
-
-        const scan = runToCompletion(
-            scanFence(this.dimension, penGate.gate, penGate.axis, true)
-        )
-
+        const scan = runToCompletion(scanFence(this.dimension, penGate.gate, penGate.axis, true))
         return scan.enclosed === true ? scan.locations : []
     }
 
     getFloorLocations(includeFences = false): Vector3[] {
-        const frameBlock = this.getFrameBlock()
-        if (frameBlock === undefined) {
-            return []
-        }
-
-        const penGate = findAnimalPenGate(frameBlock, this.rotation)
+        const penGate = this.getPenGate()
         if (penGate === undefined) {
             return []
         }
-
         const floorLocations = runToCompletion(
             collectPenFloorLocations(this.dimension, penGate.gate, penGate.direction)
         ) ?? []
-
-        if (!includeFences) {
-            return floorLocations
-        }
-
-        return floorLocations.concat(this.getFenceLocations())
+        return includeFences ? floorLocations.concat(this.getFenceLocations()) : floorLocations
     }
 }
 

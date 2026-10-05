@@ -1,7 +1,7 @@
 import {
     Block,
     BlockPermutation,
-    type Entity,
+    Entity,
     EntityComponentTypes,
     ItemStack,
     system,
@@ -15,8 +15,8 @@ import { debugFlags } from "./debug"
 import { blockSounds } from "./generated"
 
 import {
+    findPathBlocker,
     generatePath,
-    getCheckPathEntities,
     updatePathNodes
 } from "./path"
 
@@ -35,12 +35,12 @@ import {
     multiplyVector,
     randomInt,
     removeIdentifier,
-    stringToLocation,
     locationToString,
     fixVector,
     addVector,
     getOppositeDirection,
-    directionToVector
+    directionToVector,
+    stringToLocationCached
 } from "./utils"
 
 import {
@@ -110,21 +110,62 @@ export class Villager {
 
     constructor(private readonly entity: Entity) {
         this.index = Villager.villagerIndex++
-        return new Proxy(this, {
-            get(target, prop, receiver) {
-                if (!(prop in target) && prop in target.entity) {
-                    const value = Reflect.get(target.entity, prop)
-                    return typeof value === "function" ? value.bind(target.entity) : value
-                }
-                return Reflect.get(target, prop, receiver)
-            },
-            set(target, prop, value) {
-                if (!(prop in target) && prop in target.entity) {
-                    return Reflect.set(target.entity, prop, value)
-                }
-                return Reflect.set(target, prop, value)
+        Villager.installDelegates()
+    }
+
+    private static delegatesInstalled = false
+
+    private static installDelegates() {
+        if (Villager.delegatesInstalled) {
+            return
+        }
+        Villager.delegatesInstalled = true
+
+        const names = [...Object.getOwnPropertyNames(Entity.prototype), "isDead", "unreachable"]
+
+        for (const name of names) {
+            if (name === "constructor" || name in Villager.prototype) {
+                continue
             }
-        })
+
+            const descriptor = Object.getOwnPropertyDescriptor(Entity.prototype, name)
+
+            if (typeof descriptor?.value === "function") {
+                Object.defineProperty(Villager.prototype, name, {
+                    configurable: true,
+                    value(this: Villager, ...args: unknown[]) {
+                        return Reflect.apply(Reflect.get(this.entity, name) as () => unknown, this.entity, args)
+                    }
+                })
+            }
+            else {
+                Object.defineProperty(Villager.prototype, name, {
+                    configurable: true,
+                    get(this: Villager) {
+                        return Reflect.get(this.entity, name)
+                    },
+                    set(this: Villager, value: unknown) {
+                        Reflect.set(this.entity, name, value)
+                    }
+                })
+            }
+        }
+    }
+
+    getViewDirection() {
+        return this.entity.getViewDirection()
+    }
+
+    getVelocity() {
+        return this.entity.getVelocity()
+    }
+
+    applyImpulse(...args: Parameters<Entity["applyImpulse"]>) {
+        this.entity.applyImpulse(...args)
+    }
+
+    applyKnockback(...args: Parameters<Entity["applyKnockback"]>) {
+        this.entity.applyKnockback(...args)
     }
 
     static fromEntity(entity: Entity) {
@@ -185,8 +226,7 @@ export class Villager {
 
     findTree(village: Village): Vector3 | undefined {
         const takenTrees = new Set<string>()
-        const villagers = world.getVillagers()
-        for (const villager of villagers) {
+        for (const villager of world.getVillagers()) {
             if (villager.id === this.id) {
                 continue
             }
@@ -196,21 +236,7 @@ export class Villager {
             }
         }
 
-        const villagerLoc = this.location
-        let closestTree: Vector3 | undefined
-        let minDist = Infinity
-        for (const treeStr of village.treeLocations) {
-            if (takenTrees.has(treeStr)) {
-                continue
-            }
-            const treeVec = stringToLocation(treeStr)
-            const dist = calculateDistance(villagerLoc, treeVec)
-            if (dist < minDist) {
-                minDist = dist
-                closestTree = treeVec
-            }
-        }
-
+        const closestTree = village.treeLocations.nearestTo(this.location, key => takenTrees.has(key))
         this.foundTree = closestTree
         return closestTree
     }
@@ -249,67 +275,37 @@ export class Villager {
     }
 
     findHarvestLocation(village: Village): Vector3 | undefined {
-        const takenHarvestLocation = new Set<string>()
-        const villagers = world.getVillagers()
-        for (const villager of villagers) {
+        const takenHarvestLocations = new Set<string>()
+        for (const villager of world.getVillagers()) {
             if (villager.id === this.id) {
                 continue
             }
             const harvestLocation = villager.foundHarvest
             if (harvestLocation !== undefined) {
-                takenHarvestLocation.add(locationToString(harvestLocation))
+                takenHarvestLocations.add(locationToString(harvestLocation))
             }
         }
 
-        const villagerLocation = this.location
-        let closestHarvest: Vector3 | undefined
-        let minDist = Infinity
-        for (const harvestLocationStr of village.harvestLocations) {
-            if (takenHarvestLocation.has(harvestLocationStr)) {
-                continue
-            }
-            const harvestLocationLocation = stringToLocation(harvestLocationStr)
-            const dist = calculateDistance(villagerLocation, harvestLocationLocation)
-            if (dist < minDist) {
-                minDist = dist
-                closestHarvest = harvestLocationLocation
-            }
-        }
-
-        this.foundHarvest = closestHarvest
-        return closestHarvest
+        const closestHarvestLocation = village.harvestLocations.nearestTo(this.location, key => takenHarvestLocations.has(key))
+        this.foundHarvest = closestHarvestLocation
+        return closestHarvestLocation
     }
 
     findTillLocation(village: Village): Vector3 | undefined {
-        const takenTillLocation = new Set<string>()
-        const villagers = world.getVillagers()
-        for (const villager of villagers) {
+        const takenTillLocations = new Set<string>()
+        for (const villager of world.getVillagers()) {
             if (villager.id === this.id) {
                 continue
             }
             const tillLocation = villager.foundTill
             if (tillLocation !== undefined) {
-                takenTillLocation.add(locationToString(tillLocation))
+                takenTillLocations.add(locationToString(tillLocation))
             }
         }
 
-        const villagerLocation = this.location
-        let closestTill: Vector3 | undefined
-        let minDist = Infinity
-        for (const tillLocationStr of village.tillLocations) {
-            if (takenTillLocation.has(tillLocationStr)) {
-                continue
-            }
-            const tillLocationLocation = stringToLocation(tillLocationStr)
-            const dist = calculateDistance(villagerLocation, tillLocationLocation)
-            if (dist < minDist) {
-                minDist = dist
-                closestTill = tillLocationLocation
-            }
-        }
-
-        this.foundTill = closestTill
-        return closestTill
+        const closestTillLocation = village.tillLocations.nearestTo(this.location, key => takenTillLocations.has(key))
+        this.foundTill = closestTillLocation
+        return closestTillLocation
     }
 
     findPlantLocation(village: Village) {
@@ -331,15 +327,16 @@ export class Villager {
             type: string
         } | undefined
         let minDist = Infinity
+
         for (const [plantLocationStr, type] of Object.entries(village.plantLocations)) {
             if (takenPlantLocation.has(plantLocationStr)) {
                 continue
             }
-            const plantLocationLocation = stringToLocation(plantLocationStr as LocationString)
+            const plantLocationLocation = stringToLocationCached(plantLocationStr as LocationString)
             const dist = calculateDistance(villagerLocation, plantLocationLocation)
             if (dist < minDist) {
                 minDist = dist
-                closestPlant = { location: plantLocationLocation, type }
+                closestPlant = { location: { ...plantLocationLocation }, type }
             }
         }
 
@@ -829,7 +826,7 @@ export class Villager {
                         const treeKey = locationToString(treeBlock)
                         destroyTree(treeBlock, () => {
                             village.treeLocations.remove(treeKey)
-                            village.saplingLocations.push(treeKey)
+                            village.saplingLocations.add(treeKey)
                             villager.currentTask = undefined
                             villager.waiting = 20
                             if (!treeBlock.isValid) {
@@ -1115,7 +1112,6 @@ export class Villager {
                 const direction = villager.getViewDirection()
                 const speed = villager.isOnGround ? 0.2 : 0.015
                 const moveVector = multiplyVector(direction, "xyz", speed)
-                const checkEntityList = getCheckPathEntities(dimensionId, villager)
                 const pathNodeBlock = dimension.getBlockSafe(currentPathNode)
                 if (pathNodeBlock !== undefined) {
                     if (!pathNodeBlock.isValidPath(villageBounds)) {
@@ -1133,23 +1129,13 @@ export class Villager {
                     cancelPath()
                     return
                 }
-                let isBlocked = false
-                let blockedByTektopiaVillager = false
-                for (const checkEntity of checkEntityList) {
-                    if (!checkEntity.isBlocked) {
-                        const checkEntityLocation = checkEntity.location
-                        const checkEntityIsTektopiaVillager = checkEntity.typeId.startsWith("tektopia:")
-                        if (calculateChebyshevDistance(checkEntityLocation, currentPathNode) < 1.75) {
-                            if (checkEntity.cancelPath) {
-                                cancelPath()
-                                return
-                            }
-                            blockedByTektopiaVillager = checkEntityIsTektopiaVillager
-                            isBlocked = true
-                            break
-                        }
-                    }
+                const blocker = findPathBlocker(dimensionId, currentPathNode, villager.id)
+                if (blocker?.cancelPath === true) {
+                    cancelPath()
+                    return
                 }
+                let isBlocked = blocker !== undefined
+                const blockedByTektopiaVillager = blocker?.typeId.startsWith("tektopia:") === true
 
                 if (blockedByTektopiaVillager) {
                     villager.unblockTimer += 4

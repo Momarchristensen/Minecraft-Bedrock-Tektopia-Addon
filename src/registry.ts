@@ -24,7 +24,7 @@ function defineRegistry<T extends Record<string, (self: any) => unknown>>(defini
     const registry = {} as { readonly [K in keyof T]: ReturnType<T[K]> }
     for (const key of Object.keys(definitions)) {
         Object.defineProperty(registry, key, {
-            get: lazy(() => definitions[key](registry)),
+            get: lazy(() => definitions[key]?.(registry)),
             enumerable: true
         })
     }

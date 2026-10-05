@@ -3,6 +3,7 @@ import {
     Player,
     system,
     System,
+    type Vector3,
     world,
     World
 } from "@minecraft/server"
@@ -58,6 +59,12 @@ World.prototype.getEntity = function (id) {
     }
 
     return entity
+}
+
+export function getLocationUncached(entity: Entity): Vector3 {
+    const location = originalFunctions.getLocation.call(entity)
+    location.y = snap(location.y, 1)
+    return location
 }
 
 const tickCacheMap = new Map<string, { tick: number, data: any }>()

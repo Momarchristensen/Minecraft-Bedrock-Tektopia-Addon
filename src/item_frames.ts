@@ -68,7 +68,7 @@ function* scanItemFrames(callback?: () => void) {
                 continue
             }
 
-            const rotation = itemFrameRotations[facingDirection]
+            const rotation = itemFrameRotations[facingDirection] as CardinalDirection
             const structureId = item.typeId.replace("tektopia:structure_", "") as StructureType
             itemFrame.structureId = structureId
 
@@ -115,7 +115,8 @@ function* scanItemFrames(callback?: () => void) {
 
         const keep = new Set(villageItemFrameLocations)
         for (let i = world.villageList.length - 1; i >= 0; i--) {
-            if (!keep.has(locationToString(world.villageList[i].center))) {
+            const villageData = world.villageList[i]
+            if (villageData !== undefined && !keep.has(locationToString(villageData.center))) {
                 world.villageList.splice(i, 1)
             }
         }

@@ -7,6 +7,8 @@ import {
     world
 } from "@minecraft/server"
 
+import { getLocationUncached } from "./cache"
+
 import { debugFlags } from "./debug"
 
 import {
@@ -14,13 +16,18 @@ import {
     pathIgnoreEntityTypes
 } from "./path_constants"
 
+import {
+    IntHeap,
+    MAX_DEGREE,
+    type PathGraph
+} from "./path_graph"
+
 import { Registry } from "./registry"
 
 import {
     addVectors,
     calculateDistance,
     calculateChebyshevDistance,
-    centerVector,
     floorVector,
     isVectorBetween,
     stringToLocation,
@@ -37,9 +44,10 @@ import type {
     CheckEntityData,
     NodeRequirement,
     PathNode,
-    LocationString,
     Bounds
 } from "./minecraft_extensions"
+
+import type { Village } from "./village"
 
 import type { Villager } from "./villager"
 
@@ -50,161 +58,42 @@ const DIAGONAL_COST = 1.75
 
 type PathResult = "no_path" | "no_village" | "timeout" | "cancelled" | "error" | Vector3[]
 
-class PriorityQueue<T> {
-    private heap: Array<{ element: T, priority: number }> = []
-
-    enqueue(element: T, priority: number): void {
-        const node = { element, priority }
-        this.heap.push(node)
-        this.bubbleUp()
-    }
-
-    dequeue(): T | undefined {
-        const min = this.heap[0]
-        const end = this.heap.pop()
-
-        if (end === undefined || min === undefined) {
-            return undefined
-        }
-
-        if (this.heap.length > 0) {
-            this.heap[0] = end
-            this.bubbleDown()
-        }
-
-        return min.element
-    }
-
-    private bubbleUp(): void {
-        let index = this.heap.length - 1
-        const element = this.heap[index]
-
-        while (index > 0) {
-            const parentIndex = Math.floor((index - 1) / 2)
-            const parent = this.heap[parentIndex]
-
-            if (element === undefined || parent === undefined || element.priority >= parent.priority) {
-                break
-            }
-
-            this.heap[index] = parent
-            index = parentIndex
-        }
-
-        if (element !== undefined) {
-            this.heap[index] = element
-        }
-    }
-
-    private bubbleDown(): void {
-        const element = this.heap[0]
-
-        if (element === undefined) {
-            return
-        }
-
-        let index = 0
-        const length = this.heap.length
-
-        while (true) {
-            const leftChildIndex = (2 * index) + 1
-            const rightChildIndex = (2 * index) + 2
-
-            let swapIndex: number | undefined
-            let swapChild: typeof element | undefined
-
-            if (leftChildIndex < length) {
-                const leftChild = this.heap[leftChildIndex]
-
-                if (leftChild !== undefined && leftChild.priority < element.priority) {
-                    swapIndex = leftChildIndex
-                    swapChild = leftChild
-                }
-            }
-
-            if (rightChildIndex < length) {
-                const rightChild = this.heap[rightChildIndex]
-
-                if (
-                    rightChild !== undefined &&
-                    rightChild.priority < (swapChild ?? element).priority
-                ) {
-                    swapIndex = rightChildIndex
-                    swapChild = rightChild
-                }
-            }
-
-            if (swapIndex === undefined || swapChild === undefined) {
-                break
-            }
-
-            this.heap[index] = swapChild
-            index = swapIndex
-        }
-
-        this.heap[index] = element
-    }
-
-    isEmpty(): boolean {
-        return this.heap.length === 0
-    }
+interface Scratch {
+    capacity: number
+    g: Float64Array
+    closed: Uint8Array
+    came: Int32Array
+    blocked: Uint8Array
+    heap: IntHeap
 }
 
-function checkDiagonalRequirements(
-    nodeList: Record<string, PathNode>,
-    from: Vector3,
-    to: Vector3,
-    villagerType: string
-) {
-    if (from.x === to.x || from.z === to.z) {
-        return true
+const scratchPool: Scratch[] = []
+
+function acquireScratch(capacity: number): Scratch {
+    const index = scratchPool.findIndex(scratch => scratch.capacity >= capacity)
+    const reused = index === -1 ? undefined : scratchPool.splice(index, 1)[0]
+    const scratch: Scratch = reused ?? {
+        capacity,
+        g: new Float64Array(capacity),
+        closed: new Uint8Array(capacity),
+        came: new Int32Array(capacity),
+        blocked: new Uint8Array(capacity),
+        heap: new IntHeap()
     }
-
-    const corners: Vector3[] = [
-        { x: to.x, y: from.y, z: from.z },
-        { x: from.x, y: from.y, z: to.z }
-    ]
-
-    for (const corner of corners) {
-        const cornerNode = nodeList[locationToString(corner)]
-        if (cornerNode?.requirement === undefined) {
-            continue
-        }
-        if (!checkRequirement(villagerType, cornerNode.requirement)) {
-            return false
-        }
-    }
-
-    return true
+    scratch.g.fill(Infinity)
+    scratch.closed.fill(0)
+    scratch.blocked.fill(0)
+    scratch.heap.size = 0
+    return scratch
 }
-
-function checkStepRequirements(
-    nodeList: Record<string, PathNode>,
-    fromKey: LocationString,
-    from: Vector3,
-    toKey: LocationString,
-    to: Vector3,
-    villagerType: string
-) {
-    if (from.y === to.y) {
-        return true
-    }
-
-    const upperKey = to.y > from.y ? toKey : fromKey
-    const stepRequirement = nodeList[upperKey]?.stepRequirement
-    return stepRequirement === undefined || checkRequirement(villagerType, stepRequirement)
-}
-
-type BlockState = 1 | 2
 
 function buildBlockedCells(
     entities: Array<{ location: Vector3, cancelPath?: boolean }>,
-    nodeList: Record<string, PathNode>,
-    bounds: Bounds
+    graph: PathGraph,
+    bounds: Bounds,
+    blocked: Uint8Array
 ) {
     const RADIUS = 1.75
-    const cells = new Map<LocationString, BlockState>()
-
     const minBX = Math.min(bounds.start.x, bounds.end.x) - RADIUS - 1
     const maxBX = Math.max(bounds.start.x, bounds.end.x) + RADIUS + 1
     const minBZ = Math.min(bounds.start.z, bounds.end.z) - RADIUS - 1
@@ -215,28 +104,34 @@ function buildBlockedCells(
         if (loc.x < minBX || loc.x > maxBX || loc.z < minBZ || loc.z > maxBZ) {
             continue
         }
-        const state: BlockState = other.cancelPath ? 2 : 1
+        const state = other.cancelPath === true ? 2 : 1
+        const maxX = Math.ceil(loc.x + RADIUS)
+        const maxY = Math.ceil(loc.y + RADIUS)
+        const maxZ = Math.ceil(loc.z + RADIUS)
 
-        for (let x = Math.floor(loc.x - RADIUS - 1); x <= Math.ceil(loc.x + RADIUS); x++) {
-            for (let y = Math.floor(loc.y - RADIUS - 1); y <= Math.ceil(loc.y + RADIUS); y++) {
-                for (let z = Math.floor(loc.z - RADIUS - 1); z <= Math.ceil(loc.z + RADIUS); z++) {
-                    const key = locationToString({ x, y, z })
-                    if (nodeList[key] === undefined) {
+        for (let x = Math.floor(loc.x - RADIUS - 1); x <= maxX; x++) {
+            if (Math.abs(loc.x - (x + 0.5)) >= RADIUS) {
+                continue
+            }
+            for (let z = Math.floor(loc.z - RADIUS - 1); z <= maxZ; z++) {
+                if (Math.abs(loc.z - (z + 0.5)) >= RADIUS) {
+                    continue
+                }
+                for (let y = Math.floor(loc.y - RADIUS - 1); y <= maxY; y++) {
+                    if (Math.abs(loc.y - y) >= RADIUS) {
                         continue
                     }
-                    if (calculateChebyshevDistance(loc, centerVector({ x, y, z }, true)) >= RADIUS) {
-                        continue
-                    }
-                    const existing = cells.get(key)
-                    if (existing === undefined || state > existing) {
-                        cells.set(key, state)
+                    const id = graph.idAt(x, y, z)
+                    if (blocked[id] !== undefined && id !== -1 && state > blocked[id]) {
+                        blocked[id] = state
                     }
                 }
             }
         }
     }
-    return cells
 }
+
+const pathCheckEntities: Record<string, PathEntity[]> = {}
 
 export function generatePath(entity: Villager, start: Vector3, end: Vector3, token: { cancelled: boolean }) {
     return new Promise<PathResult>(resolve => {
@@ -245,10 +140,11 @@ export function generatePath(entity: Villager, start: Vector3, end: Vector3, tok
             resolve("no_village")
             return
         }
-        const villageBounds = village.bounds
-        const dimensionId = village.dimensionId
+        const villageInfo = village
+        const villageBounds = villageInfo.bounds
+        const dimensionId = villageInfo.dimensionId
         const dimension = world.getDimension(dimensionId)
-        const nodeList = village.pathNodes
+        const nodeList = villageInfo.pathNodes
 
         const startLocation = floorVector(start)
         let endLocation = floorVector(end)
@@ -267,26 +163,6 @@ export function generatePath(entity: Villager, start: Vector3, end: Vector3, tok
                     break
                 }
             }
-        }
-
-        function heuristic(vector1: Vector3, vector2: Vector3) {
-            const dx = Math.abs(vector1.x - vector2.x)
-            const dz = Math.abs(vector1.z - vector2.z)
-            const dy = Math.abs(vector1.y - vector2.y)
-            const diagonalSteps = Math.min(dx, dz)
-            const straightSteps = Math.max(dx, dz) - diagonalSteps
-
-            return straightSteps + (diagonalSteps * DIAGONAL_COST) + dy
-        }
-
-        function estimate(vector1: Vector3, vector2: Vector3) {
-            const dx = Math.abs(vector1.x - vector2.x)
-            const dz = Math.abs(vector1.z - vector2.z)
-            const dy = Math.abs(vector1.y - vector2.y)
-            const diagonalSteps = Math.min(dx, dz)
-            const straightSteps = Math.max(dx, dz) - diagonalSteps
-
-            return straightSteps + (diagonalSteps * DIAGONAL_COST) + (dy * Y_WEIGHT)
         }
 
         system.runJob(safeTickGeneratePath())
@@ -331,10 +207,21 @@ export function generatePath(entity: Villager, start: Vector3, end: Vector3, tok
             }
 
             const startVec = stringToLocation(startKey)
-            const endVec = stringToLocation(endKey)
 
             if (startKey === endKey) {
                 resolve([startVec])
+                return
+            }
+
+            const graph = villageInfo.graph
+            const startId = graph.idOf(startKey)
+            const endId = graph.idOf(endKey)
+            if (startId === -1 || endId === -1) {
+                resolve("no_path")
+                return
+            }
+            if (startId === endId) {
+                resolve([stringToLocation(startKey)])
                 return
             }
 
@@ -342,147 +229,171 @@ export function generatePath(entity: Villager, start: Vector3, end: Vector3, tok
             const MAX_EXPANSIONS = 20000
             const YIELD_EVERY = 20
 
-            const closedSet = new Set<string>()
-            const gScore = new Map<string, number>([[startKey, 0]])
-            const cameFrom = new Map<string, LocationString>()
-            const openSet = new PriorityQueue<LocationString>()
-            openSet.enqueue(startKey, estimate(startVec, endVec) * HEURISTIC_WEIGHT)
-
-            const buildPath = (targetKey: LocationString) => {
-                const path: Vector3[] = []
-                let key: LocationString | undefined = targetKey
-                while (key !== undefined) {
-                    path.push(stringToLocation(key))
-                    key = cameFrom.get(key)
-                }
-                path.reverse()
-                return path
+            const { x: X, y: Y, z: Z, cost: COST, reqId: REQ, stepReqId: STEP, alive: ALIVE, degree: DEG, adj: ADJ } = graph
+            const size = X.length
+            const lookup = (x: number, y: number, z: number) => {
+                const id = graph.idAt(x, y, z)
+                return id < size ? id : -1
             }
 
-            const checkEntityList = getCheckPathEntities(dimensionId, entity)
-            const blockedCells = buildBlockedCells(checkEntityList, nodeList, villageBounds)
-            let expansions = 0
-            let bestKey = startKey
-            let bestHeuristic = estimate(startVec, endVec)
-            let bestG = 0
+            graph.beginSearch()
+            const scratch = acquireScratch(size)
+            try {
+                const { g, closed, came, blocked, heap } = scratch
+                const checkEntityList = (pathCheckEntities[dimensionId] ?? []).filter(other => other.id !== entity.id)
+                buildBlockedCells(checkEntityList, graph, villageBounds, blocked)
 
-            while (!openSet.isEmpty()) {
-                const currentKey = openSet.dequeue()
-
-                if (currentKey === undefined || closedSet.has(currentKey)) {
-                    continue
-                }
-                closedSet.add(currentKey)
-
-                if (currentKey === endKey) {
-                    resolve(buildPath(currentKey))
-                    return
-                }
-
-                if (isCancelled()) {
-                    resolve("cancelled")
-                    return
-                }
-
-                const currentVec = stringToLocation(currentKey)
-                const currentG = gScore.get(currentKey) ?? 0
-
-                const currentHeuristic = estimate(currentVec, endVec)
-                if (
-                    currentHeuristic < bestHeuristic ||
-                    (currentHeuristic === bestHeuristic && currentG < bestG)
-                ) {
-                    bestKey = currentKey
-                    bestHeuristic = currentHeuristic
-                    bestG = currentG
-                }
-
-                if (++expansions > MAX_EXPANSIONS) {
-                    if (bestKey === startKey) {
-                        resolve("timeout")
+                const typeId = entity.typeId
+                const verdict = new Int8Array(256).fill(-1)
+                const allowed = (requirementId: number) => {
+                    let value = verdict[requirementId] ?? -1
+                    if (value === -1) {
+                        value = checkRequirement(typeId, graph.requirements[requirementId] ?? { whiteList: false, types: [] }) ? 1 : 0
+                        verdict[requirementId] = value
                     }
-                    else {
-                        resolve(buildPath(bestKey))
+                    return value === 1
+                }
+
+                const ex = X[endId] ?? 0
+                const ey = Y[endId] ?? 0
+                const ez = Z[endId] ?? 0
+                const estimate = (id: number) => {
+                    const x = X[id] ?? 0
+                    const y = Y[id] ?? 0
+                    const z = Z[id] ?? 0
+                    const dx = Math.abs(x - ex)
+                    const dz = Math.abs(z - ez)
+                    const diagonal = Math.min(dx, dz)
+                    return (Math.max(dx, dz) - diagonal) + (diagonal * DIAGONAL_COST) + (Math.abs(y - ey) * Y_WEIGHT)
+                }
+
+                const buildPath = (targetId: number) => {
+                    const path: Vector3[] = []
+                    let id = targetId
+                    while (id !== -1) {
+                        const x = X[id] ?? 0
+                        const y = Y[id] ?? 0
+                        const z = Z[id] ?? 0
+                        path.push({ x, y, z })
+                        id = came[id] ?? -1
                     }
-                    return
+                    path.reverse()
+                    return path
                 }
 
-                const currentNode = nodeList[currentKey]
-                if (currentNode === undefined) {
-                    continue
-                }
+                g[startId] = 0
+                came[startId] = -1
+                heap.push(startId, estimate(startId) * HEURISTIC_WEIGHT)
 
-                outerLoop: for (const neighborKey of currentNode.neighbors) {
-                    if (closedSet.has(neighborKey)) {
+                let expansions = 0
+                let bestId = startId
+                let bestHeuristic = estimate(startId)
+                let bestG = 0
+
+                while (heap.size > 0) {
+                    const current = heap.pop()
+                    if (closed[current] === 1) {
                         continue
                     }
-                    const neighborNode = nodeList[neighborKey]
-                    if (neighborNode === undefined) {
+                    closed[current] = 1
+
+                    if (current === endId) {
+                        resolve(buildPath(current))
+                        return
+                    }
+                    if (token.cancelled) {
+                        resolve("cancelled")
+                        return
+                    }
+
+                    const currentG = g[current] ?? Infinity
+                    const currentHeuristic = estimate(current)
+                    if (currentG !== Infinity && (currentHeuristic < bestHeuristic || (currentHeuristic === bestHeuristic && currentG < bestG))) {
+                        bestId = current
+                        bestHeuristic = currentHeuristic
+                        bestG = currentG
+                    }
+
+                    if (++expansions > MAX_EXPANSIONS) {
+                        resolve(bestId === startId ? "timeout" : buildPath(bestId))
+                        return
+                    }
+                    if (ALIVE[current] === 0) {
                         continue
                     }
 
-                    if (debugFlags.pathScanParticles) {
-                        try {
-                            dimension.spawnParticle(
-                                "minecraft:basic_flame_particle",
-                                centerVector(stringToLocation(neighborKey))
-                            )
+                    const cx = X[current] ?? 0
+                    const cy = Y[current] ?? 0
+                    const cz = Z[current] ?? 0
+                    const base = current * MAX_DEGREE
+
+                    for (let i = 0, count = DEG[current] ?? 0; i < count; i++) {
+                        const next = ADJ[base + i] ?? -1
+                        if (next === -1 || closed[next] === 1 || ALIVE[next] === 0) {
+                            continue
                         }
-                        catch { }
-                    }
+                        const requirementId = REQ[next] ?? 0
+                        if (requirementId !== 0 && !allowed(requirementId)) {
+                            continue
+                        }
 
-                    if (neighborNode.requirement !== undefined && !checkRequirement(entity.typeId, neighborNode.requirement)) {
-                        continue
-                    }
+                        const nx = X[next] ?? 0
+                        const ny = Y[next] ?? 0
+                        const nz = Z[next] ?? 0
 
-                    const neighborLocation = stringToLocation(neighborKey)
+                        if (cx !== nx && cz !== nz) {
+                            const cornerA = lookup(nx, cy, cz)
+                            if (cornerA !== -1 && (REQ[cornerA] ?? 0) !== 0 && !allowed(REQ[cornerA] ?? 0)) {
+                                continue
+                            }
+                            const cornerB = lookup(cx, cy, nz)
+                            if (cornerB !== -1 && (REQ[cornerB] ?? 0) !== 0 && !allowed(REQ[cornerB] ?? 0)) {
+                                continue
+                            }
+                        }
 
-                    if (!checkDiagonalRequirements(nodeList, currentVec, neighborLocation, entity.typeId)) {
-                        continue
-                    }
+                        let verticalPenalty = 0
+                        if (cy !== ny) {
+                            const stepId = STEP[ny > cy ? next : current] ?? 0
+                            if (stepId !== 0 && !allowed(stepId)) {
+                                continue
+                            }
+                            verticalPenalty = Math.abs(ny - ey) < Math.abs(cy - ey) ? VERTICAL_TOWARD_PENALTY : VERTICAL_AWAY_PENALTY
+                        }
 
-                    if (!checkStepRequirements(nodeList, currentKey, currentVec, neighborKey, neighborLocation, entity.typeId)) {
-                        continue
-                    }
+                        const blockState = blocked[next]
+                        if (blockState === 2) {
+                            continue
+                        }
 
-                    const blockState = blockedCells.get(neighborKey)
-                    if (blockState === 2) {
-                        continue
-                    }
-                    const isBlocked = blockState === 1
-
-                    const blockCost = neighborNode.cost ?? 0
-                    let verticalPenalty = 0
-                    if (neighborLocation.y !== currentVec.y) {
-                        const movesTowardTarget = Math.abs(neighborLocation.y - endVec.y) < Math.abs(currentVec.y - endVec.y)
-                        verticalPenalty = movesTowardTarget ? VERTICAL_TOWARD_PENALTY : VERTICAL_AWAY_PENALTY
-                    }
-                    const moveCost = Math.max(
-                        MIN_MOVE_COST,
-                        heuristic(currentVec, neighborLocation) +
-                        verticalPenalty +
-                        (isBlocked ? 50 : 0) +
-                        blockCost
-                    )
-
-                    const tentativeG = currentG + moveCost
-
-                    if (tentativeG < (gScore.get(neighborKey) ?? Infinity)) {
-                        cameFrom.set(neighborKey, currentKey)
-                        gScore.set(neighborKey, tentativeG)
-                        openSet.enqueue(
-                            neighborKey,
-                            tentativeG + (estimate(neighborLocation, endVec) * HEURISTIC_WEIGHT)
+                        const dx = Math.abs(cx - nx)
+                        const dz = Math.abs(cz - nz)
+                        const diagonal = Math.min(dx, dz)
+                        const moveCost = Math.max(
+                            MIN_MOVE_COST,
+                            (Math.max(dx, dz) - diagonal) + (diagonal * DIAGONAL_COST) + Math.abs(cy - ny) +
+                            verticalPenalty + (blockState === 1 ? 50 : 0) + (COST[next] ?? 0)
                         )
+
+                        const tentativeG = currentG + moveCost
+                        if (tentativeG < (g[next] ?? Infinity)) {
+                            came[next] = current
+                            g[next] = tentativeG
+                            heap.push(next, tentativeG + (estimate(next) * HEURISTIC_WEIGHT))
+                        }
+                    }
+
+                    if (expansions % YIELD_EVERY === 0) {
+                        yield
                     }
                 }
 
-                if (expansions % YIELD_EVERY === 0) {
-                    yield
-                }
+                resolve("no_path")
             }
-
-            resolve("no_path")
+            finally {
+                scratchPool.push(scratch)
+                graph.endSearch()
+            }
         }
     })
 }
@@ -519,51 +430,119 @@ function findNearestNodeLocation(nodeList: Record<string, PathNode>, location: V
     return undefined
 }
 
-const pathCheckEntities: Record<string, CheckEntityData[]> = {}
-
-export function getCheckPathEntities(dimensionId: string, villager: Villager) {
-    const VillagerClass = villager.constructor as typeof Villager
-    const result = []
-    const entityList = pathCheckEntities[dimensionId] ?? []
-    for (const checkEntityObject of entityList) {
-        if (checkEntityObject.id === villager.id) {
-            continue
-        }
-        const checkEntity = world.getEntity(checkEntityObject.id)
-        if (checkEntity === undefined) {
-            continue
-        }
-        result.push({
-            ...checkEntityObject,
-            isBlocked: checkEntity instanceof VillagerClass && ((checkEntity.isBlocked || !checkEntity.isPathing) || checkEntity.totalBlockTimer > 100)
-        })
-    }
-    return result
+interface PathEntity extends CheckEntityData {
+    villager?: Villager
 }
 
-system.runInterval(() => {
-    const villagers = world.getVillagers()
-    if (!villagers.some(villager => villager.isPathing)) {
-        return
+const CELL = 4
+const cellKey = (x: number, z: number) => (Math.floor(x / CELL) * 4194304) + Math.floor(z / CELL)
+const pathGrid = new Map<string, Map<number, PathEntity[]>>()
+
+export function findPathBlocker(dimensionId: string, node: Vector3, selfId: string) {
+    const grid = pathGrid.get(dimensionId)
+    if (grid === undefined) {
+        return undefined
     }
+    let blocker: PathEntity | undefined
+    for (let dx = -1; dx <= 1; dx++) {
+        for (let dz = -1; dz <= 1; dz++) {
+            const bucket = grid.get(cellKey(node.x + (dx * CELL), node.z + (dz * CELL)))
+            if (bucket === undefined) {
+                continue
+            }
+            for (const other of bucket) {
+                if (other.id === selfId || calculateChebyshevDistance(other.location, node) >= 1.75) {
+                    continue
+                }
+                const villager = other.villager
+                if (villager !== undefined && (villager.isBlocked || !villager.isPathing || villager.totalBlockTimer > 100)) {
+                    continue
+                }
+                if (other.cancelPath) {
+                    return other
+                }
+                blocker ??= other
+            }
+        }
+    }
+    return blocker
+}
+
+const SNAPSHOT_MARGIN = 4
+
+system.runInterval(() => {
+    const pathingVillages = new Map<string, Village>()
+    const villagerById = new Map<string, Villager>()
+
+    for (const villager of world.getVillagers()) {
+        villagerById.set(villager.id, villager)
+        if (!villager.isPathing) {
+            continue
+        }
+        const village = villager.getVillage()
+        if (village !== undefined) {
+            pathingVillages.set(`${village.dimensionId}|${village.centerString}`, village)
+        }
+    }
+
     for (const dimensionId of Registry.dimensionTypes) {
+        pathCheckEntities[dimensionId] = []
+        pathGrid.set(dimensionId, new Map())
+    }
+
+    for (const village of pathingVillages.values()) {
+        const dimensionId = village.dimensionId
         const dimension = world.getDimension(dimensionId)
+        const flat = pathCheckEntities[dimensionId] ?? []
+        const grid = pathGrid.get(dimensionId) ?? new Map<number, PathEntity[]>()
+        const { start, end } = village.bounds
+
         const entities = dimension.getEntities({
-            excludeTypes: pathIgnoreEntityTypes
+            excludeTypes: pathIgnoreEntityTypes,
+            location: {
+                x: Math.min(start.x, end.x) - SNAPSHOT_MARGIN,
+                y: Math.min(start.y, end.y),
+                z: Math.min(start.z, end.z) - SNAPSHOT_MARGIN
+            },
+            volume: {
+                x: Math.abs(end.x - start.x) + (SNAPSHOT_MARGIN * 2),
+                y: Math.abs(end.y - start.y),
+                z: Math.abs(end.z - start.z) + (SNAPSHOT_MARGIN * 2)
+            }
         })
 
-        pathCheckEntities[dimensionId] = []
+        const seen = new Set(flat.map(pathEntity => pathEntity.id))
         for (const entity of entities) {
+            if (seen.has(entity.id)) {
+                continue
+            }
             if (entity instanceof Player && entity.getGameMode() === GameMode.Spectator) {
                 continue
             }
-            pathCheckEntities[dimensionId].push({
-                location: entity.location,
+            seen.add(entity.id)
+
+            const location = getLocationUncached(entity)
+            const pathEntity: PathEntity = {
+                location,
                 id: entity.id,
                 typeId: entity.typeId,
-                cancelPath: pathCancelEntityTypes.includesFast(entity.typeId)
-            })
+                cancelPath: pathCancelEntityTypes.includesFast(entity.typeId),
+                villager: villagerById.get(entity.id)
+            }
+            flat.push(pathEntity)
+
+            const key = cellKey(location.x, location.z)
+            const bucket = grid.get(key)
+            if (bucket === undefined) {
+                grid.set(key, [pathEntity])
+            }
+            else {
+                bucket.push(pathEntity)
+            }
         }
+
+        pathCheckEntities[dimensionId] = flat
+        pathGrid.set(dimensionId, grid)
     }
 }, 5)
 

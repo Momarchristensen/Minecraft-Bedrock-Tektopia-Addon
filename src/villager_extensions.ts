@@ -1,5 +1,6 @@
 import {
     Entity,
+    system,
     World
 } from "@minecraft/server"
 
@@ -11,10 +12,29 @@ const originalFunctions = {
     getEntity: World.prototype.getEntity
 }
 
+// villager_extensions.ts
+let cachedTick = -1
+let cachedVillagers: Villager[] = []
+
 World.prototype.getVillagers = function () {
-    return this.getEntities().filter(entity =>
-        Registry.villagerTypes.includes(entity.typeId)
-    ).map(entity => Villager.fromEntity(entity))
+    const currentTick = system.currentTick
+    if (currentTick === cachedTick) {
+        return cachedVillagers
+    }
+
+    const result: Villager[] = []
+    for (const dimensionId of Registry.dimensionTypes) {
+        const dimension = this.getDimension(dimensionId)
+        for (const typeId of Registry.villagerTypes) {
+            for (const entity of dimension.getEntities({ type: typeId })) {
+                result.push(Villager.fromEntity(entity))
+            }
+        }
+    }
+
+    cachedTick = currentTick
+    cachedVillagers = result
+    return result
 }
 
 World.prototype.getEntity = function (entityId: string) {

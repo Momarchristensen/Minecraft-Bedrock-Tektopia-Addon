@@ -13,6 +13,10 @@ import {
 
 import { debugFlags } from "./debug"
 
+import { LocationList } from "./location_list"
+
+import { PathGraph } from "./path_graph"
+
 import { Registry } from "./registry"
 
 import {
@@ -123,11 +127,20 @@ interface VillageRanchEntity {
 
 export class Village {
     private static cache = new WeakMap<VillageSaveData, Village>()
+    private pathGraph?: PathGraph
 
     readonly center: Vector3
     readonly centerString: string
     readonly bounds: Bounds
-    readonly ranchEntities: Record<string, VillageRanchEntity> = {}
+    ranchEntities: Record<string, VillageRanchEntity> = {}
+
+    readonly sugarCaneLocations: LocationList
+    readonly saplingLocations: LocationList
+    readonly farmLocations: LocationList
+    readonly harvestLocations: LocationList
+    readonly tillLocations: LocationList
+    readonly sweetBerryLocations: LocationList
+    readonly treeLocations: LocationList
 
     searchingBlocks = false
     deletingInvalidNodes = false
@@ -139,6 +152,14 @@ export class Village {
             start: { x: data.center.x - VILLAGE_RADIUS, y: -64, z: data.center.z - VILLAGE_RADIUS },
             end: { x: data.center.x + VILLAGE_RADIUS, y: 320, z: data.center.z + VILLAGE_RADIUS }
         }
+
+        this.sugarCaneLocations = new LocationList(data.sugarCaneLocations)
+        this.saplingLocations = new LocationList(data.saplingLocations)
+        this.farmLocations = new LocationList(data.farmLocations)
+        this.harvestLocations = new LocationList(data.harvestLocations)
+        this.tillLocations = new LocationList(data.tillLocations)
+        this.sweetBerryLocations = new LocationList(data.sweetBerryLocations)
+        this.treeLocations = new LocationList(data.treeLocations)
     }
 
     static from(data: VillageSaveData): Village {
@@ -176,6 +197,11 @@ export class Village {
         return decompressVillage(compressed)
     }
 
+    get graph() {
+        this.pathGraph ??= new PathGraph(this.data.pathNodes, this.center)
+        return this.pathGraph
+    }
+
     get dimensionId() {
         return this.dimension.id
     }
@@ -188,36 +214,8 @@ export class Village {
         return this.data.pathNodes
     }
 
-    get sugarCaneLocations() {
-        return this.data.sugarCaneLocations
-    }
-
-    get saplingLocations() {
-        return this.data.saplingLocations
-    }
-
-    get farmLocations() {
-        return this.data.farmLocations
-    }
-
-    get harvestLocations() {
-        return this.data.harvestLocations
-    }
-
     get plantLocations() {
         return this.data.plantLocations
-    }
-
-    get tillLocations() {
-        return this.data.tillLocations
-    }
-
-    get sweetBerryLocations() {
-        return this.data.sweetBerryLocations
-    }
-
-    get treeLocations() {
-        return this.data.treeLocations
     }
 
     getStructure(location: Vector3) {
@@ -493,9 +491,7 @@ export class Village {
                     const checkBlockString = locationToString(checkBlock)
                     if (checkBlock.isFarm) {
                         checkNearbyNodes = true
-                        if (!village.farmLocations.includes(checkBlockString)) {
-                            village.farmLocations.push(checkBlockString)
-                        }
+                        village.farmLocations.add(checkBlockString)
 
                         const aboveCheckBlock = checkBlock.aboveSafe()
 
@@ -505,33 +501,23 @@ export class Village {
                     }
                     else if (checkBlock.isValidSugarCane) {
                         checkNearbyNodes = true
-                        if (!village.sugarCaneLocations.includes(checkBlockString)) {
-                            village.sugarCaneLocations.push(checkBlockString)
-                        }
+                        village.sugarCaneLocations.add(checkBlockString)
                     }
                     else if (Registry.saplingTypes.includesFast(checkBlock.typeId)) {
                         checkNearbyNodes = true
-                        if (!village.saplingLocations.includes(checkBlockString)) {
-                            village.saplingLocations.push(checkBlockString)
-                        }
+                        village.saplingLocations.add(checkBlockString)
                     }
                     else if (checkBlock.isTree) {
                         checkNearbyNodes = true
-                        if (!village.treeLocations.includes(checkBlockString)) {
-                            village.treeLocations.push(checkBlockString)
-                        }
+                        village.treeLocations.add(checkBlockString)
                     }
                     else if (checkBlock.typeId === "minecraft:sweet_berry_bush") {
                         checkNearbyNodes = true
-                        if (!village.sweetBerryLocations.includes(checkBlockString)) {
-                            village.sweetBerryLocations.push(checkBlockString)
-                        }
+                        village.sweetBerryLocations.add(checkBlockString)
                     }
                     else if (checkBlock.isHarvestableGourd) {
                         checkNearbyNodes = true
-                        if (!village.harvestLocations.includes(checkBlockString)) {
-                            village.harvestLocations.push(checkBlockString)
-                        }
+                        village.harvestLocations.add(checkBlockString)
                     }
 
                     if (flood && checkNearbyNodes && node !== undefined) {
@@ -850,27 +836,24 @@ function* scanVillageBlocks(callback?: () => void) {
     }
 }
 
-function* pruneLocations(dimension: Dimension, locations: LocationString[], shouldRemove: (block: Block, locationString: LocationString) => boolean) {
+function* pruneLocations(dimension: Dimension, locations: LocationList, shouldRemove: (block: Block, locationString: LocationString) => boolean) {
     for (let i = locations.length - 1; i >= 0; i--) {
         if (i >= locations.length) {
             i = locations.length
             continue
         }
 
-        const locationString = locations[i]
-        if (locationString === undefined) {
+        const locationString = locations.at(i)
+        const location = locations.locationAt(i)
+        if (locationString === undefined || location === undefined) {
             yield
             continue
         }
 
-        const block = dimension.getBlockSafe(stringToLocation(locationString))
+        const block = dimension.getBlockSafe(location)
 
         if (block !== undefined && shouldRemove(block, locationString)) {
-            const lastLocationString = locations[locations.length - 1]
-            if (lastLocationString !== undefined) {
-                locations[i] = lastLocationString
-            }
-            locations.pop()
+            locations.removeAt(i)
         }
         yield
     }
@@ -907,9 +890,7 @@ function* updateVillageBlocks(callback?: () => void) {
 
             yield* pruneLocations(dimension, village.saplingLocations, (block, locationString) => {
                 if (Registry.logTypes.includesFast(block.typeId)) {
-                    if (!village.treeLocations.includes(locationString)) {
-                        village.treeLocations.push(locationString)
-                    }
+                    village.treeLocations.add(locationString)
                     return true
                 }
                 return !Registry.saplingTypes.includesFast(block.typeId)
@@ -919,9 +900,7 @@ function* updateVillageBlocks(callback?: () => void) {
                 const aboveBlock = block.aboveSafe()
                 if (aboveBlock?.isHarvestableCrop) {
                     const aboveLocationString = locationToString(aboveBlock.location)
-                    if (!village.harvestLocations.includes(aboveLocationString)) {
-                        village.harvestLocations.push(aboveLocationString)
-                    }
+                    village.harvestLocations.add(aboveLocationString)
                 }
 
                 if (aboveBlock !== undefined) {
@@ -935,9 +914,7 @@ function* updateVillageBlocks(callback?: () => void) {
                     for (const gourdBlock of gourdBlocks) {
                         if (gourdBlock?.isHarvestableGourd) {
                             const gourdLocationString = locationToString(gourdBlock.location)
-                            if (!village.harvestLocations.includes(gourdLocationString)) {
-                                village.harvestLocations.push(gourdLocationString)
-                            }
+                            village.harvestLocations.add(gourdLocationString)
                         }
                     }
                 }
@@ -977,7 +954,7 @@ function* updateVillageBlocks(callback?: () => void) {
                         }
 
                         const neighborLocationString = locationToString(neighborBlock.location)
-                        if (!village.farmLocations.includes(neighborLocationString)) {
+                        if (!village.farmLocations.has(neighborLocationString)) {
                             continue
                         }
 
@@ -1084,13 +1061,15 @@ system.runInterval(() => {
             }
         }
 
+        village.ranchEntities = {}
         const rancherStructure = village.findStructures({ includedTypes: ["pig_pen", "cow_pen", "chicken_coop", "sheep_pen"] })
         for (const structure of rancherStructure) {
-            const structureFloorLocations = structure.getFloorLocations()
+            const structureFloorLocations = structure.getFloorLocations(true)
             for (const rancherEntity of rancherEntities) {
                 const flooredEntityLocation = floorVector(addVector(rancherEntity.location, "y", 0.1))
                 let inPen = false
                 for (const location of structureFloorLocations) {
+                    village.dimension.spawnParticle("minecraft:heart_particle", centerVector(location))
                     if (areVectorsEqual(flooredEntityLocation, location)) {
                         inPen = true
                         break
@@ -1099,6 +1078,8 @@ system.runInterval(() => {
                 village.ranchEntities[rancherEntity.id] = { inPen, typeId: rancherEntity.typeId }
             }
         }
+
+        console.warn(JSON.stringify(village.ranchEntities))
     }
 }, 100)
 

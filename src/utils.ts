@@ -199,6 +199,20 @@ export function stringToLocation(string: LocationString): Vector3 {
     }
 }
 
+const parseCache = new Map<LocationString, Vector3>()
+
+export function stringToLocationCached(key: LocationString): Vector3 {
+    let location = parseCache.get(key)
+    if (location === undefined) {
+        if (parseCache.size > 20000) {
+            parseCache.clear()
+        }
+        location = stringToLocation(key)
+        parseCache.set(key, location)
+    }
+    return location
+}
+
 export function subtractLists<T>(list1: T[], list2: T[]): T[] {
     const removalSet = new Set(list2)
     const result: T[] = []
