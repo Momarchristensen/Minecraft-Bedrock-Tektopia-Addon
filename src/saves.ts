@@ -136,20 +136,21 @@ World.prototype.saveData = function () {
 
 export interface EntityData {
     breedingData?: BreedingSaveData | undefined
+    villagerEntity?: boolean
 }
 
 Entity.prototype.saveData = function <K extends keyof EntityData>(
     this: Entity,
     propertyId: K
 ) {
-    if (!this.loadedData || this instanceof Player) {
+    if (!this.loadedData || this instanceof Player || !this.isValid) {
         return
     }
     this.setDynamicProperty(propertyId, JSON.stringify(this[propertyId]))
 }
 
 Entity.prototype.loadData = function (this: Entity) {
-    if (this instanceof Player) {
+    if (this instanceof Player || !this.isValid) {
         return
     }
 
@@ -161,7 +162,12 @@ Entity.prototype.loadData = function (this: Entity) {
             continue
         }
 
-        target[propertyId] = JSON.parse(valueString)
+        try {
+            target[propertyId] = JSON.parse(valueString)
+        }
+        catch (error) {
+            console.warn(`Failed to read entity property ${propertyId}:`, error)
+        }
     }
 
     this.loadedData = true
@@ -172,21 +178,31 @@ world.afterEvents.entitySpawn.subscribe(event => {
     entity.loadData()
 })
 
+world.afterEvents.entityLoad.subscribe(event => {
+    const entity = event.entity
+    entity.loadData()
+})
+
+function loadEntities() {
+    for (const entity of world.getEntities()) {
+        if (!entity.loadedData) {
+            entity.loadData()
+        }
+    }
+}
+
 system.beforeEvents.shutdown.subscribe(() => {
     world.saveData()
 })
 
 system.runInterval(() => {
     world.saveData()
+    loadEntities()
 }, 1200)
 
 function main() {
     world.loadData()
-
-    const entities = world.getEntities()
-    for (const entity of entities) {
-        entity.loadData()
-    }
+    loadEntities()
 }
 
 world.afterEvents.worldLoad.subscribe(() => {

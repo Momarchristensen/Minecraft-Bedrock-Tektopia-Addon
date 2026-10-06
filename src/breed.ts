@@ -53,7 +53,7 @@ export class EntityBreeding {
         if (this.entity.hasComponent(EntityComponentTypes.IsBaby)) {
             return false
         }
-        return this.cooldown <= 0
+        return this.cooldown <= 0 && this.time === 0
     }
 
     start() {
@@ -72,13 +72,15 @@ export class EntityBreeding {
     }
 
     tick() {
+        const wasActive = this.time > 0 || this.cooldown > 0
+
         if (this.time > 0) {
             this.time--
         }
         if (this.cooldown > 0) {
             this.cooldown--
         }
-        if (this.time > 0 || this.cooldown > 0) {
+        if (wasActive) {
             this.save()
         }
 
@@ -88,21 +90,30 @@ export class EntityBreeding {
             this._isBreeding = isBreeding
         }
 
-        const target = this.entity.target
         if (
             !this.entity.isValid ||
-            !isBreeding ||
-            target === undefined ||
-            !target.isValid ||
-            target.typeId !== this.entity.typeId ||
-            target.breeding.time <= 0
+            !isBreeding
         ) {
             this.waitTime = 0
             return
         }
 
         if (this.time % 20 === 0) {
-            this.entity.dimension.spawnParticle("minecraft:heart_particle", this.entity.location)
+            for (let i = 0; i < 3; i++) {
+                const randomOffset = { x: randomInt(-10, 10) / 25, y: randomInt(0, 10) / 25, z: randomInt(-10, 10) / 25 }
+                this.entity.dimension.spawnParticle("minecraft:heart_particle", addVectors(this.entity.location, randomOffset))
+            }
+        }
+
+        const target = this.entity.getEntitiesFromViewDirection().find(entityRayCast => entityRayCast.entity.typeId === this.entity.typeId)?.entity
+        if (target === undefined ||
+            !target.isValid ||
+            target.typeId !== this.entity.typeId ||
+            target.breeding === undefined ||
+            target.breeding.time <= 0
+        ) {
+            this.waitTime = 0
+            return
         }
 
         const distance = calculateDistance(target.location, this.entity.location)
@@ -113,11 +124,14 @@ export class EntityBreeding {
         }
 
         const babySpawnLocation = multiplyVector(addVectors(target.location, this.entity.location), "xyz", 0.5)
-        this.entity.dimension.spawnEntity(
+        const babyEntity = this.entity.dimension.spawnEntity(
             this.entity.typeId as VanillaEntityIdentifier,
             babySpawnLocation,
             { initialPersistence: true, spawnEvent: "minecraft:entity_born" }
         )
+        babyEntity.loadedData = true
+        babyEntity.villagerEntity = true
+        babyEntity.saveData("villagerEntity")
 
         this.entity.dimension.spawnXp(babySpawnLocation, randomInt(1, 7))
 
@@ -130,6 +144,15 @@ const breedingStates = new WeakMap<Entity, EntityBreeding>()
 
 Object.defineProperty(Entity.prototype, "breeding", {
     get(this: Entity) {
+        if (!RANCH_TYPES.includes(this.typeId)) {
+            return undefined
+        }
+        if (!this.loadedData) {
+            this.loadData()
+            if (!this.loadedData) {
+                return undefined
+            }
+        }
         let state = breedingStates.get(this)
         if (state === undefined) {
             state = new EntityBreeding(this)
@@ -142,7 +165,7 @@ Object.defineProperty(Entity.prototype, "breeding", {
 system.runInterval(() => {
     for (const entity of world.getEntities()) {
         if (RANCH_TYPES.includes(entity.typeId)) {
-            entity.breeding.tick()
+            entity.breeding?.tick()
         }
     }
 })

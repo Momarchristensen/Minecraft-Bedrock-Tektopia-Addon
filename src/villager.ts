@@ -117,11 +117,14 @@ export class Villager {
 
     private foundHerdEntity?: VillageRanchEntity & { id: string }
     private foundBreedableEntity?: VillageRanchEntity & { id: string }
+    private foundShearableEntity?: VillageRanchEntity & { id: string }
 
     private index: number
 
     private foundMine?: Vector3
     private foundGuardPost?: Vector3
+    private foundFullAnimalPen?: Vector3
+    private foundButcherStructure?: Vector3
 
     static villagerIndex = 0
 
@@ -359,6 +362,104 @@ export class Villager {
         return closestHarvestLocation
     }
 
+    findButchStructure(village: Village) {
+        const takenButcherStructures = new Set<string>()
+        const villagers = world.getVillagers()
+        for (const villager of villagers) {
+            if (villager.id === this.id) {
+                continue
+            }
+            const butcherStructure = villager.foundButcherStructure
+            if (butcherStructure !== undefined) {
+                takenButcherStructures.add(locationToString(butcherStructure))
+            }
+        }
+
+        const villagerLocation = this.location
+        let closestButcherStructure: Vector3 | undefined
+        let minDist = Infinity
+
+        const butcherStructureStructures = village.findStructures({ includedTypes: ["butcher"] })
+        for (const butcherStructure of butcherStructureStructures) {
+            if (takenButcherStructures.has(butcherStructure.locationString)) {
+                continue
+            }
+            const dist = calculateDistance(villagerLocation, butcherStructure.location)
+            if (dist < minDist) {
+                minDist = dist
+                closestButcherStructure = butcherStructure.location
+            }
+        }
+
+        this.foundButcherStructure = closestButcherStructure
+        return closestButcherStructure
+    }
+
+    findFullPen(village: Village) {
+        const takenAnimalPen = new Set<string>()
+        const villagers = world.getVillagers()
+        for (const villager of villagers) {
+            if (villager.id === this.id) {
+                continue
+            }
+            const animalPen = villager.foundFullAnimalPen
+            if (animalPen !== undefined) {
+                takenAnimalPen.add(locationToString(animalPen))
+            }
+        }
+
+        const villagerLocation = this.location
+        let closestAnimalPen: Vector3 | undefined
+        let minDist = Infinity
+
+        const animalPenStructures = village.findStructures({ includedTypes: ["pig_pen", "chicken_coop", "sheep_pen", "cow_pen"] })
+        for (const animalPen of animalPenStructures) {
+            if (takenAnimalPen.has(animalPen.locationString) || !animalPen.isFull) {
+                continue
+            }
+            const dist = calculateDistance(villagerLocation, animalPen.location)
+            if (dist < minDist) {
+                minDist = dist
+                closestAnimalPen = animalPen.location
+            }
+        }
+
+        this.foundFullAnimalPen = closestAnimalPen
+        return closestAnimalPen
+    }
+
+    findShearableEntity(village: Village) {
+        const takenRanchEntities = new Set<string>()
+        for (const villager of world.getVillagers()) {
+            if (villager.id === this.id) {
+                continue
+            }
+            const ranchEntity = villager.foundShearableEntity
+            if (ranchEntity !== undefined) {
+                takenRanchEntities.add(ranchEntity.id)
+            }
+        }
+
+        let closestEntity
+        let closestDistance = Infinity
+
+        for (const [entityId, entityData] of Object.entries(village.ranchEntities)) {
+            if (takenRanchEntities.has(entityId) || !entityData.isShearable || !entityData.inPen) {
+                continue
+            }
+
+            const distance = calculateDistance(entityData.location, this.location)
+
+            if (distance < closestDistance) {
+                closestDistance = distance
+                closestEntity = { ...entityData, id: entityId }
+            }
+        }
+
+        this.foundShearableEntity = closestEntity
+        return closestEntity
+    }
+
     findBreedableEntity(village: Village) {
         const takenRanchEntities = new Set<string>()
         for (const villager of world.getVillagers()) {
@@ -385,7 +486,7 @@ export class Villager {
                 continue
             }
 
-            if (structure.isFull) {
+            if (structure.isFull || structure.isUnderpopulated) {
                 continue
             }
 
@@ -430,7 +531,7 @@ export class Villager {
 
             let foundStructure = false
             for (const structure of structures) {
-                if (structure.isUnderpopulated) {
+                if ((structure.isUnderpopulated || entityData.villagerEntity) && !structure.isFull) {
                     foundStructure = true
                     break
                 }
@@ -992,9 +1093,67 @@ export class Villager {
 
         villager.waiting = 20
 
-        ranchEntity.breeding.start()
+        ranchEntity.breeding?.start()
 
         villager.currentTask = undefined
+    }
+
+    tickShearEntity() {
+        const villager = this
+
+        if (villager.foundShearableEntity === undefined) {
+            villager.currentTask = undefined
+            return
+        }
+
+        const ranchEntity = world.getEntity(villager.foundShearableEntity.id)
+        if (ranchEntity === undefined) {
+            villager.currentTask = undefined
+            return
+        }
+
+        if (!ranchEntity.isShearable) {
+            villager.currentTask = undefined
+            return
+        }
+
+        const ranchEntityLocation = ranchEntity.location
+
+        const ranchEntityDistance = calculateDistance(ranchEntityLocation, villager.location)
+        if (ranchEntityDistance > 3) {
+            villager.pathFindTo(ranchEntityLocation)
+            return
+        }
+
+        villager.playAnimation("animation.tektopia_villager.take")
+
+        const woolItem = ranchEntity.getWoolItem()
+
+        if (woolItem !== undefined) {
+            if (ranchEntity.villagerEntity) {
+                woolItem.makeVillageItem()
+            }
+
+            const amount = randomInt(1, 3)
+            for (let i = 0; i < amount; i++) {
+                ranchEntity.dimension.spawnItem(woolItem, ranchEntity.location)
+            }
+        }
+
+        ranchEntity.triggerEvent("minecraft:on_sheared")
+    }
+
+    tickButcher(village: Village) {
+        const villager = this
+
+        if (villager.foundFullAnimalPen === undefined || villager.foundButcherStructure === undefined) {
+            villager.currentTask = undefined
+            return
+        }
+
+        const animalPen = village.getStructure(villager.foundFullAnimalPen)
+        const butcherStructure = village.getStructure(villager.foundButcherStructure)
+
     }
 
     tickHerdEntity(village: Village) {
@@ -1019,7 +1178,7 @@ export class Villager {
             let foundStructure = false
 
             for (const structure of structures) {
-                if (!structure.isUnderpopulated) {
+                if ((!structure.isUnderpopulated && !leashedEntity.villagerEntity) || structure.isFull) {
                     continue
                 }
 
@@ -1046,8 +1205,8 @@ export class Villager {
                 const ranchEntity = village.ranchEntities[leashedEntity.id]
 
                 villager.taskProgress++
-                if (villager.taskProgress <= 20 && (ranchEntity !== undefined && !ranchEntity.inPen)) {
-                    if (villager.taskProgress === 20) {
+                if ((villager.taskProgress <= 60 && (ranchEntity !== undefined && !ranchEntity.inPen)) || villager.taskProgress <= 30) {
+                    if (villager.taskProgress === 60) {
                         leashedEntity.teleport(villager.location)
                     }
                     return
@@ -1550,7 +1709,12 @@ export class Villager {
 
         const dimension = this.dimension
         const villagerLocation = this.location
-        const leashedLocation = this.getLeashedEntity()?.location
+        const leashedEntity = this.getLeashedEntity()
+        const village = this.getVillage()
+
+        if (village === undefined) {
+            return
+        }
 
         for (const key of this.openedGates) {
             const location = stringToLocationCached(key)
@@ -1565,12 +1729,17 @@ export class Villager {
             }
 
             const center = centerVector(location)
-            if (calculateDistance(center, villagerLocation) <= 1) {
+            if (calculateDistance(center, villagerLocation) <= 0.5) {
                 continue
             }
 
-            if (leashedLocation !== undefined && calculateDistance(center, leashedLocation) <= 5) {
-                continue
+            if (leashedEntity !== undefined) {
+                const ranchEntity = village.ranchEntities[leashedEntity.id]
+                const leashedLocation = leashedEntity.location
+                const range = !ranchEntity?.inPen ? 5 : 1
+                if (calculateDistance(center, leashedLocation) <= range) {
+                    continue
+                }
             }
 
             gate.setPermutation(gate.permutation.withState("open_bit", false))
@@ -1834,4 +2003,47 @@ Block.prototype.soundEvent = function (eventId, soundOptions) {
 
 Block.prototype.playSound = function (soundId, soundOptions) {
     this.dimension.playSound(soundId, this.center(), soundOptions)
+}
+
+Object.defineProperty(Entity.prototype, "isShearable", {
+    get(this: Entity): boolean {
+        if (this.typeId !== "minecraft:sheep") {
+            return false
+        }
+
+        return !this.hasComponent(EntityComponentTypes.IsSheared)
+    }
+})
+
+const WOOL_BY_COLOR: readonly string[] = [
+    "minecraft:white_wool",
+    "minecraft:orange_wool",
+    "minecraft:magenta_wool",
+    "minecraft:light_blue_wool",
+    "minecraft:yellow_wool",
+    "minecraft:lime_wool",
+    "minecraft:pink_wool",
+    "minecraft:gray_wool",
+    "minecraft:light_gray_wool",
+    "minecraft:cyan_wool",
+    "minecraft:purple_wool",
+    "minecraft:blue_wool",
+    "minecraft:brown_wool",
+    "minecraft:green_wool",
+    "minecraft:red_wool",
+    "minecraft:black_wool"
+]
+
+Entity.prototype.getWoolItem = function () {
+    if (this.typeId !== "minecraft:sheep") {
+        return undefined
+    }
+
+    const entityColor = this.getComponent(EntityComponentTypes.Color)?.value ?? 0
+    const woolId = WOOL_BY_COLOR[entityColor]
+    if (woolId === undefined) {
+        return undefined
+    }
+
+    return new ItemStack(woolId, 1)
 }

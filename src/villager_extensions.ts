@@ -12,7 +12,6 @@ const originalFunctions = {
     getEntity: World.prototype.getEntity
 }
 
-// villager_extensions.ts
 let cachedTick = -1
 let cachedVillagers: Villager[] = []
 

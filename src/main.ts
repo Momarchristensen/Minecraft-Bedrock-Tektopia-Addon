@@ -11,6 +11,8 @@ import "./array_extensions"
 
 import "./villager_extensions"
 
+import "./breed"
+
 import "./saves"
 
 import "./item_frames"

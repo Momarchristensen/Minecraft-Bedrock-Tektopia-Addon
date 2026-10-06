@@ -50,14 +50,14 @@ import {
     decompressVillage
 } from "./village_serialization"
 
-import type { Villager } from "./villager"
-
 import type {
     NodeRequirement,
     PathNode,
     LocationString,
     Bounds
 } from "./minecraft_extensions"
+
+import type { Villager } from "./villager"
 
 system.beforeEvents.startup.subscribe(event => {
     const customCommandRegistry = event.customCommandRegistry
@@ -125,8 +125,10 @@ export interface VillageRanchEntity {
     typeId: string
     location: Vector3
     inPen: boolean
-    structure?: LocationString
+    structure: LocationString | undefined
     breedable: boolean
+    villagerEntity: boolean
+    isShearable: boolean
 }
 
 export class Village {
@@ -138,6 +140,7 @@ export class Village {
     readonly bounds: Bounds
     ranchEntities: Record<string, VillageRanchEntity> = {}
     penTiles = new Map<LocationString, LocationString>()
+    penCache = new Map<LocationString, { floor: Vector3[], fence: Vector3[] }>()
 
     readonly sugarCaneLocations: LocationList
     readonly saplingLocations: LocationList
@@ -1191,25 +1194,39 @@ system.runInterval(() => {
         }
 
         const penFloors = pens.map(pen => {
-            const { floor, fence } = pen.refreshLocations()
+            // A failed scan (unloaded chunk, etc.) must not wipe the pen, or every animal in it
+            // would read as "outside" for that tick. Fall back to the last good scan.
+            const scanned = pen.scanLocations()
+            const previous = village.penCache.get(pen.locationString)
+            const floor = scanned.floor ?? previous?.floor ?? []
+            const fence = scanned.fence ?? previous?.fence ?? []
+            village.penCache.set(pen.locationString, { floor, fence })
             const locations = floor.concat(fence)
             if (debugFlags.rancherPenParticles) {
                 for (const location of locations) {
                     village.dimension.spawnParticle("minecraft:heart_particle", centerVector(location))
                 }
             }
-            const tiles = new Set(locations.map(locationToString))
-            for (const tile of tiles) {
-                village.penTiles.set(tile, pen.locationString)
+            // Columns rather than exact tiles, so an animal that hops or flutters above its tile
+            // is still inside the pen.
+            const columns = new Map<string, number[]>()
+            for (const location of locations) {
+                village.penTiles.set(locationToString(location), pen.locationString)
+                const key = `${location.x},${location.z}`
+                const ys = columns.get(key)
+                if (ys === undefined) {
+                    columns.set(key, [location.y])
+                }
+                else {
+                    ys.push(location.y)
+                }
             }
-            return { pen, tiles }
+            return { pen, columns }
         })
 
         for (const rancherEntity of rancherEntities) {
             const rancherEntityLocation = rancherEntity.location
-            const entityTile = locationToString(floorVector(addVector(rancherEntityLocation, "y", 0.01)))
-
-            if (village.pathNodes[entityTile] === undefined) {
+            if (rancherEntity.dimension.id !== village.dimensionId) {
                 continue
             }
 
@@ -1217,10 +1234,12 @@ system.runInterval(() => {
                 continue
             }
 
+            const columnKey = `${Math.floor(rancherEntityLocation.x)},${Math.floor(rancherEntityLocation.z)}`
             let matchedPen: LocationString | undefined
             let fallbackPen: LocationString | undefined
-            for (const { pen, tiles } of penFloors) {
-                if (!tiles.has(entityTile)) {
+            for (const { pen, columns } of penFloors) {
+                const ys = columns.get(columnKey)
+                if (!ys?.some(y => rancherEntityLocation.y >= y - 0.5 && rancherEntityLocation.y < y + 3)) {
                     continue
                 }
                 if (pen.getAnimalTypeId() === rancherEntity.typeId) {
@@ -1231,20 +1250,32 @@ system.runInterval(() => {
             }
 
             const structure = matchedPen ?? fallbackPen
+
+            if (structure === undefined) {
+                const entityTile = locationToString(floorVector(addVector(rancherEntityLocation, "y", 0.01)))
+                if (village.pathNodes[entityTile] === undefined) {
+                    continue
+                }
+            }
+
             const inPen = matchedPen !== undefined
             village.ranchEntities[rancherEntity.id] = {
                 typeId: rancherEntity.typeId,
                 location: rancherEntityLocation,
                 inPen,
                 structure,
-                breedable: rancherEntity.breeding.canBreed
+                breedable: rancherEntity.breeding === undefined ? false : rancherEntity.breeding.canBreed,
+                villagerEntity: rancherEntity.villagerEntity ?? false,
+                isShearable: rancherEntity.isShearable
             }
 
             if (debugFlags.rancherDebugNameTags) {
                 rancherEntity.nameTag = [
                     `Ranch entity: ${rancherEntity.typeId}`,
                     `In pen: ${inPen ? "Yes" : "No"}`,
-                    `Structure: ${structure ?? "None"}`
+                    `Structure: ${structure ?? "None"}`,
+                    `Breeding: ${rancherEntity.breeding?.time ?? "none"}-${rancherEntity.breeding?.cooldown ?? "none"}`,
+                    `Villager Entity: ${rancherEntity.villagerEntity ?? false}`
                 ].join("\n")
             }
             else if (rancherEntity.nameTag !== "") {

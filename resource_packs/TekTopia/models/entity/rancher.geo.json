@@ -65,15 +65,17 @@
 						{"origin": [5.5, 11, -1.5], "size": [1, 1, 1], "uv": [14, 20], "mirror": true}
 					],
 					"locators": {
-						"left_item_sound": [6, 12, 0],
-						"lead": [6, 12, 0]
+						"left_item_sound": [6, 12, 0]
 					}
 				},
 				{
 					"name": "leftItem",
 					"parent": "ArmRightWrist",
-					"pivot": [18, 13, 1],
-					"binding": "'leftitem'"
+					"pivot": [6, 12, 0],
+					"binding": "'leftitem'",
+					"locators": {
+						"lead_hold": [6, 12, 0]
+					}
 				},
 				{
 					"name": "Head",

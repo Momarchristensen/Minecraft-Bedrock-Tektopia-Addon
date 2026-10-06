@@ -100,7 +100,7 @@
         "minecraft:behavior.follow_mob": {
           "priority": 4,
           "search_range": 8,
-          "stop_distance": 0,
+          "stop_distance": 1,
           "speed_multiplier": 1.0,
           "filters": {
             "all_of": [
@@ -112,6 +112,12 @@
               {
                 "test": "bool_property",
                 "subject": "other",
+                "domain": "tektopia:breeding",
+                "value": true
+              },
+              {
+                "test": "bool_property",
+                "subject": "self",
                 "domain": "tektopia:breeding",
                 "value": true
               }

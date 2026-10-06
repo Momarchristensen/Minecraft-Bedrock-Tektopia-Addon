@@ -81,12 +81,14 @@ declare module "@minecraft/server" {
     interface Entity extends EntityData {
         saveData<K extends keyof EntityData>(propertyId: K): void
         loadData(): void
+        getWoolItem(): ItemStack | undefined
 
         isDead: boolean
         unreachable: number
         loadedData: boolean
+        readonly isShearable: boolean
         readonly isVillager: boolean
-        readonly breeding: EntityBreeding
+        readonly breeding: EntityBreeding | undefined
     }
 
     interface Block {

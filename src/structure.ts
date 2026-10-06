@@ -3,7 +3,9 @@ import {
     world,
     Block,
     Dimension,
-    type Vector3
+    type Vector3,
+    EntityComponent,
+    EntityComponentTypes
 } from "@minecraft/server"
 
 import { debugFlags } from "./debug"
@@ -664,6 +666,7 @@ function* validateDefaultRoom(
 export interface StructureTypeMap {
     mineshaft: Mineshaft
     storage: Structure
+    butcher: Structure
     townhall: Structure
     home_2: Structure
     pig_pen: AnimalPen
@@ -984,10 +987,35 @@ export class AnimalPen extends Structure<AnimalPenData> {
         return { floor, fence: this.getFenceLocations() }
     }
 
-    getAnimalCount(): number {
+    scanLocations(): { floor: Vector3[] | undefined, fence: Vector3[] | undefined } {
+        const penGate = this.getPenGate()
+        if (penGate === undefined) {
+            return { floor: undefined, fence: undefined }
+        }
+        const floor = runToCompletion(collectPenFloorLocations(this.dimension, penGate.gate, penGate.direction))
+        const fence = runToCompletion(scanFence(this.dimension, penGate.gate, penGate.axis, true))
+        return {
+            floor: floor !== undefined && floor.length > 0 ? floor : undefined,
+            fence: fence.enclosed === true ? fence.locations : undefined
+        }
+    }
+
+    getAnimalCount(adultsOnly = false): number {
         const typeId = this.getAnimalTypeId()
         let count = 0
-        for (const ranchEntity of Object.values(this.village.ranchEntities)) {
+
+        for (const [id, ranchEntity] of Object.entries(this.village.ranchEntities)) {
+            if (adultsOnly) {
+                const entity = world.getEntity(id)
+                if (entity === undefined) {
+                    continue
+                }
+
+                if (entity.hasComponent(EntityComponentTypes.IsBaby)) {
+                    continue
+                }
+            }
+
             if (ranchEntity.structure === this.locationString && ranchEntity.typeId === typeId) {
                 count++
             }
@@ -1002,7 +1030,7 @@ export class AnimalPen extends Structure<AnimalPenData> {
     }
 
     get isUnderpopulated(): boolean {
-        return this.getAnimalCount() < 2
+        return this.getAnimalCount(true) < 2
     }
 }
 
