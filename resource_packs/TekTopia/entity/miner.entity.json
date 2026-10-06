@@ -22,7 +22,8 @@
                 "default": "geometry.tektopia_miner"
             },
             "sound_effects": {
-                "hit.wood": "hit.wood"
+                "hit.wood": "hit.wood",
+                "hit.stone": "hit.stone"
             },
             "textures": {
                 "default": "textures/entity/miner_male"

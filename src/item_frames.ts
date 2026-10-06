@@ -86,18 +86,20 @@ function* scanItemFrames(callback?: () => void) {
 
             if (result !== undefined) {
                 const doorLocation = structureValidation.doorLocation
-                if (result && doorLocation !== undefined) {
+                if (result) {
                     if (isTownhall) {
-                        villageItemFrameLocations.push(blockCenterString)
-                        const villageStringCenterList = world.getVillages().map(village => village.centerString)
-                        if (!villageStringCenterList.includes(blockCenterString)) {
-                            world.villageList.push(Village.createData(blockCenter, dimension.id, doorLocation))
+                        if (doorLocation !== undefined) {
+                            villageItemFrameLocations.push(blockCenterString)
+                            const villageStringCenterList = world.getVillages().map(village => village.centerString)
+                            if (!villageStringCenterList.includes(blockCenterString)) {
+                                world.villageList.push(Village.createData(blockCenter, dimension.id, doorLocation))
+                            }
                         }
                     }
                     else {
                         const village = structureValidation.village
                         if (village !== undefined) {
-                            village.addStructure(doorLocation, {
+                            village.addStructure(doorLocation ?? itemFrame.location, {
                                 type: structureId,
                                 rotation
                             })

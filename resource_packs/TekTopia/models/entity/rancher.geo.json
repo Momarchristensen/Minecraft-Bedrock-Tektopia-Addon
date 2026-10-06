@@ -21,57 +21,58 @@
 				{
 					"name": "ArmLeft",
 					"parent": "BodyInner",
-					"pivot": [6, 23, 0],
-					"rotation": [-1.03636, 0, 0],
-					"cubes": [
-						{"origin": [4, 16, -2], "size": [4, 7, 4], "uv": [44, 22], "mirror": true}
-					]
-				},
-				{
-					"name": "ArmLeftLower",
-					"parent": "ArmLeft",
-					"pivot": [6, 16.5, 0],
-					"cubes": [
-						{"origin": [4, 10, -2], "size": [4, 6, 4], "uv": [44, 47], "mirror": true}
-					]
-				},
-				{
-					"name": "rightItem",
-					"parent": "ArmLeftLower",
-					"pivot": [-6, 13, 1],
-					"binding": "'leftitem'"
-				},
-				{
-					"name": "ArmRight",
-					"parent": "BodyInner",
 					"pivot": [-6, 23, 0],
+					"rotation": [-1.03636, 0, 0],
 					"cubes": [
 						{"origin": [-8, 16, -2], "size": [4, 7, 4], "uv": [44, 22], "mirror": true}
 					]
 				},
 				{
-					"name": "ArmRightLower",
-					"parent": "ArmRight",
+					"name": "ArmLeftLower",
+					"parent": "ArmLeft",
 					"pivot": [-6, 16.5, 0],
 					"cubes": [
 						{"origin": [-8, 10, -2], "size": [4, 6, 4], "uv": [44, 47], "mirror": true}
 					]
 				},
 				{
+					"name": "rightItem",
+					"parent": "ArmLeftLower",
+					"pivot": [-18, 13, 1],
+					"binding": "'leftitem'"
+				},
+				{
+					"name": "ArmRight",
+					"parent": "BodyInner",
+					"pivot": [6, 23, 0],
+					"cubes": [
+						{"origin": [4, 16, -2], "size": [4, 7, 4], "uv": [44, 22], "mirror": true}
+					]
+				},
+				{
+					"name": "ArmRightLower",
+					"parent": "ArmRight",
+					"pivot": [6, 16.5, 0],
+					"cubes": [
+						{"origin": [4, 10, -2], "size": [4, 6, 4], "uv": [44, 47], "mirror": true}
+					]
+				},
+				{
 					"name": "ArmRightWrist",
 					"parent": "ArmRightLower",
-					"pivot": [-6, 11.5, -1],
+					"pivot": [6, 11.5, -1],
 					"cubes": [
-						{"origin": [-6.5, 11, -1.5], "size": [1, 1, 1], "uv": [14, 20], "mirror": true}
+						{"origin": [5.5, 11, -1.5], "size": [1, 1, 1], "uv": [14, 20], "mirror": true}
 					],
 					"locators": {
-						"left_item_sound": [0, 0, 0]
+						"left_item_sound": [6, 12, 0],
+						"lead": [6, 12, 0]
 					}
 				},
 				{
 					"name": "leftItem",
 					"parent": "ArmRightWrist",
-					"pivot": [6, 13, 1],
+					"pivot": [18, 13, 1],
 					"binding": "'leftitem'"
 				},
 				{
@@ -284,33 +285,33 @@
 				{
 					"name": "LegLeft",
 					"parent": "Waist",
-					"pivot": [2, 14, 0],
-					"cubes": [
-						{"origin": [0, 6, -2], "size": [4, 6, 4], "uv": [0, 22], "mirror": true}
-					]
-				},
-				{
-					"name": "LegLeftLow",
-					"parent": "LegLeft",
-					"pivot": [2, 8, 0],
-					"cubes": [
-						{"origin": [0, 0, -2], "size": [4, 6, 4], "uv": [0, 28], "mirror": true}
-					]
-				},
-				{
-					"name": "LegRight",
-					"parent": "Waist",
 					"pivot": [-2, 14, 0],
 					"cubes": [
 						{"origin": [-4, 6, -2], "size": [4, 6, 4], "uv": [0, 22], "mirror": true}
 					]
 				},
 				{
-					"name": "LegRightLow",
-					"parent": "LegRight",
+					"name": "LegLeftLow",
+					"parent": "LegLeft",
 					"pivot": [-2, 8, 0],
 					"cubes": [
 						{"origin": [-4, 0, -2], "size": [4, 6, 4], "uv": [0, 28], "mirror": true}
+					]
+				},
+				{
+					"name": "LegRight",
+					"parent": "Waist",
+					"pivot": [2, 14, 0],
+					"cubes": [
+						{"origin": [0, 6, -2], "size": [4, 6, 4], "uv": [0, 22], "mirror": true}
+					]
+				},
+				{
+					"name": "LegRightLow",
+					"parent": "LegRight",
+					"pivot": [2, 8, 0],
+					"cubes": [
+						{"origin": [0, 0, -2], "size": [4, 6, 4], "uv": [0, 28], "mirror": true}
 					]
 				},
 				{

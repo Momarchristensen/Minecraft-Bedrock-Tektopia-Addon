@@ -22,7 +22,8 @@
                 "default": "geometry.tektopia_lumberjack"
             },
             "sound_effects": {
-                "hit.wood": "hit.wood"
+                "hit.wood": "hit.wood",
+                "hit.stone": "hit.stone"
             },
             "textures": {
                 "default": "textures/entity/lumberjack_male"

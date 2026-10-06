@@ -14,7 +14,7 @@ interface Task {
     name: string
     required: boolean
     condition: (villager: Villager, village: Village) => boolean
-    canInterrupt?: boolean
+    interruptible?: boolean
     tick?: (villager: Villager, village: Village) => void
 }
 
@@ -95,20 +95,41 @@ export const tektopiaVillagers: Record<string, VillagerConfig> = {
             "minecraft:granite",
             "minecraft:diorite",
             "minecraft:andesite",
-            "minecraft:gravel"
+            "minecraft:gravel",
+            "minecraft:flint"
         ]
     },
     "tektopia:rancher": {
         customTasks: [
-            // {
-            //     id: "herd",
-            //     name: "Herd",
-            //     required: false,
-            //     condition: (villager: Villager, village: Village) => villager.findMine(village) !== undefined,
-            //     tick: (villager: Villager, village: Village) => villager.tickMine(village)
-            // }
+            {
+                id: "herd",
+                name: "Herd",
+                required: false,
+                condition: (villager: Villager, village: Village) => villager.findHerdEntity(village) !== undefined || villager.isHoldingLeash,
+                tick: (villager: Villager, village: Village) => villager.tickHerdEntity(village)
+            }
         ],
         pickupItems: () => []
+    },
+    "tektopia:guard": {
+        customTasks: [
+            {
+                id: "guard_post",
+                name: "Guard Post",
+                required: false,
+                condition: (villager: Villager, village: Village) => villager.findGuardPost(village) !== undefined,
+                tick: (villager: Villager, village: Village) => villager.tickGuardPost(village)
+            },
+            {
+                id: "guard_village",
+                name: "Guard Village",
+                required: false,
+                interruptible: true,
+                condition: () => true,
+                tick: (villager: Villager, village: Village) => villager.tickGuardVillage(village)
+            }
+        ],
+        pickupItems: () => ["minecraft:apple", ...Registry.saplingTypes, ...Registry.logTypes]
     }
 }
 
@@ -118,7 +139,7 @@ export const globalTasks: Task[] = [
         name: "Eat",
         required: true,
         condition: () => false,
-        canInterrupt: true
+        interruptible: true
     },
     {
         id: "sleep",

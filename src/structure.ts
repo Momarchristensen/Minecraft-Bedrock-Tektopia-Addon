@@ -21,6 +21,7 @@ import {
     getOppositeDirection,
     locationToString,
     multiplyVector,
+    randomInt,
     stringToLocation,
     subtractVectors
 } from "./utils"
@@ -35,6 +36,13 @@ export interface StructureValidationResult {
     result: boolean | undefined
     doorLocation?: Vector3 | undefined
     village?: Village
+}
+
+export const entityStructures: Record<string, "cow_pen" | "sheep_pen" | "chicken_coop" | "pig_pen"> = {
+    "minecraft:cow": "cow_pen",
+    "minecraft:sheep": "sheep_pen",
+    "minecraft:chicken": "chicken_coop",
+    "minecraft:pig": "pig_pen"
 }
 
 Dimension.prototype.validateStructure = function* (block: Block, rotation: CardinalDirection, structureId: StructureType) {
@@ -141,7 +149,17 @@ function* validateAnimalPenStructure(
         return parseResult(false)
     }
 
-    const { gate, axis, direction } = penGate
+    return yield* validateAnimalPenFromGate(dimension, penGate)
+}
+
+function* validateAnimalPenFromGate(
+    dimension: Dimension,
+    { gate, axis, direction }: AnimalPenGate
+): Generator<void, StructureValidationResult, void> {
+    const parseResult = (
+        result: boolean | undefined,
+        door?: Vector3
+    ): StructureValidationResult => ({ result, doorLocation: door })
 
     const isEnclosed = yield* isFenceEnclosed(dimension, gate, axis)
     if (isEnclosed === undefined) {
@@ -652,7 +670,7 @@ export interface StructureTypeMap {
     sheep_pen: AnimalPen
     cow_pen: AnimalPen
     chicken_coop: AnimalPen
-    guard_post: Structure
+    guard_post: GuardPost
 }
 
 export type StructureType = keyof StructureTypeMap
@@ -670,7 +688,11 @@ export interface AnimalPenData extends StructureData {
     type: "pig_pen" | "chicken_coop" | "sheep_pen" | "cow_pen"
 }
 
-type StructureFactory = (locationString: LocationString, data: StructureData, dimension: Dimension) => Structure
+export interface GuardPostData extends StructureData {
+    type: "guard_post"
+}
+
+type StructureFactory = (locationString: LocationString, data: StructureData, dimension: Dimension, village: Village) => Structure
 
 export class Structure<T extends StructureData = StructureData> {
     private static cache = new WeakMap<StructureData, Structure>()
@@ -678,41 +700,44 @@ export class Structure<T extends StructureData = StructureData> {
 
     readonly location: Vector3
     readonly locationString
-    private readonly data
+    private readonly data: T
     readonly dimension
+    readonly village: Village
 
-    protected constructor(locationString: LocationString, data: T, dimension: Dimension) {
+    protected constructor(locationString: LocationString, data: T, dimension: Dimension, village: Village) {
         this.location = stringToLocation(locationString)
         this.locationString = locationString
         this.data = data
         this.dimension = dimension
+        this.village = village
     }
 
     static register(type: string, factory: StructureFactory) {
         Structure.factories.set(type, factory)
     }
 
-    static from(locationString: LocationString, data: MineshaftData, dimension: Dimension): Mineshaft
-    static from(locationString: LocationString, data: AnimalPenData, dimension: Dimension): AnimalPen
-    static from(locationString: LocationString, data: StructureData, dimension: Dimension): Structure
-    static from(locationString: LocationString, data: StructureData, dimension: Dimension): Structure {
+    static from(locationString: LocationString, data: MineshaftData, dimension: Dimension, village: Village): Mineshaft
+    static from(locationString: LocationString, data: AnimalPenData, dimension: Dimension, village: Village): AnimalPen
+    static from(locationString: LocationString, data: GuardPostData, dimension: Dimension, village: Village): GuardPost
+    static from(locationString: LocationString, data: StructureData, dimension: Dimension, village: Village): Structure
+    static from(locationString: LocationString, data: StructureData, dimension: Dimension, village: Village): Structure {
         let structure = Structure.cache.get(data)
         if (structure === undefined) {
             const factory = Structure.factories.get(data.type)
             structure = factory !== undefined ?
-                factory(locationString, data, dimension) :
-                new Structure(locationString, data, dimension)
+                factory(locationString, data, dimension, village) :
+                new Structure(locationString, data, dimension, village)
             Structure.cache.set(data, structure)
         }
         return structure
     }
 
-    *validate(_village: Village): Generator<void, boolean | undefined, void> {
+    *validate(): Generator<void, boolean | undefined, void> {
         const validation = yield* validateDefaultRoom(this.dimension, this.location, this.rotation)
         return validation.result
     }
 
-    get type() {
+    get type(): T["type"] {
         return this.data.type
     }
 
@@ -794,11 +819,11 @@ function getMineshaftMineBlock(
 type MineshaftTask = { type: "fill", block: Block, offset: Vector3 } | { type: "mine", block: Block } | { type: "light", block: Block }
 
 export class Mineshaft extends Structure<MineshaftData> {
-    constructor(locationString: LocationString, data: MineshaftData, dimension: Dimension) {
-        super(locationString, data, dimension)
+    constructor(locationString: LocationString, data: MineshaftData, dimension: Dimension, village: Village) {
+        super(locationString, data, dimension, village)
     }
 
-    override *validate(village: Village): Generator<void, boolean | undefined, void> {
+    override *validate(): Generator<void, boolean | undefined, void> {
         const direction = directionToVector(this.rotation)
         const frameBlock = this.dimension.getBlockSafe(
             addVector(subtractVectors(this.location, direction), "y", 2)
@@ -807,7 +832,7 @@ export class Mineshaft extends Structure<MineshaftData> {
             return undefined
         }
 
-        const validation = yield* validateMineshaftStructure(this.dimension, frameBlock, this.rotation, village)
+        const validation = yield* validateMineshaftStructure(this.dimension, frameBlock, this.rotation, this.village)
         return validation.result
     }
 
@@ -882,25 +907,35 @@ function runToCompletion<T>(generator: Generator<void, T, void>): T {
     return step.value
 }
 
+const animalPenAnimals: Record<AnimalPenData["type"], { typeId: string, size: number }> = {
+    pig_pen: { typeId: "minecraft:pig", size: 3 },
+    sheep_pen: { typeId: "minecraft:sheep", size: 3 },
+    cow_pen: { typeId: "minecraft:cow", size: 3 },
+    chicken_coop: { typeId: "minecraft:chicken", size: 1 }
+}
+
 export class AnimalPen extends Structure<AnimalPenData> {
-    constructor(locationString: LocationString, data: AnimalPenData, dimension: Dimension) {
-        super(locationString, data, dimension)
+    private floorSpaceCount?: number
+
+    constructor(locationString: LocationString, data: AnimalPenData, dimension: Dimension, village: Village) {
+        super(locationString, data, dimension, village)
     }
 
-    private getFrameBlock() {
-        const direction = directionToVector(this.rotation)
-        return this.dimension.getBlockSafe(
-            addVector(subtractVectors(this.location, direction), "y", 2)
-        )
-    }
-
-    override *validate(village: Village): Generator<void, boolean | undefined, void> {
-        const frameBlock = this.getFrameBlock()
-        if (frameBlock === undefined) {
+    override *validate(): Generator<void, boolean | undefined, void> {
+        // The structure location is the gate itself, so revalidate from the gate
+        // rather than re-deriving the item frame position (which is not recoverable
+        // from the gate alone).
+        const gateBlock = this.dimension.getBlockSafe(this.location)
+        if (gateBlock === undefined) {
             return undefined
         }
 
-        const validation = yield* validateAnimalPenStructure(this.dimension, frameBlock, this.rotation, village)
+        const penGate = this.getPenGate()
+        if (penGate === undefined) {
+            return false
+        }
+
+        const validation = yield* validateAnimalPenFromGate(this.dimension, penGate)
         return validation.result
     }
 
@@ -934,17 +969,112 @@ export class AnimalPen extends Structure<AnimalPenData> {
         ) ?? []
         return includeFences ? floorLocations.concat(this.getFenceLocations()) : floorLocations
     }
+
+    getAnimalTypeId(): string {
+        return animalPenAnimals[this.type].typeId
+    }
+
+    getAnimalSize(): number {
+        return animalPenAnimals[this.type].size
+    }
+
+    refreshLocations(): { floor: Vector3[], fence: Vector3[] } {
+        const floor = this.getFloorLocations()
+        this.floorSpaceCount = floor.length
+        return { floor, fence: this.getFenceLocations() }
+    }
+
+    getAnimalCount(): number {
+        const typeId = this.getAnimalTypeId()
+        let count = 0
+        for (const ranchEntity of Object.values(this.village.ranchEntities)) {
+            if (ranchEntity.structure === this.locationString && ranchEntity.typeId === typeId) {
+                count++
+            }
+        }
+        return count
+    }
+
+    get isFull(): boolean {
+        const floorSpaceCount = this.floorSpaceCount ?? this.refreshLocations().floor.length
+        const capacity = Math.floor(floorSpaceCount / this.getAnimalSize())
+        return this.getAnimalCount() > capacity
+    }
+
+    get isUnderpopulated(): boolean {
+        return this.getAnimalCount() < 2
+    }
 }
 
-Structure.register("mineshaft", (locationString, data, dimension) => new Mineshaft(locationString, data as MineshaftData, dimension))
+const GUARD_PATROL_RADIUS = 8
+const GUARD_LOCATION_ATTEMPTS = 10
+const GUARD_Y_OFFSETS = [0, 1, -1, 2, -2, 3, -3]
 
-const animalPenFactory: StructureFactory = (locationString, data, dimension) =>
-    new AnimalPen(locationString, data as AnimalPenData, dimension)
+export class GuardPost extends Structure<GuardPostData> {
+    constructor(locationString: LocationString, data: GuardPostData, dimension: Dimension, village: Village) {
+        super(locationString, data, dimension, village)
+    }
+
+    override *validate(): Generator<void, boolean | undefined, void> {
+        const block = this.dimension.getBlockSafe(this.location)
+        if (block === undefined) {
+            return undefined
+        }
+
+        return !block.isAir
+    }
+
+    getFloorBlock() {
+        const floorBlock = this.dimension.getBlockBelow(this.location, { includeLiquidBlocks: false, includePassableBlocks: false })
+        return floorBlock?.aboveSafe()
+    }
+
+    getRandomGuardLocation(): Vector3 | undefined {
+        const origin = this.getFloorBlock()
+        if (origin === undefined) {
+            return undefined
+        }
+
+        for (let attempt = 0; attempt < GUARD_LOCATION_ATTEMPTS; attempt++) {
+            const dx = randomInt(-GUARD_PATROL_RADIUS, GUARD_PATROL_RADIUS)
+            const dz = randomInt(-GUARD_PATROL_RADIUS, GUARD_PATROL_RADIUS)
+
+            if ((dx * dx) + (dz * dz) > GUARD_PATROL_RADIUS * GUARD_PATROL_RADIUS) {
+                continue
+            }
+
+            for (const dy of GUARD_Y_OFFSETS) {
+                const block = this.dimension.getBlockSafe({
+                    x: origin.location.x + dx,
+                    y: origin.location.y + dy,
+                    z: origin.location.z + dz
+                })
+
+                if (block === undefined) {
+                    continue
+                }
+
+                if (this.village.pathNodes[locationToString(block.location)] !== undefined) {
+                    return block.location
+                }
+            }
+        }
+
+        return undefined
+    }
+}
+
+Structure.register("mineshaft", (locationString, data, dimension, village) => new Mineshaft(locationString, data as MineshaftData, dimension, village))
+
+const animalPenFactory: StructureFactory = (locationString, data, dimension, village) =>
+    new AnimalPen(locationString, data as AnimalPenData, dimension, village)
 
 Structure.register("pig_pen", animalPenFactory)
 Structure.register("cow_pen", animalPenFactory)
 Structure.register("sheep_pen", animalPenFactory)
 Structure.register("chicken_coop", animalPenFactory)
+
+Structure.register("guard_post", (locationString, data, dimension, village) => new GuardPost(locationString, data as GuardPostData, dimension, village))
 
 function tickScanStructures() {
     system.runJob(scanStructures(() => system.runTimeout(tickScanStructures, 100)))
@@ -974,7 +1104,7 @@ function* scanStructures(callback?: () => void) {
                     catch { }
                 }
 
-                const isValid = yield* structure.validate(village)
+                const isValid = yield* structure.validate()
 
                 if (isValid === false) {
                     village.removeStructure(structure.locationString)

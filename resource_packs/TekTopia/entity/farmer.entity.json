@@ -22,7 +22,8 @@
                 "default": "geometry.tektopia_farmer_male"
             },
             "sound_effects": {
-                "hit.wood": "hit.wood"
+                "hit.wood": "hit.wood",
+                "hit.stone": "hit.stone"
             },
             "textures": {
                 "default": "textures/entity/farmer_male"

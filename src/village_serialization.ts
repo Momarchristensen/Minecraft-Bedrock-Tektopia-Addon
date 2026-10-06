@@ -6,7 +6,6 @@ import {
 import type {
     NodeRequirement,
     PathNode,
-    Record,
     LocationString
 } from "./minecraft_extensions"
 
@@ -53,25 +52,26 @@ export type CompressedVillage = [
     nodeRequirements: CompressedRequirement[],
     plantTypes: string[] | undefined,
     plantTypeIndices: string | undefined,
-    stepRequirements: CompressedRequirement[] | undefined,
+    legacyStepRequirements: unknown, // no longer used: per-node step requirements were replaced by connectionRequirements
     structures: Record<LocationString, StructureData> | undefined,
-    nodeCosts: CompressedCost[] | undefined
+    nodeCosts: CompressedCost[] | undefined,
+    connectionRequirements: CompressedRequirement[] | undefined // indices are edge ids: (nodeIndex * 26) + offsetIndex to the neighbor
 ]
 
 const DIGITS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
 const DIGIT_VALUES: Record<string, number> = {}
 for (let i = 0; i < DIGITS.length; i++) {
-    DIGIT_VALUES[DIGITS[i]] = i
+    DIGIT_VALUES[DIGITS.charAt(i)] = i
 }
 
 function packUnsigned(values: number[]): string {
     let result = ""
     for (let value of values) {
         while (value >= 32) {
-            result += DIGITS[(value % 32) + 32]
+            result += DIGITS.charAt((value % 32) + 32)
             value = Math.floor(value / 32)
         }
-        result += DIGITS[value]
+        result += DIGITS.charAt(value)
     }
     return result
 }
@@ -82,6 +82,9 @@ function unpackUnsigned(text: string): number[] {
     let scale = 1
     for (const char of text) {
         const digit = DIGIT_VALUES[char]
+        if (digit === undefined) {
+            continue
+        }
         value += (digit & 31) * scale
         if (digit >= 32) {
             scale *= 32
@@ -135,8 +138,7 @@ function packPoints(sortedPoints: Vector3[], origin: Vector3): string {
     let px = origin.x
     let py = origin.y
     let pz = origin.z
-    for (let i = 0; i < sortedPoints.length; i++) {
-        const point = sortedPoints[i]
+    for (const [i, point] of sortedPoints.entries()) {
         dx[i] = point.x - px
         dy[i] = point.y - py
         dz[i] = point.z - pz
@@ -151,7 +153,7 @@ function unpackPoints(text: string, origin: Vector3): Vector3[] {
     if (text === "") {
         return []
     }
-    const [xText, zText, yText] = text.split(".")
+    const [xText = "", zText = "", yText = ""] = text.split(".")
     const dx = unpackSigned(xText)
     const dz = unpackSigned(zText)
     const dy = unpackSigned(yText)
@@ -159,10 +161,10 @@ function unpackPoints(text: string, origin: Vector3): Vector3[] {
     let x = origin.x
     let y = origin.y
     let z = origin.z
-    for (let i = 0; i < dx.length; i++) {
-        x += dx[i]
-        y += dy[i]
-        z += dz[i]
+    for (const [i, deltaX] of dx.entries()) {
+        x += deltaX
+        y += dy[i] ?? 0
+        z += dz[i] ?? 0
         points[i] = { x, y, z }
     }
     return points
@@ -181,7 +183,11 @@ function unpackLocations(text: string, origin: Vector3): LocationString[] {
 function packTypedLocations(locationRecord: Record<LocationString, string>, origin: Vector3): [locations: string, types: string[], typeIndices: string] {
     const entries: Array<{ point: Vector3, type: string }> = []
     for (const key of Object.keys(locationRecord) as LocationString[]) {
-        entries.push({ point: stringToLocation(key), type: locationRecord[key] })
+        const type = locationRecord[key]
+        if (type === undefined) {
+            continue
+        }
+        entries.push({ point: stringToLocation(key), type })
     }
     entries.sort((a, b) => comparePoints(a.point, b.point))
 
@@ -209,10 +215,14 @@ function unpackTypedLocations(text: string, types: string[] | undefined, typeInd
 
     const points = unpackPoints(text, origin)
     const indices = unpackUnsigned(typeIndices)
-    for (let i = 0; i < points.length; i++) {
-        const type = types[indices[i]] as string | undefined
+    for (const [i, point] of points.entries()) {
+        const typeIndex = indices[i]
+        if (typeIndex === undefined) {
+            continue
+        }
+        const type = types[typeIndex]
         if (type !== undefined) {
-            result[locationToString(points[i])] = type
+            result[locationToString(point)] = type
         }
     }
     return result
@@ -254,8 +264,8 @@ export function compressVillage(data: VillageSaveData): CompressedVillage {
     nodeEntries.sort((a, b) => comparePoints(a.location, b.location))
 
     const indexByKey = new Map<string, number>()
-    for (let i = 0; i < nodeEntries.length; i++) {
-        indexByKey.set(nodeEntries[i].key, i)
+    for (const [i, entry] of nodeEntries.entries()) {
+        indexByKey.set(entry.key, i)
     }
     const forwardMasks: number[] = new Array(nodeEntries.length).fill(0)
 
@@ -267,7 +277,7 @@ export function compressVillage(data: VillageSaveData): CompressedVillage {
     }>
 
     const requirementGroups: RequirementGroups = new Map()
-    const stepRequirementGroups: RequirementGroups = new Map()
+    const connectionRequirementGroups: RequirementGroups = new Map()
     const costGroups = new Map<number, { deltas: number[], last: number }>()
 
     function addToRequirementGroup(groups: RequirementGroups, requirement: NodeRequirement, index: number) {
@@ -290,13 +300,14 @@ export function compressVillage(data: VillageSaveData): CompressedVillage {
         return result
     }
 
-    for (let i = 0; i < nodeEntries.length; i++) {
-        const { key, location } = nodeEntries[i]
+    for (const [i, { key, location }] of nodeEntries.entries()) {
         const node = data.pathNodes[key]
 
         if (node === undefined) {
             continue
         }
+
+        const edgeRequirements: Array<[bit: number, requirement: NodeRequirement]> = []
 
         for (const neighborKey of node.neighbors) {
             const neighborIndex = indexByKey.get(neighborKey)
@@ -304,7 +315,11 @@ export function compressVillage(data: VillageSaveData): CompressedVillage {
             if (neighborIndex === undefined || neighborNode === undefined) {
                 continue
             }
-            const neighbor = nodeEntries[neighborIndex].location
+            const neighborEntry = nodeEntries[neighborIndex]
+            if (neighborEntry === undefined) {
+                continue
+            }
+            const neighbor = neighborEntry.location
             const dx = neighbor.x - location.x
             const dy = neighbor.y - location.y
             const dz = neighbor.z - location.z
@@ -315,19 +330,25 @@ export function compressVillage(data: VillageSaveData): CompressedVillage {
                 continue
             }
             const bit = offsetIndex(dx, dy, dz)
+            const edgeRequirement = node.nodeRequirements?.[neighborKey]
+            if (edgeRequirement !== undefined) {
+                edgeRequirements.push([bit, edgeRequirement])
+            }
             if (bit >= FORWARD_START) {
-                forwardMasks[i] |= 1 << bit - FORWARD_START
+                forwardMasks[i] = (forwardMasks[i] ?? 0) | (1 << (bit - FORWARD_START))
             }
             else if (!neighborNode.neighbors.includes(key)) {
-                forwardMasks[neighborIndex] |= 1 << offsetIndex(-dx, -dy, -dz) - FORWARD_START
+                forwardMasks[neighborIndex] = (forwardMasks[neighborIndex] ?? 0) | (1 << (offsetIndex(-dx, -dy, -dz) - FORWARD_START))
             }
+        }
+
+        edgeRequirements.sort((a, b) => a[0] - b[0])
+        for (const [bit, requirement] of edgeRequirements) {
+            addToRequirementGroup(connectionRequirementGroups, requirement, (i * NEIGHBOR_OFFSETS.length) + bit)
         }
 
         if (node.requirement !== undefined) {
             addToRequirementGroup(requirementGroups, node.requirement, i)
-        }
-        if (node.stepRequirement !== undefined) {
-            addToRequirementGroup(stepRequirementGroups, node.stepRequirement, i)
         }
         if (node.cost !== undefined && node.cost !== 0) {
             let costGroup = costGroups.get(node.cost)
@@ -352,13 +373,13 @@ export function compressVillage(data: VillageSaveData): CompressedVillage {
     })
 
     const paletteIndexByMask = new Map<number, number>()
-    for (let i = 0; i < palette.length; i++) {
-        paletteIndexByMask.set(palette[i], i)
+    for (const [i, mask] of palette.entries()) {
+        paletteIndexByMask.set(mask, i)
     }
-    const maskIndices = forwardMasks.map(mask => paletteIndexByMask.get(mask)).filter(mask => mask !== undefined)
+    const maskIndices = forwardMasks.map(mask => paletteIndexByMask.get(mask) ?? 0)
 
     const nodeRequirements = packRequirementGroups(requirementGroups)
-    const stepRequirements = packRequirementGroups(stepRequirementGroups)
+    const connectionRequirements = packRequirementGroups(connectionRequirementGroups)
 
     const nodeCosts: CompressedCost[] = []
     for (const [cost, costGroup] of costGroups) {
@@ -387,9 +408,10 @@ export function compressVillage(data: VillageSaveData): CompressedVillage {
         nodeRequirements,
         plantTypes,
         plantTypeIndices,
-        stepRequirements,
+        undefined,
         data.structures,
-        nodeCosts
+        nodeCosts,
+        connectionRequirements
     ]
 }
 
@@ -412,10 +434,12 @@ export function decompressVillage(compressed: CompressedVillage): VillageSaveDat
         compressedRequirements,
         plantTypes,
         plantTypeIndices,
-        compressedStepRequirements,
+        legacyStepRequirements,
         structures,
-        compressedNodeCosts
+        compressedNodeCosts,
+        compressedConnectionRequirements
     ] = compressed
+    void legacyStepRequirements
 
     const center: Vector3 = { x: centerCoords[0], y: centerCoords[1], z: centerCoords[2] }
     const origin = originOf(center)
@@ -428,16 +452,30 @@ export function decompressVillage(compressed: CompressedVillage): VillageSaveDat
         pathNodes[key] = { neighbors: [] }
     }
 
+    function nodeAt(nodeIndex: number): PathNode | undefined {
+        const key = nodeKeys[nodeIndex]
+        return key === undefined ? undefined : pathNodes[key]
+    }
+
     const maskPalette = unpackUnsigned(packedMaskPalette)
     const maskPaletteIndices = unpackUnsigned(packedMaskIndices)
 
-    for (let nodeIndex = 0; nodeIndex < nodePoints.length; nodeIndex++) {
-        const neighborMask = maskPalette[maskPaletteIndices[nodeIndex]] as number | undefined
+    for (const [nodeIndex, point] of nodePoints.entries()) {
+        const paletteIndex = maskPaletteIndices[nodeIndex]
+        if (paletteIndex === undefined) {
+            continue
+        }
+
+        const neighborMask = maskPalette[paletteIndex]
         if (neighborMask === undefined) {
             continue
         }
 
         const currentKey = nodeKeys[nodeIndex]
+        if (currentKey === undefined) {
+            continue
+        }
+
         const currentNode = pathNodes[currentKey]
         if (currentNode === undefined) {
             continue
@@ -448,10 +486,12 @@ export function decompressVillage(compressed: CompressedVillage): VillageSaveDat
                 continue
             }
 
-            const neighborKey = offsetKey(
-                nodePoints[nodeIndex],
-                NEIGHBOR_OFFSETS[FORWARD_START + bitIndex]
-            )
+            const offset = NEIGHBOR_OFFSETS[FORWARD_START + bitIndex]
+            if (offset === undefined) {
+                continue
+            }
+
+            const neighborKey = offsetKey(point, offset)
             const neighborNode = pathNodes[neighborKey]
             if (neighborNode === undefined) {
                 continue
@@ -462,16 +502,16 @@ export function decompressVillage(compressed: CompressedVillage): VillageSaveDat
         }
     }
 
-    function applyCompressedRequirements(groups: CompressedRequirement[], field: "requirement" | "stepRequirement") {
+    function applyCompressedRequirements(groups: CompressedRequirement[]) {
         for (const [whiteListFlag, requiredTypes, packedIndexDeltas] of groups) {
             const indexDeltas = unpackUnsigned(packedIndexDeltas)
             let nodeIndex = 0
 
             for (const delta of indexDeltas) {
                 nodeIndex += delta
-                const node = pathNodes[nodeKeys[nodeIndex]]
+                const node = nodeAt(nodeIndex)
                 if (node !== undefined) {
-                    node[field] = {
+                    node.requirement = {
                         whiteList: whiteListFlag === 1,
                         types: requiredTypes.slice()
                     }
@@ -480,14 +520,36 @@ export function decompressVillage(compressed: CompressedVillage): VillageSaveDat
         }
     }
 
-    applyCompressedRequirements(compressedRequirements, "requirement")
-    applyCompressedRequirements(compressedStepRequirements ?? [], "stepRequirement")
+    applyCompressedRequirements(compressedRequirements)
+
+    for (const [whiteListFlag, requiredTypes, packedEdgeDeltas] of compressedConnectionRequirements ?? []) {
+        let edgeId = 0
+        for (const delta of unpackUnsigned(packedEdgeDeltas)) {
+            edgeId += delta
+            const nodeIndex = Math.floor(edgeId / NEIGHBOR_OFFSETS.length)
+            const offset = NEIGHBOR_OFFSETS[edgeId % NEIGHBOR_OFFSETS.length]
+            const point = nodePoints[nodeIndex]
+            const node = nodeAt(nodeIndex)
+            if (node === undefined || point === undefined || offset === undefined) {
+                continue
+            }
+            const neighborKey = offsetKey(point, offset)
+            if (!node.neighbors.includes(neighborKey)) {
+                continue
+            }
+            node.nodeRequirements ??= {}
+            node.nodeRequirements[neighborKey] = {
+                whiteList: whiteListFlag === 1,
+                types: requiredTypes.slice()
+            }
+        }
+    }
 
     for (const [cost, packedIndexDeltas] of compressedNodeCosts ?? []) {
         let nodeIndex = 0
         for (const delta of unpackUnsigned(packedIndexDeltas)) {
             nodeIndex += delta
-            const node = pathNodes[nodeKeys[nodeIndex]]
+            const node = nodeAt(nodeIndex)
             if (node !== undefined) {
                 node.cost = cost
             }

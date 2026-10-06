@@ -101,10 +101,11 @@ export class PathGraph {
     z = new Int32Array(1024)
     cost = new Float32Array(1024)
     reqId = new Uint8Array(1024)
-    stepReqId = new Uint8Array(1024)
     alive = new Uint8Array(1024)
     degree = new Uint8Array(1024)
     adj = new Int32Array(1024 * MAX_DEGREE)
+    // requirement id for each edge in adj (same indexing as adj); 0 = no requirement
+    adjReq = new Uint8Array(1024 * MAX_DEGREE)
 
     // index 0 = "no requirement" (a blacklist with no types, always allowed)
     readonly requirements: NodeRequirement[] = [{ whiteList: false, types: [] }]
@@ -125,7 +126,7 @@ export class PathGraph {
         for (const [key, node] of Object.entries(nodes)) {
             this.refreshNode(key)
             for (const neighborKey of node.neighbors) {
-                this.addEdge(key, neighborKey)
+                this.addEdge(key, neighborKey, node.nodeRequirements?.[neighborKey])
             }
         }
     }
@@ -155,7 +156,7 @@ export class PathGraph {
         return id !== undefined && this.alive[id] === 1 ? id : -1
     }
 
-    addEdge(fromKey: string, toKey: string) {
+    addEdge(fromKey: string, toKey: string, requirement?: NodeRequirement) {
         const from = this.ensureId(fromKey)
         const to = this.ensureId(toKey)
         this.alive[from] = 1
@@ -164,13 +165,16 @@ export class PathGraph {
             return
         }
         const base = from * MAX_DEGREE
+        const requirementId = this.intern(requirement)
         for (let i = 0; i < degree; i++) {
             if (this.adj[base + i] === to) {
+                this.adjReq[base + i] = requirementId
                 return
             }
         }
         if (degree < MAX_DEGREE) {
             this.adj[base + degree] = to
+            this.adjReq[base + degree] = requirementId
             this.degree[from] = degree + 1
         }
     }
@@ -190,10 +194,12 @@ export class PathGraph {
         if (last === undefined) {
             return
         }
+        const lastRequirement = this.adjReq[base + degree - 1] ?? 0
 
         for (let i = 0; i < degree; i++) {
             if (this.adj[base + i] === to) {
                 this.adj[base + i] = last
+                this.adjReq[base + i] = lastRequirement
                 this.degree[from] = degree - 1
                 return
             }
@@ -210,7 +216,6 @@ export class PathGraph {
         this.alive[id] = 1
         this.cost[id] = node.cost ?? 0
         this.reqId[id] = this.intern(node.requirement)
-        this.stepReqId[id] = this.intern(node.stepRequirement)
     }
 
     removeNode(key: string) {
@@ -261,7 +266,6 @@ export class PathGraph {
         this.z[id] = location.z
         this.cost[id] = 0
         this.reqId[id] = 0
-        this.stepReqId[id] = 0
         this.alive[id] = 0
         this.degree[id] = 0
         this.ids.set(key, id)
@@ -296,10 +300,10 @@ export class PathGraph {
         this.z = resized(this.z, capacity)
         this.cost = resized(this.cost, capacity)
         this.reqId = resized(this.reqId, capacity)
-        this.stepReqId = resized(this.stepReqId, capacity)
         this.alive = resized(this.alive, capacity)
         this.degree = resized(this.degree, capacity)
         this.adj = resized(this.adj, capacity * MAX_DEGREE)
+        this.adjReq = resized(this.adjReq, capacity * MAX_DEGREE)
         this.capacity = capacity
     }
 }

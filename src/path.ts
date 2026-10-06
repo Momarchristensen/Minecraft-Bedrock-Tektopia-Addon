@@ -1,5 +1,7 @@
 import {
     Block,
+    type Entity,
+    EntityComponentTypes,
     GameMode,
     Player,
     system,
@@ -93,7 +95,7 @@ function buildBlockedCells(
     bounds: Bounds,
     blocked: Uint8Array
 ) {
-    const RADIUS = 1.75
+    const RADIUS = 1.0
     const minBX = Math.min(bounds.start.x, bounds.end.x) - RADIUS - 1
     const maxBX = Math.max(bounds.start.x, bounds.end.x) + RADIUS + 1
     const minBZ = Math.min(bounds.start.z, bounds.end.z) - RADIUS - 1
@@ -227,9 +229,9 @@ export function generatePath(entity: Villager, start: Vector3, end: Vector3, tok
 
             const HEURISTIC_WEIGHT = 1
             const MAX_EXPANSIONS = 20000
-            const YIELD_EVERY = 20
+            const YIELD_EVERY = 100
 
-            const { x: X, y: Y, z: Z, cost: COST, reqId: REQ, stepReqId: STEP, alive: ALIVE, degree: DEG, adj: ADJ } = graph
+            const { x: X, y: Y, z: Z, cost: COST, reqId: REQ, adjReq: ADJ_REQ, adj: ADJ, alive: ALIVE, degree: DEG } = graph
             const size = X.length
             const lookup = (x: number, y: number, z: number) => {
                 const id = graph.idAt(x, y, z)
@@ -297,6 +299,17 @@ export function generatePath(entity: Villager, start: Vector3, end: Vector3, tok
                     }
                     closed[current] = 1
 
+                    if (debugFlags.pathScanParticles) {
+                        try {
+                            dimension.spawnParticle("minecraft:basic_flame_particle", {
+                                x: (X[current] ?? 0) + 0.5,
+                                y: (Y[current] ?? 0) + 0.5,
+                                z: (Z[current] ?? 0) + 0.5
+                            })
+                        }
+                        catch { }
+                    }
+
                     if (current === endId) {
                         resolve(buildPath(current))
                         return
@@ -352,12 +365,13 @@ export function generatePath(entity: Villager, start: Vector3, end: Vector3, tok
                             }
                         }
 
+                        const edgeRequirementId = ADJ_REQ[base + i] ?? 0
+                        if (edgeRequirementId !== 0 && !allowed(edgeRequirementId)) {
+                            continue
+                        }
+
                         let verticalPenalty = 0
                         if (cy !== ny) {
-                            const stepId = STEP[ny > cy ? next : current] ?? 0
-                            if (stepId !== 0 && !allowed(stepId)) {
-                                continue
-                            }
                             verticalPenalty = Math.abs(ny - ey) < Math.abs(cy - ey) ? VERTICAL_TOWARD_PENALTY : VERTICAL_AWAY_PENALTY
                         }
 
@@ -398,7 +412,7 @@ export function generatePath(entity: Villager, start: Vector3, end: Vector3, tok
     })
 }
 
-function findNearestNodeLocation(nodeList: Record<string, PathNode>, location: Vector3, maxRadius = 1.5) {
+export function findNearestNodeLocation(nodeList: Record<string, PathNode>, location: Vector3, maxRadius = 1.5) {
     if (nodeList[locationToString(location)] !== undefined) {
         return location
     }
@@ -438,7 +452,16 @@ const CELL = 4
 const cellKey = (x: number, z: number) => (Math.floor(x / CELL) * 4194304) + Math.floor(z / CELL)
 const pathGrid = new Map<string, Map<number, PathEntity[]>>()
 
-export function findPathBlocker(dimensionId: string, node: Vector3, selfId: string) {
+export function findPathBlocker(
+    dimensionId: string,
+    node: Vector3,
+    selfId: string,
+    selfLocation: Vector3,
+    village: Village
+) {
+    if (village.penTiles.has(locationToString(floorVector(addVector(selfLocation, "y", 0.1))))) {
+        return undefined
+    }
     const grid = pathGrid.get(dimensionId)
     if (grid === undefined) {
         return undefined
@@ -469,6 +492,16 @@ export function findPathBlocker(dimensionId: string, node: Vector3, selfId: stri
 }
 
 const SNAPSHOT_MARGIN = 4
+
+function isPennedMob(village: Village, entity: Entity, location: Vector3) {
+    if (entity instanceof Player || !entity.typeId.startsWith("minecraft:")) {
+        return false
+    }
+    if (village.ranchEntities[entity.id]?.structure !== undefined) {
+        return true
+    }
+    return village.penTiles.has(locationToString(floorVector(addVector(location, "y", 0.1))))
+}
 
 system.runInterval(() => {
     const pathingVillages = new Map<string, Village>()
@@ -519,9 +552,16 @@ system.runInterval(() => {
             if (entity instanceof Player && entity.getGameMode() === GameMode.Spectator) {
                 continue
             }
+            const location = getLocationUncached(entity)
+            if (isPennedMob(village, entity, location)) {
+                continue
+            }
+            if (entity.getComponent(EntityComponentTypes.Leashable)?.isLeashed) {
+                continue
+            }
+
             seen.add(entity.id)
 
-            const location = getLocationUncached(entity)
             const pathEntity: PathEntity = {
                 location,
                 id: entity.id,

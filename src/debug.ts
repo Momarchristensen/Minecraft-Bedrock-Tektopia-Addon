@@ -35,11 +35,13 @@ export const debugFlags = {
     pathNodeParticles: false,
     villageLocationParticles: false,
     villagerDebugNameTags: false,
+    rancherDebugNameTags: false,
     structureScanParticles: false,
     pathScanParticles: false,
     villagerPathParticles: false,
     pathfindingWarnings: false,
-    nodeUpdatedWarnings: false
+    nodeUpdatedWarnings: false,
+    rancherPenParticles: false
 }
 
 export type DebugFlag = keyof typeof debugFlags
@@ -323,12 +325,9 @@ function* drawDebug(callback?: () => void) {
                                     if (direction === undefined) {
                                         continue
                                     }
-                                    const requirement = connectionRequirement(
-                                        node,
-                                        checkPos,
-                                        village.pathNodes[neighborKey],
-                                        neighborPos
-                                    )
+
+                                    const requirement = connectionRequirement(node, neighborKey, village.pathNodes[neighborKey])
+
                                     directionColors.set(
                                         direction,
                                         requirement === undefined ? DEFAULT_CONNECTION_COLOR : requirementColor(requirement)
@@ -382,25 +381,11 @@ function getConnectionMolangMap(color: { red: number, green: number, blue: numbe
     return molangMap
 }
 
-function connectionRequirement(
-    node: PathNode,
-    position: Vector3,
-    neighborNode: PathNode | undefined,
-    neighborPosition: Vector3
-) {
+function connectionRequirement(node: PathNode, neighborKey: LocationString, neighborNode: PathNode | undefined) {
     if (neighborNode === undefined) {
         return undefined
     }
-    if (neighborNode.requirement !== undefined) {
-        return neighborNode.requirement
-    }
-    if (neighborPosition.y > position.y) {
-        return neighborNode.stepRequirement
-    }
-    if (neighborPosition.y < position.y) {
-        return node.stepRequirement
-    }
-    return undefined
+    return neighborNode.requirement ?? node.nodeRequirements?.[neighborKey]
 }
 
 function requirementColor(requirement?: NodeRequirement) {

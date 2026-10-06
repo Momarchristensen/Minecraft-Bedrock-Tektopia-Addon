@@ -2,7 +2,7 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "tektopia:rancher",
+            "identifier": "tektopia:guard",
             "enable_attachables": true,
             "animations": {
                 "main": "controller.animation.tektopia_villager",
@@ -19,20 +19,20 @@
                 ]
             },
             "geometry": {
-                "default": "geometry.tektopia_rancher"
+                "default": "geometry.tektopia_guard"
             },
             "sound_effects": {
                 "hit.wood": "hit.wood",
                 "hit.stone": "hit.stone"
             },
             "textures": {
-                "default": "textures/entity/rancher_male"
+                "default": "textures/entity/guard_male"
             },
             "materials": {
                 "default": "entity"
             },
             "render_controllers": [
-                "controller.render.tektopia_villager"
+                "controller.render.tektopia_villager_guard"
             ],
             "spawn_egg": {
                 "base_color": "#446600",

@@ -35,8 +35,7 @@ import {
     stringToLocation,
     subtractVectors,
     locationToString,
-    addVector,
-    areVectorsEqual
+    addVector
 } from "./utils"
 
 import {
@@ -50,6 +49,8 @@ import {
     compressVillage,
     decompressVillage
 } from "./village_serialization"
+
+import type { Villager } from "./villager"
 
 import type {
     NodeRequirement,
@@ -120,9 +121,11 @@ export interface StructureFilter<K extends StructureType = StructureType> {
     excludedTypes?: readonly StructureType[]
 }
 
-interface VillageRanchEntity {
-    inPen: boolean
+export interface VillageRanchEntity {
     typeId: string
+    location: Vector3
+    inPen: boolean
+    structure?: LocationString
 }
 
 export class Village {
@@ -133,6 +136,7 @@ export class Village {
     readonly centerString: string
     readonly bounds: Bounds
     ranchEntities: Record<string, VillageRanchEntity> = {}
+    penTiles = new Map<LocationString, LocationString>()
 
     readonly sugarCaneLocations: LocationList
     readonly saplingLocations: LocationList
@@ -221,7 +225,7 @@ export class Village {
     getStructure(location: Vector3) {
         const locationString = locationToString(location)
         const data = this.data.structures[locationString]
-        return data !== undefined ? Structure.from(locationString, data, this.dimension) : undefined
+        return data !== undefined ? Structure.from(locationString, data, this.dimension, this) : undefined
     }
 
     addStructure(location: Vector3, structureData: StructureData) {
@@ -237,7 +241,7 @@ export class Village {
         const resultList: Structure[] = []
 
         for (const [locationString, structureData] of Object.entries(this.data.structures)) {
-            resultList.push(Structure.from(locationString as LocationString, structureData, this.dimension))
+            resultList.push(Structure.from(locationString as LocationString, structureData, this.dimension, this))
         }
 
         return resultList
@@ -271,7 +275,7 @@ export class Village {
                 continue
             }
 
-            const structure = Structure.from(locationString as LocationString, structureData, this.dimension)
+            const structure = Structure.from(locationString as LocationString, structureData, this.dimension, this)
             resultList.push(structure as StructureTypeMap[K])
         }
 
@@ -284,6 +288,13 @@ export class Village {
 
     get isValid() {
         return world.villageList.includes(this.data)
+    }
+
+    getVillagers(): Villager[] {
+        const dimensionId = this.data.dimensionId
+        return world.getVillagers().filter(villager => {
+            return villager.dimension.id === dimensionId && this.isInBounds(villager.location)
+        })
     }
 
     public link(aKey: LocationString, bKey: LocationString) {
@@ -302,6 +313,34 @@ export class Village {
         if (!node2.neighbors.includes(aKey)) {
             node2.neighbors.push(aKey)
         }
+
+        this.pathGraph?.refreshNode(aKey)
+        this.pathGraph?.refreshNode(bKey)
+        this.pathGraph?.addEdge(aKey, bKey, node1.nodeRequirements?.[bKey])
+        this.pathGraph?.addEdge(bKey, aKey, node2.nodeRequirements?.[aKey])
+    }
+
+    public setConnectionRequirement(fromKey: LocationString, toKey: LocationString, requirement: NodeRequirement | undefined) {
+        const node = this.pathNodes[fromKey]
+        if (node === undefined) {
+            return
+        }
+        if (requirement === undefined) {
+            if (node.nodeRequirements !== undefined) {
+                delete node.nodeRequirements[toKey]
+                if (Object.keys(node.nodeRequirements).length === 0) {
+                    delete node.nodeRequirements
+                }
+            }
+        }
+        else {
+            node.nodeRequirements ??= {}
+            node.nodeRequirements[toKey] = requirement
+        }
+
+        if (node.neighbors.includes(toKey)) {
+            this.pathGraph?.addEdge(fromKey, toKey, requirement)
+        }
     }
 
     public unlink(aKey: LocationString, bKey: LocationString) {
@@ -310,10 +349,15 @@ export class Village {
         const node2 = village.pathNodes[bKey]
         if (node1 !== undefined) {
             node1.neighbors = node1.neighbors.filter(k => k !== bKey)
+            village.setConnectionRequirement(aKey, bKey, undefined)
         }
         if (node2 !== undefined) {
             node2.neighbors = node2.neighbors.filter(k => k !== aKey)
+            village.setConnectionRequirement(bKey, aKey, undefined)
         }
+
+        this.pathGraph?.removeEdge(aKey, bKey)
+        this.pathGraph?.removeEdge(bKey, aKey)
     }
 
     public removeNode(key: LocationString) {
@@ -326,6 +370,8 @@ export class Village {
             this.unlink(key, neighborKey)
         }
         delete village.pathNodes[key]
+
+        this.pathGraph?.removeNode(key)
     }
 
     isInBounds(location: Vector3) {
@@ -387,14 +433,6 @@ export class Village {
                     delete node.requirement
                 }
 
-                const stepRequirement = checkBlock.getStepRequirement()
-                if (stepRequirement !== undefined) {
-                    node.stepRequirement = stepRequirement
-                }
-                else {
-                    delete node.stepRequirement
-                }
-
                 const before = new Set(node.neighbors)
                 const after = new Set<string>()
 
@@ -415,6 +453,8 @@ export class Village {
                     const existed = village.pathNodes[blockString] !== undefined
                     village.pathNodes[blockString] ??= { neighbors: [] }
                     village.link(key, blockString)
+                    village.setConnectionRequirement(key, blockString, checkBlock.getConnectionRequirement(block))
+                    village.setConnectionRequirement(blockString, key, block.getConnectionRequirement(checkBlock))
 
                     if (!alreadyCheckedLocations.has(blockString)) {
                         alreadyCheckedLocations.add(blockString)
@@ -450,6 +490,9 @@ export class Village {
     *scanLocation(location: Vector3, flood = true) {
         const flooredLocation = floorVector(location)
         const village = this
+        if (!village.isInBounds(location)) {
+            return
+        }
         const dimension = world.getDimension(village.dimensionId)
         const locationStringList = [locationToString(flooredLocation)]
         const alreadyCheckedLocations = new Set()
@@ -547,10 +590,21 @@ export class Village {
 
         for (const neighborKey of [...pathNode.neighbors]) {
             const neighborBlock = dimension.getBlockSafe(stringToLocation(neighborKey))
-            if (neighborBlock !== undefined && !isValidConnection(block, neighborBlock)) {
+            if (neighborBlock === undefined) {
+                continue
+            }
+            if (!isValidConnection(block, neighborBlock)) {
                 village.unlink(pathNodeLocation, neighborKey)
                 if (debugFlags.nodeUpdatedWarnings) {
                     console.warn("Node connection deleted: ", pathNodeLocation, neighborKey)
+                }
+                continue
+            }
+            const connectionRequirement = block.getConnectionRequirement(neighborBlock)
+            if (!requirementsEqual(pathNode.nodeRequirements?.[neighborKey], connectionRequirement)) {
+                village.setConnectionRequirement(pathNodeLocation, neighborKey, connectionRequirement)
+                if (debugFlags.nodeUpdatedWarnings) {
+                    console.warn("Node connection requirement updated: ", pathNodeLocation, neighborKey)
                 }
             }
         }
@@ -565,19 +619,6 @@ export class Village {
             }
             if (debugFlags.nodeUpdatedWarnings) {
                 console.warn("Node requirement updated: ", pathNodeLocation)
-            }
-        }
-
-        const stepRequirement = block.getStepRequirement()
-        if (!requirementsEqual(pathNode.stepRequirement, stepRequirement)) {
-            if (stepRequirement !== undefined) {
-                pathNode.stepRequirement = stepRequirement
-            }
-            else {
-                delete pathNode.stepRequirement
-            }
-            if (debugFlags.nodeUpdatedWarnings) {
-                console.warn("Node step requirement updated: ", pathNodeLocation)
             }
         }
 
@@ -645,12 +686,15 @@ Block.prototype.getNodeRequirement = function () {
     return undefined
 }
 
-Block.prototype.getStepRequirement = function () {
-    const ceiling = this.aboveSafe()?.aboveSafe()
-    if (ceiling?.destroyableLeaf()) {
+Block.prototype.getConnectionRequirement = function (neighbor: Block) {
+    if (this.location.y === neighbor.location.y) {
+        return undefined
+    }
+    const ownCeiling = this.aboveSafe()?.aboveSafe()
+    const neighborCeiling = neighbor.aboveSafe()?.aboveSafe()
+    if (ownCeiling?.destroyableLeaf() === true || neighborCeiling?.destroyableLeaf() === true) {
         return { whiteList: true, types: ["tektopia:lumberjack"] }
     }
-
     return undefined
 }
 
@@ -1019,7 +1063,6 @@ system.runInterval(() => {
     if (!world.loadedData) {
         return
     }
-    const rancherEntities = world.getEntities().filter(entity => ["minecraft:pig", "minecraft:sheep", "minecraft:cow", "minecraft:chicken"].includes(entity.typeId))
 
     const villageList = world.getVillages()
     for (const village of villageList) {
@@ -1060,26 +1103,6 @@ system.runInterval(() => {
                 }
             }
         }
-
-        village.ranchEntities = {}
-        const rancherStructure = village.findStructures({ includedTypes: ["pig_pen", "cow_pen", "chicken_coop", "sheep_pen"] })
-        for (const structure of rancherStructure) {
-            const structureFloorLocations = structure.getFloorLocations(true)
-            for (const rancherEntity of rancherEntities) {
-                const flooredEntityLocation = floorVector(addVector(rancherEntity.location, "y", 0.1))
-                let inPen = false
-                for (const location of structureFloorLocations) {
-                    village.dimension.spawnParticle("minecraft:heart_particle", centerVector(location))
-                    if (areVectorsEqual(flooredEntityLocation, location)) {
-                        inPen = true
-                        break
-                    }
-                }
-                village.ranchEntities[rancherEntity.id] = { inPen, typeId: rancherEntity.typeId }
-            }
-        }
-
-        console.warn(JSON.stringify(village.ranchEntities))
     }
 }, 100)
 
@@ -1152,6 +1175,79 @@ system.runInterval(() => {
                 player.spawnBorderParticles(village.bounds)
             }
             catch { }
+        }
+    }
+
+    const rancherEntities = world.getEntities().filter(entity => ["minecraft:pig", "minecraft:sheep", "minecraft:cow", "minecraft:chicken"].includes(entity.typeId))
+
+    const villages = world.getVillages()
+    for (const village of villages) {
+        village.ranchEntities = {}
+        village.penTiles = new Map()
+        const pens = village.findStructures({ includedTypes: ["pig_pen", "cow_pen", "chicken_coop", "sheep_pen"] })
+        if (pens.length === 0) {
+            continue
+        }
+
+        const penFloors = pens.map(pen => {
+            const { floor, fence } = pen.refreshLocations()
+            const locations = floor.concat(fence)
+            if (debugFlags.rancherPenParticles) {
+                for (const location of locations) {
+                    village.dimension.spawnParticle("minecraft:heart_particle", centerVector(location))
+                }
+            }
+            const tiles = new Set(locations.map(locationToString))
+            for (const tile of tiles) {
+                village.penTiles.set(tile, pen.locationString)
+            }
+            return { pen, tiles }
+        })
+
+        for (const rancherEntity of rancherEntities) {
+            const rancherEntityLocation = rancherEntity.location
+            const entityTile = locationToString(floorVector(addVector(rancherEntityLocation, "y", 0.01)))
+
+            if (village.pathNodes[entityTile] === undefined) {
+                continue
+            }
+
+            if (!village.isInBounds(rancherEntityLocation)) {
+                continue
+            }
+
+            let matchedPen: LocationString | undefined
+            let fallbackPen: LocationString | undefined
+            for (const { pen, tiles } of penFloors) {
+                if (!tiles.has(entityTile)) {
+                    continue
+                }
+                if (pen.getAnimalTypeId() === rancherEntity.typeId) {
+                    matchedPen = pen.locationString
+                    break
+                }
+                fallbackPen ??= pen.locationString
+            }
+
+            const structure = matchedPen ?? fallbackPen
+            const inPen = matchedPen !== undefined
+            village.ranchEntities[rancherEntity.id] = {
+                typeId: rancherEntity.typeId,
+                location: rancherEntityLocation,
+                inPen,
+                structure
+            }
+
+            if (debugFlags.rancherDebugNameTags) {
+                rancherEntity.nameTag = [
+                    `Ranch entity: ${rancherEntity.typeId}`,
+                    `In pen: ${inPen ? "Yes" : "No"}`,
+                    `Structure: ${structure ?? "None"}`
+                ].join("\n")
+            }
+            else if (rancherEntity.nameTag !== "") {
+                rancherEntity.nameTag = ""
+            }
         }
     }
 }, 20)

@@ -30,7 +30,7 @@ dependencies.dot
 dependencies.svg
 
 #Python Scripts
-Python Scripts/
+Python Scripts/thing.py
 
 # Node (if you use the Script API with npm or TypeScript)
 node_modules/

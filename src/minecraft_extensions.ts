@@ -1,3 +1,5 @@
+import type { SoundEvents } from "./generated"
+
 import type {
     StructureType,
     StructureValidationResult
@@ -101,7 +103,7 @@ declare module "@minecraft/server" {
         getNodeNeighbors(): Block[]
         isValidPath(villageBounds?: Bounds): boolean
         getNodeRequirement(): NodeRequirement | undefined
-        getStepRequirement(): NodeRequirement | undefined
+        getConnectionRequirement(neighbor: Block): NodeRequirement | undefined
         scanBlock(village: Village): boolean
         getVillage(): Village | undefined
         getPathCost(): number
@@ -139,8 +141,6 @@ export interface CheckEntityData {
     cancelPath: boolean
 }
 
-type SoundEvents = "break" | "place"
-
 export interface NodeRequirement {
     whiteList: boolean
     types: string[]
@@ -149,7 +149,7 @@ export interface NodeRequirement {
 export interface PathNode {
     neighbors: LocationString[]
     requirement?: NodeRequirement
-    stepRequirement?: NodeRequirement
+    nodeRequirements?: Record<LocationString, NodeRequirement>
     cost?: number
 }
 
