@@ -1,4 +1,8 @@
+import type { EntityBreeding } from "./breed"
+
 import type { SoundEvents } from "./generated"
+
+import type { EntityData } from "./saves"
 
 import type {
     StructureType,
@@ -74,10 +78,15 @@ declare module "@minecraft/server" {
         getVillage(location: Vector3): Village | undefined
     }
 
-    interface Entity {
+    interface Entity extends EntityData {
+        saveData<K extends keyof EntityData>(propertyId: K): void
+        loadData(): void
+
         isDead: boolean
         unreachable: number
+        loadedData: boolean
         readonly isVillager: boolean
+        readonly breeding: EntityBreeding
     }
 
     interface Block {

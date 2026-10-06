@@ -24,6 +24,7 @@ import {
 import { Registry } from "./registry"
 
 import {
+    AnimalPen,
     entityStructures,
     type GuardPost,
     type Mineshaft,
@@ -49,7 +50,8 @@ import {
     getOppositeDirection,
     directionToVector,
     stringToLocationCached,
-    randomItem
+    randomItem,
+    stringToLocation
 } from "./utils"
 
 import {
@@ -113,7 +115,8 @@ export class Villager {
         type: string
     }
 
-    private foundHerdEntity?: (VillageRanchEntity & { id: string }) | undefined
+    private foundHerdEntity?: VillageRanchEntity & { id: string }
+    private foundBreedableEntity?: VillageRanchEntity & { id: string }
 
     private index: number
 
@@ -354,6 +357,48 @@ export class Villager {
         const closestHarvestLocation = village.harvestLocations.nearestTo(this.location, key => takenHarvestLocations.has(key))
         this.foundHarvest = closestHarvestLocation
         return closestHarvestLocation
+    }
+
+    findBreedableEntity(village: Village) {
+        const takenRanchEntities = new Set<string>()
+        for (const villager of world.getVillagers()) {
+            if (villager.id === this.id) {
+                continue
+            }
+            const ranchEntity = villager.foundBreedableEntity
+            if (ranchEntity !== undefined) {
+                takenRanchEntities.add(ranchEntity.id)
+            }
+        }
+
+        let closestEntity
+        let closestDistance = Infinity
+
+        for (const [entityId, entityData] of Object.entries(village.ranchEntities)) {
+            if (takenRanchEntities.has(entityId) || !entityData.inPen || !entityData.breedable || entityData.structure === undefined) {
+                continue
+            }
+
+            const structure = village.getStructure(stringToLocation(entityData.structure))
+
+            if (!(structure instanceof AnimalPen)) {
+                continue
+            }
+
+            if (structure.isFull) {
+                continue
+            }
+
+            const distance = calculateDistance(entityData.location, this.location)
+
+            if (distance < closestDistance) {
+                closestDistance = distance
+                closestEntity = { ...entityData, id: entityId }
+            }
+        }
+
+        this.foundBreedableEntity = closestEntity
+        return closestEntity
     }
 
     findHerdEntity(village: Village) {
@@ -716,6 +761,8 @@ export class Villager {
                     target = `Herd ${formatTypeId(this.foundHerdEntity.typeId)}`
                 }
                 break
+            case undefined:
+                break
         }
         let targetDistance: number | undefined
         if (targetLocation !== undefined) {
@@ -898,6 +945,56 @@ export class Villager {
         }
 
         return undefined
+    }
+
+    tickBreedEntity(village: Village) {
+        const villager = this
+
+        if (villager.foundBreedableEntity === undefined) {
+            // const inStructure = villager.getCurrentStructure()
+            // if (inStructure !== undefined) {
+            //     if (["pig_pen", "chicken_coop", "sheep_pen", "cow_pen"].includes(inStructure.type)) {
+            //         const pathLocation = addVectors(inStructure.location, directionToVector(inStructure.rotation))
+
+            //         const pathLocationDistance = calculateDistance(centerVector(pathLocation, true), villager.location)
+            //         if (pathLocationDistance > 0.5) {
+            //             villager.pathFindTo(pathLocation)
+            //             return
+            //         }
+            //     }
+            // }
+            villager.currentTask = undefined
+            return
+        }
+
+        if (!villager.foundBreedableEntity.inPen) {
+            villager.currentTask = undefined
+            return
+        }
+
+        const ranchEntity = world.getEntity(villager.foundBreedableEntity.id)
+        if (ranchEntity === undefined) {
+            villager.currentTask = undefined
+            return
+        }
+
+        const ranchEntityLocation = ranchEntity.location
+
+        const ranchEntityDistance = calculateDistance(ranchEntityLocation, villager.location)
+        if (ranchEntityDistance > 3) {
+            villager.pathFindTo(ranchEntityLocation)
+            return
+        }
+
+        villager.stopPath()
+
+        villager.playAnimation("animation.tektopia_villager.take")
+
+        villager.waiting = 20
+
+        ranchEntity.breeding.start()
+
+        villager.currentTask = undefined
     }
 
     tickHerdEntity(village: Village) {

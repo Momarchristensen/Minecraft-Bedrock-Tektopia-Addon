@@ -126,6 +126,7 @@ export interface VillageRanchEntity {
     location: Vector3
     inPen: boolean
     structure?: LocationString
+    breedable: boolean
 }
 
 export class Village {
@@ -1235,7 +1236,8 @@ system.runInterval(() => {
                 typeId: rancherEntity.typeId,
                 location: rancherEntityLocation,
                 inPen,
-                structure
+                structure,
+                breedable: rancherEntity.breeding.canBreed
             }
 
             if (debugFlags.rancherDebugNameTags) {

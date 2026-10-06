@@ -1,12 +1,17 @@
 import {
     BlockTypes,
     DimensionTypes,
-    EntityTypes
+    EntityTypes,
+    ItemStack,
+    ItemTypes
 } from "@minecraft/server"
 
 import { subtractLists } from "./utils"
 
-import { minecraftNonSolidBlocks } from "./variables"
+import {
+    minecraftNonSolidBlocks,
+    type TagId
+} from "./variables"
 
 function lazy<T>(compute: () => T): () => T {
     let cached: T
@@ -31,42 +36,38 @@ function defineRegistry<T extends Record<string, (self: any) => unknown>>(defini
     return registry
 }
 
-interface RegistryShape {
-    readonly blockTypes: string[]
-    readonly entityTypes: string[]
+const blocks = (test: (id: string) => boolean) =>
+    (self: { blockTypes: string[] }): string[] => self.blockTypes.filter(test)
 
-    readonly trapdoorTypes: string[]
-    readonly doorTypes: string[]
-    readonly slabTypes: string[]
-    readonly stairTypes: string[]
-    readonly fenceTypes: string[]
-    readonly gateTypes: string[]
-    readonly saplingTypes: string[]
-    readonly logTypes: string[]
-    readonly leafTypes: string[]
+const entities = (test: (id: string) => boolean) =>
+    (self: { entityTypes: string[] }): string[] => self.entityTypes.filter(test)
 
-    readonly villagerTypes: string[]
-
-    readonly noWalkBlocks: string[]
-    readonly solidBlocks: string[]
-    readonly solidBlocksSet: Set<string>
-    readonly lumberjackPickups: string[]
-
-    readonly dimensionTypes: string[]
-
-    readonly nonSolidBlocks: string[]
-    readonly nonSolidBlocksSet: Set<string>
-}
-
-const blocks = (test: (id: string) => boolean) => (self: RegistryShape): string[] => self.blockTypes.filter(test)
-const entities = (test: (id: string) => boolean) => (self: RegistryShape): string[] => self.entityTypes.filter(test)
-
-export const Registry: RegistryShape = defineRegistry({
+export const Registry = defineRegistry({
     blockTypes: (): string[] => BlockTypes.getAll().map(blockType => blockType.id),
     entityTypes: (): string[] => EntityTypes.getAll().map(entityType => entityType.id),
 
+    itemTagItems: (): Partial<Record<TagId, string[]>> => {
+        const result: Partial<Record<TagId, string[]>> = {}
+        for (const itemType of ItemTypes.getAll()) {
+            let tags: string[]
+            try {
+                tags = new ItemStack(itemType).getTags()
+            }
+            catch {
+                continue
+            }
+            for (const tag of tags as TagId[]) {
+                (result[tag] ??= []).push(itemType.id)
+            }
+        }
+        return result
+    },
+
     trapdoorTypes: blocks(id => id.includes("trapdoor")),
-    doorTypes: blocks(id => id.includes("_door") || id.includes("_fence_gate")),
+    doorTypes: (): string[] => [
+        ...Registry.blockTypes.filter(id => id.includes("_fence_gate")),
+        ...Registry.itemTagItems["minecraft:door"] ?? []
+    ],
     slabTypes: blocks(id => id.includes("_slab") && !id.includes("_double_slab")),
     stairTypes: blocks(id => id.includes("_stair")),
     fenceTypes: blocks(id => id.includes("_fence") || (id.includes("_wall") && !id.includes("_sign") && !id.includes("_fan"))),
@@ -77,10 +78,12 @@ export const Registry: RegistryShape = defineRegistry({
 
     villagerTypes: entities(id => id.startsWith("tektopia:")),
 
+    woolTypes: (): string[] => Registry.itemTagItems["minecraft:wool"]?.filter(id => !id.includes("_stairs") && !id.includes("_slab")) ?? [],
+    eggTypes: (): string[] => Registry.itemTagItems["minecraft:egg"] ?? [],
+
     noWalkBlocks: (): string[] => [...Registry.fenceTypes, ...Registry.gateTypes, ...Registry.doorTypes, ...Registry.trapdoorTypes],
     solidBlocks: (): string[] => subtractLists(subtractLists(Registry.blockTypes, minecraftNonSolidBlocks), Registry.noWalkBlocks),
     solidBlocksSet: (): Set<string> => new Set(Registry.solidBlocks),
-    lumberjackPickups: (): string[] => ["minecraft:apple", ...Registry.saplingTypes, ...Registry.logTypes],
 
     dimensionTypes: (): string[] => DimensionTypes.getAll().map(dimensionType => dimensionType.typeId),
 

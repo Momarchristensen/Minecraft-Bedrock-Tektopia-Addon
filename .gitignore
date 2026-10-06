@@ -24,6 +24,7 @@ dist/
 build/
 behavior_packs/Tektopia/scripts/*
 src.zip
+Tektopia Files/
 
 # Generated dependency graph (make_dep_graph.py)
 dependencies.dot

@@ -17,7 +17,10 @@ HELD_ITEMS = [
 
 # Locators to attach to existing bones: {bone name: {locator name: position}}
 LOCATORS = {
-    "ArmRightWrist": {"left_item_sound": [0, 0, 0]},
+    "ArmRightWrist": {
+        "left_item_sound": [6, 12, 0],
+        "lead_hold": [6, 12, 0],
+    },
 }
 
 # Root chain appended only if the source doesn't already define these bones.

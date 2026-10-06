@@ -5,7 +5,14 @@
       "identifier": "minecraft:sheep",
       "spawn_category": "creature",
       "is_spawnable": true,
-      "is_summonable": true
+      "is_summonable": true,
+      "properties": {
+        "tektopia:breeding": {
+          "client_sync": false,
+          "type": "bool",
+          "default": false
+        }
+      }
     },
     "component_groups": {
       "tektopia:persistent": {
@@ -83,6 +90,27 @@
             "minecraft:sheep": {}
           },
           "breed_items": ["wheat"]
+        },
+        "minecraft:behavior.follow_mob": {
+          "priority": 3,
+          "search_range": 8,
+          "stop_distance": 0,
+          "speed_multiplier": 1.0,
+          "filters": {
+            "all_of": [
+              {
+                "test": "is_family",
+                "subject": "other",
+                "value": "sheep"
+              },
+              {
+                "test": "bool_property",
+                "subject": "other",
+                "domain": "tektopia:breeding",
+                "value": true
+              }
+            ]
+          }
         }
       },
       "minecraft:sheep_dyeable": {

@@ -1,4 +1,6 @@
 import {
+    Entity,
+    Player,
     system,
     World,
     world
@@ -15,6 +17,8 @@ import {
     Village,
     type VillageSaveData
 } from "./village"
+
+import type { BreedingSaveData } from "./breed"
 
 import type { CompressedVillage } from "./village_serialization"
 
@@ -130,6 +134,44 @@ World.prototype.saveData = function () {
     }
 }
 
+export interface EntityData {
+    breedingData?: BreedingSaveData | undefined
+}
+
+Entity.prototype.saveData = function <K extends keyof EntityData>(
+    this: Entity,
+    propertyId: K
+) {
+    if (!this.loadedData || this instanceof Player) {
+        return
+    }
+    this.setDynamicProperty(propertyId, JSON.stringify(this[propertyId]))
+}
+
+Entity.prototype.loadData = function (this: Entity) {
+    if (this instanceof Player) {
+        return
+    }
+
+    const target = this as unknown as Record<string, unknown>
+
+    for (const propertyId of this.getDynamicPropertyIds()) {
+        const valueString = this.getDynamicProperty(propertyId)
+        if (typeof valueString !== "string") {
+            continue
+        }
+
+        target[propertyId] = JSON.parse(valueString)
+    }
+
+    this.loadedData = true
+}
+
+world.afterEvents.entitySpawn.subscribe(event => {
+    const entity = event.entity
+    entity.loadData()
+})
+
 system.beforeEvents.shutdown.subscribe(() => {
     world.saveData()
 })
@@ -140,6 +182,11 @@ system.runInterval(() => {
 
 function main() {
     world.loadData()
+
+    const entities = world.getEntities()
+    for (const entity of entities) {
+        entity.loadData()
+    }
 }
 
 world.afterEvents.worldLoad.subscribe(() => {

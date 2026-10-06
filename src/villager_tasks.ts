@@ -107,9 +107,16 @@ export const tektopiaVillagers: Record<string, VillagerConfig> = {
                 required: false,
                 condition: (villager: Villager, village: Village) => villager.findHerdEntity(village) !== undefined || villager.isHoldingLeash,
                 tick: (villager: Villager, village: Village) => villager.tickHerdEntity(village)
+            },
+            {
+                id: "breed",
+                name: "Breed",
+                required: false,
+                condition: (villager: Villager, village: Village) => villager.findBreedableEntity(village) !== undefined,
+                tick: (villager: Villager, village: Village) => villager.tickBreedEntity(village)
             }
         ],
-        pickupItems: () => []
+        pickupItems: () => [...Registry.woolTypes, ...Registry.eggTypes]
     },
     "tektopia:guard": {
         customTasks: [
@@ -130,6 +137,18 @@ export const tektopiaVillagers: Record<string, VillagerConfig> = {
             }
         ],
         pickupItems: () => ["minecraft:apple", ...Registry.saplingTypes, ...Registry.logTypes]
+    },
+    "tektopia:butcher": {
+        customTasks: [
+            // {
+            //     id: "guard_post",
+            //     name: "Guard Post",
+            //     required: false,
+            //     condition: (villager: Villager, village: Village) => villager.findGuardPost(village) !== undefined,
+            //     tick: (villager: Villager, village: Village) => villager.tickGuardPost(village)
+            // }
+        ],
+        pickupItems: () => ["minecraft:beef", "minecraft:porkchop", "minecraft:chicken", "minecraft:mutton"]
     }
 }
 
