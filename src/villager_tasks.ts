@@ -23,6 +23,28 @@ interface Task {
     tick?: (villager: Villager, village: Village) => void
 }
 
+function createDepositPlan(
+    inventory: Container,
+    pickupItems: VillagerConfig["pickupItems"],
+    shouldDeposit: (counts: Record<string, number>) => boolean
+): DepositPlan | undefined {
+    const counts = inventory.getItemCounts({
+        includesTypes: resolvePickupItems(pickupItems)
+    })
+
+    if (!inventory.isFull && !shouldDeposit(counts)) {
+        return undefined
+    }
+
+    const plan: DepositPlan = {}
+
+    for (const [typeId, count] of Object.entries(counts)) {
+        plan[typeId] = count
+    }
+
+    return Object.keys(plan).length > 0 ? plan : undefined
+}
+
 export const tektopiaVillagers: Record<string, VillagerConfig> = {
     "tektopia:farmer": {
         customTasks: [
@@ -30,22 +52,28 @@ export const tektopiaVillagers: Record<string, VillagerConfig> = {
                 id: "till",
                 name: "Till",
                 required: false,
-                condition: (villager: Villager, village: Village) => villager.findTillLocation(village) !== undefined,
-                tick: (villager: Villager, village: Village) => villager.tickTill(village)
+                condition: (villager: Villager, village: Village) =>
+                    villager.findTillLocation(village) !== undefined,
+                tick: (villager: Villager, village: Village) =>
+                    villager.tickTill(village)
             },
             {
                 id: "plant",
                 name: "Plant",
                 required: false,
-                condition: (villager: Villager, village: Village) => villager.findPlantLocation(village) !== undefined,
-                tick: (villager: Villager, village: Village) => villager.tickPlant(village)
+                condition: (villager: Villager, village: Village) =>
+                    villager.findPlantLocation(village) !== undefined,
+                tick: (villager: Villager, village: Village) =>
+                    villager.tickPlant(village)
             },
             {
                 id: "harvest",
                 name: "Harvest",
                 required: false,
-                condition: (villager: Villager, village: Village) => villager.findHarvestLocation(village) !== undefined,
-                tick: (villager: Villager, village: Village) => villager.tickHarvest(village)
+                condition: (villager: Villager, village: Village) =>
+                    villager.findHarvestLocation(village) !== undefined,
+                tick: (villager: Villager, village: Village) =>
+                    villager.tickHarvest(village)
             }
         ],
         pickupItems: [
@@ -58,78 +86,55 @@ export const tektopiaVillagers: Record<string, VillagerConfig> = {
             "minecraft:carrot",
             "minecraft:pumpkin",
             "minecraft:melon_slice",
-
             "minecraft:wheat",
             "minecraft:beetroot",
             "minecraft:sweet_berries"
         ],
         depositItems(inventory: Container): DepositPlan | undefined {
-            const counts = inventory.getItemCounts({ includesTypes: resolvePickupItems(this.pickupItems) })
-            const plan: DepositPlan = {}
-
-            let deposit = inventory.isFull
-
-            if (!deposit) {
-                for (const count of Object.values(counts)) {
-                    if (count > 3) {
-                        deposit = true
-                        break
-                    }
-                }
-            }
-
-            if (deposit) {
-                for (const [typeId, count] of Object.entries(counts)) {
-                    plan[typeId] = count
-                }
-            }
-
-            return Object.keys(plan).length > 0 ? plan : undefined
+            return createDepositPlan(
+                inventory,
+                this.pickupItems,
+                counts => Object.values(counts).some(count => count > 3)
+            )
         }
     },
+
     "tektopia:lumberjack": {
         customTasks: [
             {
                 id: "chop",
                 name: "Chop Trees",
                 required: false,
-                condition: (villager: Villager, village: Village) => villager.findTree(village) !== undefined,
-                tick: (villager: Villager, village: Village) => villager.tickChop(village)
+                condition: (villager: Villager, village: Village) =>
+                    villager.findTree(village) !== undefined,
+                tick: (villager: Villager, village: Village) =>
+                    villager.tickChop(village)
             }
         ],
-        pickupItems: () => ["minecraft:apple", ...Registry.saplingTypes, ...Registry.logTypes],
+        pickupItems: () => [
+            "minecraft:apple",
+            ...Registry.saplingTypes,
+            ...Registry.logTypes
+        ],
         depositItems(inventory: Container): DepositPlan | undefined {
-            const counts = inventory.getItemCounts({ includesTypes: resolvePickupItems(this.pickupItems) })
-            const plan: DepositPlan = {}
-
-            let deposit = inventory.isFull
-
-            if (!deposit) {
-                for (const count of Object.values(counts)) {
-                    if (count > 8) {
-                        deposit = true
-                        break
-                    }
-                }
-            }
-
-            if (deposit) {
-                for (const [typeId, count] of Object.entries(counts)) {
-                    plan[typeId] = count
-                }
-            }
-
-            return Object.keys(plan).length > 0 ? plan : undefined
+            return createDepositPlan(
+                inventory,
+                this.pickupItems,
+                counts => Object.values(counts).some(count => count > 8)
+            )
         }
     },
+
     "tektopia:miner": {
         customTasks: [
             {
                 id: "mine",
                 name: "Mine",
                 required: false,
-                condition: (villager: Villager, village: Village) => villager.findMine(village) !== undefined,
-                tick: (villager: Villager, village: Village) => villager.tickMine(village)
+                condition: (villager: Villager, village: Village) =>
+                    villager.findMine(village) !== undefined,
+                tick: (villager: Villager, village: Village) =>
+                    villager.tickMine(village)
             }
         ],
         pickupItems: () => [
@@ -150,66 +155,76 @@ export const tektopiaVillagers: Record<string, VillagerConfig> = {
             "minecraft:flint"
         ],
         depositItems(inventory: Container): DepositPlan | undefined {
-            const counts = inventory.getItemCounts({ includesTypes: resolvePickupItems(this.pickupItems) })
-            const plan: DepositPlan = {}
+            return createDepositPlan(
+                inventory,
+                this.pickupItems,
+                counts => {
+                    let total = 0
 
-            let deposit = inventory.isFull
+                    for (const count of Object.values(counts)) {
+                        total += count
+                    }
 
-            if (!deposit) {
-                let total = 0
-                for (const count of Object.values(counts)) {
-                    total += count
+                    return total >= 192
                 }
-
-                if (total >= 192) {
-                    deposit = true
-                }
-            }
-
-            if (deposit) {
-                for (const [typeId, count] of Object.entries(counts)) {
-                    plan[typeId] = count
-                }
-            }
-
-            return Object.keys(plan).length > 0 ? plan : undefined
+            )
         }
     },
+
     "tektopia:rancher": {
         customTasks: [
             {
                 id: "herd",
                 name: "Herd",
                 required: false,
-                condition: (villager: Villager, village: Village) => villager.findHerdEntity(village) !== undefined || villager.isHoldingLeash,
-                tick: (villager: Villager, village: Village) => villager.tickHerdEntity(village)
+                condition: (villager: Villager, village: Village) =>
+                    villager.findHerdEntity(village) !== undefined
+                    || villager.isHoldingLeash,
+                tick: (villager: Villager, village: Village) =>
+                    villager.tickHerdEntity(village)
             },
             {
                 id: "breed",
                 name: "Breed",
                 required: false,
-                condition: (villager: Villager, village: Village) => villager.findBreedableEntity(village) !== undefined,
-                tick: (villager: Villager) => villager.tickBreedEntity()
+                condition: (villager: Villager, village: Village) =>
+                    villager.findBreedableEntity(village) !== undefined,
+                tick: (villager: Villager) =>
+                    villager.tickBreedEntity()
             },
             {
                 id: "shear",
                 name: "Shear",
                 required: false,
-                condition: (villager: Villager, village: Village) => villager.findShearableEntity(village) !== undefined,
-                tick: (villager: Villager) => villager.tickShearEntity()
+                condition: (villager: Villager, village: Village) =>
+                    villager.findShearableEntity(village) !== undefined,
+                tick: (villager: Villager) =>
+                    villager.tickShearEntity()
             }
         ],
-        pickupItems: () => [...Registry.woolTypes, ...Registry.eggTypes],
-        depositItems: () => undefined
+        pickupItems: () => [
+            ...Registry.woolTypes,
+            ...Registry.eggTypes
+        ],
+        depositItems(inventory: Container): DepositPlan | undefined {
+            return createDepositPlan(
+                inventory,
+                this.pickupItems,
+                counts => Object.values(counts).some(count => count > 3)
+            )
+        }
     },
+
     "tektopia:guard": {
         customTasks: [
             {
                 id: "guard_post",
                 name: "Guard Post",
                 required: false,
-                condition: (villager: Villager, village: Village) => villager.findGuardPost(village) !== undefined,
-                tick: (villager: Villager, village: Village) => villager.tickGuardPost(village)
+                condition: (villager: Villager, village: Village) =>
+                    villager.findGuardPost(village) !== undefined,
+                tick: (villager: Villager, village: Village) =>
+                    villager.tickGuardPost(village)
             },
             {
                 id: "guard_village",
@@ -217,24 +232,43 @@ export const tektopiaVillagers: Record<string, VillagerConfig> = {
                 required: false,
                 interruptible: true,
                 condition: () => true,
-                tick: (villager: Villager, village: Village) => villager.tickGuardVillage(village)
+                tick: (villager: Villager, village: Village) =>
+                    villager.tickGuardVillage(village)
             }
         ],
-        pickupItems: () => ["minecraft:apple", ...Registry.saplingTypes, ...Registry.logTypes],
+        pickupItems: () => [],
         depositItems: () => undefined
     },
+
     "tektopia:butcher": {
         customTasks: [
             {
                 id: "butcher_animal",
                 name: "Butcher Animal",
                 required: false,
-                condition: (villager: Villager, village: Village) => villager.findFullPen(village) !== undefined && villager.findButcherStructure(village) !== undefined,
-                tick: (villager: Villager, village: Village) => villager.tickButcher(village)
+                condition: (villager: Villager, village: Village) =>
+                    villager.findFullPen(village) !== undefined
+                    && villager.findButcherStructure(village) !== undefined,
+                tick: (villager: Villager, village: Village) =>
+                    villager.tickButcher(village)
             }
         ],
-        pickupItems: () => ["minecraft:beef", "minecraft:porkchop", "minecraft:chicken", "minecraft:mutton", "minecraft:feather", "minecraft:leather", ...Registry.woolTypes],
-        depositItems: () => undefined
+        pickupItems: () => [
+            "minecraft:beef",
+            "minecraft:porkchop",
+            "minecraft:chicken",
+            "minecraft:mutton",
+            "minecraft:feather",
+            "minecraft:leather",
+            ...Registry.woolTypes
+        ],
+        depositItems(inventory: Container): DepositPlan | undefined {
+            return createDepositPlan(
+                inventory,
+                this.pickupItems,
+                counts => Object.values(counts).some(count => count > 6)
+            )
+        }
     }
 }
 
