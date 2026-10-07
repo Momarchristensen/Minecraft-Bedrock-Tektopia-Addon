@@ -887,15 +887,7 @@ export type TagId = "minecraft:arrow" |
     "minecraft:zombie_spawn_egg" |
     "minecraft:zombie_villager_spawn_egg"
 
-export const pathBlockCosts = new Map<string, number>([
-    ["minecraft:dirt_path", -0.25],
-    ["minecraft:cobbled_deepslate", -0.25],
-    ["minecraft:deepslate", -0.25],
-    ["minecraft:stone_bricks", -0.5],
-    ["minecraft:grass_path", -1],
-    ["minecraft:farmland", 3],
-    ["minecraft:web", 12]
-])
+
 
 export const MIN_MOVE_COST = 0.25
 

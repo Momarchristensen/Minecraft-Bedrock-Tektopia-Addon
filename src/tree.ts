@@ -7,7 +7,6 @@ import {
 import { updatePathNodes } from "./path"
 
 import {
-    areVectorsEqual,
     calculateDistance,
     removeIdentifier,
     locationToString
@@ -108,7 +107,7 @@ export function destroyTree(startingBlock: Block, callback?: () => void) {
 
             alreadyCheckedLocations = new Set()
             const leafBlocks = []
-            const logBlockLocations = logBlocks.map(block => block.location)
+            const logBlockLocations = new Set(logBlocks.map(block => locationToString(block.location)))
 
             let leafChecks = 0
             while (checkLeafBlocks.length > 0) {
@@ -157,11 +156,7 @@ export function destroyTree(startingBlock: Block, callback?: () => void) {
                     }
                 }
 
-                if (closestLogLocation === undefined) {
-                    continue
-                }
-
-                if (!logBlockLocations.some(location => areVectorsEqual(closestLogLocation, location))) {
+                if (closestLogLocation === undefined || !logBlockLocations.has(locationToString(closestLogLocation))) {
                     continue
                 }
 
@@ -186,6 +181,9 @@ export function destroyTree(startingBlock: Block, callback?: () => void) {
 
             for (let i = 0; i < blockList.length; i++) {
                 const block = blockList[i]
+                if (block === undefined) {
+                    continue
+                }
                 block.destroy()
 
                 const updateBlockList = [block, block.aboveSafe(), block.belowSafe()]

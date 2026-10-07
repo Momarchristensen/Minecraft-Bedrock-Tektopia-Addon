@@ -208,14 +208,54 @@ world.afterEvents.playerBreakBlock.subscribe(event => {
     }
 })
 
+let itemFrameCleanupRunning = false
+
 system.runInterval(() => {
-    if (!world.loadedData) {
+    if (!world.loadedData || itemFrameCleanupRunning) {
         return
     }
 
-    world.itemFrameList = world.itemFrameList.filter(itemFrame => {
-        const dimension = world.getDimension(itemFrame.dimensionId)
-        const block = dimension.getBlockSafe(itemFrame.location)
-        return block === undefined || minecraftFrameTypes.includes(block.typeId)
-    })
+    itemFrameCleanupRunning = true
+    system.runJob(cleanupItemFrames())
 }, 20)
+
+function* cleanupItemFrames(): Generator<void, void, void> {
+    try {
+        const itemFrames = world.itemFrameList
+        const snapshot = itemFrames.slice()
+        const invalidItemFrames = new Set<typeof itemFrames[number]>()
+        const dimensions = new Map<string, Dimension>()
+
+        for (let index = 0; index < snapshot.length; index++) {
+            const itemFrame = snapshot[index]
+            if (itemFrame === undefined) {
+                continue
+            }
+            let dimension = dimensions.get(itemFrame.dimensionId)
+            if (dimension === undefined) {
+                dimension = world.getDimension(itemFrame.dimensionId)
+                dimensions.set(itemFrame.dimensionId, dimension)
+            }
+            const block = dimension.getBlockSafe(itemFrame.location)
+            if (block !== undefined && !minecraftFrameTypes.includes(block.typeId)) {
+                invalidItemFrames.add(itemFrame)
+            }
+            if ((index + 1) % 32 === 0) {
+                yield
+            }
+        }
+
+        let writeIndex = 0
+        for (const itemFrame of itemFrames) {
+            if (invalidItemFrames.has(itemFrame)) {
+                continue
+            }
+            itemFrames[writeIndex] = itemFrame
+            writeIndex++
+        }
+        itemFrames.length = writeIndex
+    }
+    finally {
+        itemFrameCleanupRunning = false
+    }
+}

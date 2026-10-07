@@ -132,6 +132,8 @@ declare module "@minecraft/server" {
         readonly isTillable: boolean
         readonly tillResult: TillResult
         readonly isRanchBoundary: boolean
+        readonly isDoor: boolean
+        readonly isOpenable: boolean
     }
 
     interface ItemStack {

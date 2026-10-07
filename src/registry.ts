@@ -64,14 +64,12 @@ export const Registry = defineRegistry({
     },
 
     trapdoorTypes: blocks(id => id.includes("trapdoor")),
-    doorTypes: (): string[] => [
-        ...Registry.blockTypes.filter(id => id.includes("_fence_gate")),
-        ...Registry.itemTagItems["minecraft:door"] ?? []
-    ],
+    doorTypes: (): string[] => [...Registry.itemTagItems["minecraft:door"] ?? []],
+    openableDoorTypes: (): string[] => Registry.doorTypes.filter(id => id !== "minecraft:iron_door"),
     slabTypes: blocks(id => id.includes("_slab") && !id.includes("_double_slab")),
     stairTypes: blocks(id => id.includes("_stair")),
     fenceTypes: blocks(id => id.includes("_fence") || (id.includes("_wall") && !id.includes("_sign") && !id.includes("_fan"))),
-    gateTypes: blocks(id => id.includes("_gate") && id.includes("fence")),
+    fenceGateTypes: blocks(id => id.includes("_gate") && id.includes("fence")),
     saplingTypes: blocks(id => id.includes("_sapling")),
     logTypes: blocks(id => id.includes("_log") && !id.includes("stripped_")),
     leafTypes: blocks(id => id.includes("_leaves")),
@@ -81,12 +79,23 @@ export const Registry = defineRegistry({
     woolTypes: (): string[] => Registry.itemTagItems["minecraft:wool"]?.filter(id => !id.includes("_stairs") && !id.includes("_slab")) ?? [],
     eggTypes: (): string[] => Registry.itemTagItems["minecraft:egg"] ?? [],
 
-    noWalkBlocks: (): string[] => [...Registry.fenceTypes, ...Registry.gateTypes, ...Registry.doorTypes, ...Registry.trapdoorTypes],
+    noWalkBlocks: (): string[] => [...Registry.fenceTypes, ...Registry.fenceGateTypes, ...Registry.doorTypes, ...Registry.trapdoorTypes],
     solidBlocks: (): string[] => subtractLists(subtractLists(Registry.blockTypes, minecraftNonSolidBlocks), Registry.noWalkBlocks),
     solidBlocksSet: (): Set<string> => new Set(Registry.solidBlocks),
 
     dimensionTypes: (): string[] => DimensionTypes.getAll().map(dimensionType => dimensionType.typeId),
 
-    nonSolidBlocks: (): string[] => [...minecraftNonSolidBlocks, ...Registry.gateTypes],
-    nonSolidBlocksSet: (): Set<string> => new Set(Registry.nonSolidBlocks)
+    nonSolidBlocks: (): string[] => [...minecraftNonSolidBlocks, ...Registry.fenceGateTypes],
+    nonSolidBlocksSet: (): Set<string> => new Set(Registry.nonSolidBlocks),
+
+    pathBlockCosts: (): Map<string, number> => new Map<string, number>([
+        ["minecraft:dirt_path", -0.25],
+        ["minecraft:cobbled_deepslate", -0.25],
+        ["minecraft:deepslate", -0.25],
+        ["minecraft:stone_bricks", -0.5],
+        ["minecraft:grass_path", -1],
+        ["minecraft:farmland", 3],
+        ["minecraft:web", 12],
+        ...Registry.fenceGateTypes.map((id): [string, number] => [id, 6])
+    ])
 })

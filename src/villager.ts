@@ -3,6 +3,7 @@ import {
     BlockPermutation,
     Entity,
     EntityComponentTypes,
+    EntityDamageCause,
     ItemStack,
     system,
     type Vector3,
@@ -15,10 +16,17 @@ import { debugFlags } from "./debug"
 import { blockSounds } from "./generated"
 
 import {
+    createPathStream,
     findNearestNodeLocation,
     findPathBlocker,
     generatePath,
-    updatePathNodes
+    getPathStreamFailure,
+    isEntityTarget,
+    startPathSnapshot,
+    stopPathSnapshot,
+    updatePathNodes,
+    type PathStream,
+    type PathTarget
 } from "./path"
 
 import { Registry } from "./registry"
@@ -26,7 +34,7 @@ import { Registry } from "./registry"
 import {
     AnimalPen,
     entityStructures,
-    type GuardPost,
+    type StationPost,
     type Mineshaft,
     type Structure
 } from "./structure"
@@ -74,18 +82,34 @@ world.afterEvents.entityRemove.subscribe(event => {
 })
 
 const PATH_TIMEOUT_TICKS = 1200
-const activePaths = new Map<object, { deadline: number, cancel: () => void }>()
+const unreachableItemEntities = new Set<Entity>()
 
-system.runInterval(() => {
-    const now = system.currentTick
-    for (const [_, entry] of activePaths) {
-        if (now >= entry.deadline) {
-            entry.cancel()
-        }
+Object.defineProperty(Block.prototype, "isDoor", {
+    get(this: Block) {
+        return Registry.openableDoorTypes.includes(this.typeId)
     }
-}, 20)
+})
+
+Object.defineProperty(Block.prototype, "isOpenable", {
+    get(this: Block) {
+        return this.isDoor || Registry.fenceGateTypes.includes(this.typeId)
+    }
+})
+
+function getOpenableBlock(block: Block): Block | undefined {
+    if (block.isDoor && block.permutation.getState("upper_block_bit") === true) {
+        return block.belowSafe()
+    }
+    return block
+}
+
+const SWING_HIT_DELAY_TICKS = 17
+const ATTACK_RANGE = 3
+const ATTACK_DAMAGE = 4
+const ATTACK_COOLDOWN_TICKS = 20
 
 const noop = () => { }
+const taskListsByType = new Map<string, typeof globalTasks>()
 
 export interface Villager extends Entity { }
 
@@ -103,6 +127,7 @@ export class Villager {
     private currentTask?: string
     private animation?: string
     private lastAnimation?: string
+    private attackIntervalId?: number
     private holdingItem?: string
     private lastHoldingItem?: string
     private waiting?: boolean | number
@@ -125,6 +150,10 @@ export class Villager {
     private foundGuardPost?: Vector3
     private foundFullAnimalPen?: Vector3
     private foundButcherStructure?: Vector3
+
+    private foundKillingEntity?: string
+
+    private attackCooldownEndTick = 0
 
     static villagerIndex = 0
 
@@ -218,6 +247,85 @@ export class Villager {
         entity.setRotation({ x: ignoreY ? entity.getRotation().x : pitch, y: yaw })
     }
 
+    attack(target: Entity | Entity[]) {
+        if (this.attackIntervalId !== undefined || system.currentTick < this.attackCooldownEndTick) {
+            return
+        }
+
+        const targets = Array.isArray(target) ? [...target] : [target]
+        if (targets.length === 0) {
+            return
+        }
+
+        const villager = this
+
+        const faceClosestTarget = () => {
+            const villagerLocation = villager.location
+            let closest: Entity | undefined
+            let closestDistance = Infinity
+            for (const entity of targets) {
+                if (!entity.isValid) {
+                    continue
+                }
+                const distance = calculateDistance(entity.location, villagerLocation)
+                if (distance < closestDistance) {
+                    closestDistance = distance
+                    closest = entity
+                }
+            }
+            if (closest === undefined) {
+                return false
+            }
+            const closestLocation = closest.location
+            villager.lookAt({ x: closestLocation.x, y: closestLocation.y + 1, z: closestLocation.z }, true)
+            return true
+        }
+
+        if (!faceClosestTarget()) {
+            return
+        }
+
+        villager.stopPath()
+        villager.playAnimation("animation.tektopia_villager.hammer")
+
+        let ticks = 0
+        villager.attackIntervalId = system.runInterval(() => {
+            ticks++
+
+            if (!villager.isValid) {
+                villager.finishAttack()
+                return
+            }
+
+            faceClosestTarget()
+
+            if (ticks < SWING_HIT_DELAY_TICKS) {
+                return
+            }
+
+            const villagerLocation = villager.location
+            for (const entity of targets) {
+                if (!entity.isValid || calculateDistance(entity.location, villagerLocation) > ATTACK_RANGE) {
+                    continue
+                }
+                entity.applyDamage(ATTACK_DAMAGE, {
+                    cause: EntityDamageCause.entityAttack,
+                    damagingEntity: villager.entity
+                })
+            }
+
+            villager.finishAttack()
+        })
+    }
+
+    private finishAttack() {
+        if (this.attackIntervalId !== undefined) {
+            system.clearRun(this.attackIntervalId)
+            this.attackIntervalId = undefined
+            this.attackCooldownEndTick = system.currentTick + ATTACK_COOLDOWN_TICKS
+        }
+    }
+
     setAnimation(animation: string | undefined) {
         this.animation = animation
     }
@@ -244,11 +352,6 @@ export class Villager {
         return entityDimension.getVillage(entityLocation)
     }
 
-    /**
-     * The structure this villager is currently standing in, or undefined if it isn't in one.
-     * Only animal pens have a known interior (floor and fence tiles), so other structures
-     * such as houses and mineshafts are not detected.
-     */
     getCurrentStructure(): Structure | undefined {
         const village = this.getVillage()
         if (village === undefined) {
@@ -362,7 +465,7 @@ export class Villager {
         return closestHarvestLocation
     }
 
-    findButchStructure(village: Village) {
+    findButcherStructure(village: Village) {
         const takenButcherStructures = new Set<string>()
         const villagers = world.getVillagers()
         for (const villager of villagers) {
@@ -414,7 +517,7 @@ export class Villager {
 
         const animalPenStructures = village.findStructures({ includedTypes: ["pig_pen", "chicken_coop", "sheep_pen", "cow_pen"] })
         for (const animalPen of animalPenStructures) {
-            if (takenAnimalPen.has(animalPen.locationString) || !animalPen.isFull) {
+            if (takenAnimalPen.has(animalPen.locationString) || !animalPen.isFull || animalPen.getAnimalCount(true) <= 2) {
                 continue
             }
             const dist = calculateDistance(villagerLocation, animalPen.location)
@@ -651,10 +754,22 @@ export class Villager {
         return closestItem
     }
 
-    pathFindTo(targetLocation: Vector3) {
+    pathFindTo(target: PathTarget) {
         const villager = this
         if (villager.isPathing) {
             return
+        }
+
+        // An entity target is followed: its current location is used as the destination while pathing.
+        if (isEntityTarget(target) && !target.isValid) {
+            return
+        }
+        let lastTargetLocation: Vector3 = isEntityTarget(target) ? target.location : target
+        const getTargetLocation = () => {
+            if (isEntityTarget(target) && target.isValid) {
+                lastTargetLocation = target.location
+            }
+            return lastTargetLocation
         }
 
         const village = villager.getVillage()
@@ -663,21 +778,27 @@ export class Villager {
         }
 
         villager.isPathing = true
+        startPathSnapshot(villager)
         villager.nextPathNode = undefined
         const token = { cancelled: false }
         let finished = false
+        let pathTimeoutId: number | undefined
 
         function cancelPath() {
             if (finished) {
                 return
             }
             finished = true
-            activePaths.delete(token)
             token.cancelled = true
             villager.blockedTimer = 0
             villager.setAnimation(undefined)
             villager.isPathing = false
+            stopPathSnapshot(villager)
             villager.nextPathNode = undefined
+            if (pathTimeoutId !== undefined) {
+                system.clearRun(pathTimeoutId)
+                pathTimeoutId = undefined
+            }
             if (villager.pathTickId !== undefined) {
                 system.clearRun(villager.pathTickId)
                 villager.pathTickId = undefined
@@ -685,7 +806,7 @@ export class Villager {
             villager.stopPath = noop
         }
 
-        activePaths.set(token, { deadline: system.currentTick + PATH_TIMEOUT_TICKS, cancel: cancelPath })
+        pathTimeoutId = system.runTimeout(cancelPath, PATH_TIMEOUT_TICKS)
         villager.stopPath = cancelPath
 
         try {
@@ -726,22 +847,21 @@ export class Villager {
                 }
             }
 
-            generatePath(villager, startLocation, targetLocation, token).then(result => {
-                if (finished) {
+            // Following starts right away; nodes arrive in the stream while the path is still being generated.
+            const stream = createPathStream()
+            villager.followPath(stream, getTargetLocation, cancelPath, () => finished)
+
+            generatePath(villager, startLocation, target, token, stream).then(result => {
+                if (finished || typeof result !== "string") {
                     return
                 }
-                if (typeof result === "string") {
+                // Nodes that were already streamed stay valid: the follower finishes them and then reports the failure.
+                if ((stream.head ?? 0) >= stream.nodes.length) {
                     if (result !== "cancelled") {
                         villager.pathError = result
                     }
                     cancelPath()
-                    return
                 }
-                if (result.length === 0) {
-                    cancelPath()
-                    return
-                }
-                villager.followPath(result, targetLocation, cancelPath, () => finished)
             }).catch(error => {
                 if (debugFlags.pathfindingWarnings) {
                     console.warn("pathFindTo failed: ", error)
@@ -764,12 +884,13 @@ export class Villager {
         }
 
         if ((system.currentTick + villager.index) % 10 === 0) {
-            villager.closeFarGates()
+            villager.closeFarDoors()
         }
 
         const village = villager.getVillage()
         if (village === undefined) {
             villager.setAnimation(undefined)
+            villager.updateAnimation()
             villager.updateDebugNameTag()
             return
         }
@@ -879,9 +1000,9 @@ export class Villager {
             waiting = "Yes"
         }
 
-        const nameTag = [
+        const nameTag = village === undefined ? "No Village" : [
             `Villager: ${formatTypeId(this.typeId)}`,
-            `Village: ${village?.centerString ?? "None"}`,
+            `Village: ${village.centerString ?? "None"}`,
             `Task: ${taskName}`,
             `Progress: ${this.taskProgress}`,
             `Pathing: ${this.isPathing ? "Yes" : "No"}`,
@@ -916,12 +1037,21 @@ export class Villager {
         }
 
         const villagerLocation = villager.location
-        const allTaskList = globalTasks.concat(villagerProps.customTasks)
+        let allTaskList = taskListsByType.get(villager.typeId)
+        if (allTaskList === undefined) {
+            allTaskList = globalTasks.concat(villagerProps.customTasks)
+            taskListsByType.set(villager.typeId, allTaskList)
+        }
         const currentTaskIndex = allTaskList.findIndex(task => task.id === villager.currentTask)
         const currentTask = currentTaskIndex === -1 ? undefined : allTaskList[currentTaskIndex]
         const canPickTask = villager.currentTask === undefined || currentTask?.interruptible === true
 
         if (canPickTask && (system.currentTick + villager.index) % 20 === 0) {
+            const leashedEntity = villager.getLeashedEntity()
+            if (leashedEntity !== undefined) {
+                leashedEntity.getComponent(EntityComponentTypes.Leashable)?.unleash()
+            }
+
             const candidates = villager.currentTask === undefined ? allTaskList : allTaskList.slice(0, currentTaskIndex)
             const newTask = candidates.find(task => task.condition(villager, village))
 
@@ -1048,7 +1178,7 @@ export class Villager {
         return undefined
     }
 
-    tickBreedEntity(village: Village) {
+    tickBreedEntity() {
         const villager = this
 
         if (villager.foundBreedableEntity === undefined) {
@@ -1083,7 +1213,7 @@ export class Villager {
 
         const ranchEntityDistance = calculateDistance(ranchEntityLocation, villager.location)
         if (ranchEntityDistance > 3) {
-            villager.pathFindTo(ranchEntityLocation)
+            villager.pathFindTo(ranchEntity)
             return
         }
 
@@ -1121,7 +1251,7 @@ export class Villager {
 
         const ranchEntityDistance = calculateDistance(ranchEntityLocation, villager.location)
         if (ranchEntityDistance > 3) {
-            villager.pathFindTo(ranchEntityLocation)
+            villager.pathFindTo(ranchEntity)
             return
         }
 
@@ -1143,17 +1273,167 @@ export class Villager {
         ranchEntity.triggerEvent("minecraft:on_sheared")
     }
 
+    private endButcherTask() {
+        this.foundHerdEntity = undefined
+        this.foundKillingEntity = undefined
+        this.foundFullAnimalPen = undefined
+        this.currentTask = undefined
+    }
+
     tickButcher(village: Village) {
         const villager = this
 
-        if (villager.foundFullAnimalPen === undefined || villager.foundButcherStructure === undefined) {
-            villager.currentTask = undefined
+        if (villager.foundKillingEntity !== undefined) {
+            const killingEntity = world.getEntity(villager.foundKillingEntity)
+            if (killingEntity === undefined) {
+                villager.endButcherTask()
+                return
+            }
+
+            const killingEntityDistance = calculateDistance(centerVector(killingEntity.location, true), villager.location)
+            if (killingEntityDistance > ATTACK_RANGE) {
+                villager.pathFindTo(killingEntity)
+                return
+            }
+
+            villager.holdingItem = "minecraft:wooden_axe"
+
+            villager.stopPath()
+            villager.attack(killingEntity)
             return
         }
 
-        const animalPen = village.getStructure(villager.foundFullAnimalPen)
-        const butcherStructure = village.getStructure(villager.foundButcherStructure)
+        if (villager.foundButcherStructure === undefined) {
+            villager.endButcherTask()
+            return
+        }
 
+        const butcherStructure = village.getStructure(villager.foundButcherStructure)
+        if (butcherStructure === undefined) {
+            villager.endButcherTask()
+            return
+        }
+
+        const leashedEntity = villager.getLeashedEntity()
+        if (leashedEntity !== undefined) {
+            if (calculateDistance(leashedEntity.location, villager.location) > 8) {
+                leashedEntity.teleport(villager.location)
+            }
+
+            const floorLocations = butcherStructure.getFloorLocations()
+
+            const minX = Math.min(...floorLocations.map(location => location.x))
+            const maxX = Math.max(...floorLocations.map(location => location.x))
+            const minY = Math.min(...floorLocations.map(location => location.y))
+            const maxY = Math.max(...floorLocations.map(location => location.y))
+            const minZ = Math.min(...floorLocations.map(location => location.z))
+            const maxZ = Math.max(...floorLocations.map(location => location.z))
+
+            const centerLocation = {
+                x: Math.floor((minX + maxX) / 2),
+                y: Math.floor((minY + maxY) / 2),
+                z: Math.floor((minZ + maxZ) / 2)
+            }
+
+            const pathLocation = floorLocations.reduce((closest, location) => {
+                const distance =
+                    Math.abs(location.x - centerLocation.x) +
+                    Math.abs(location.y - centerLocation.y) +
+                    Math.abs(location.z - centerLocation.z)
+
+                const closestDistance =
+                    Math.abs(closest.x - centerLocation.x) +
+                    Math.abs(closest.y - centerLocation.y) +
+                    Math.abs(closest.z - centerLocation.z)
+
+                return distance < closestDistance ? location : closest
+            })
+
+            const pathLocationDistance = calculateDistance(centerVector(pathLocation, true), villager.location)
+            if (pathLocationDistance > 0.5) {
+                villager.pathFindTo(pathLocation)
+                return
+            }
+
+            if (calculateDistance(leashedEntity.location, villager.location) > 3) {
+                leashedEntity.teleport(villager.location)
+            }
+
+            leashedEntity.getComponent(EntityComponentTypes.Leashable)?.unleash()
+            villager.foundKillingEntity = leashedEntity.id
+            villager.foundHerdEntity = undefined
+            return
+        }
+
+        if (villager.foundFullAnimalPen === undefined) {
+            villager.endButcherTask()
+            return
+        }
+
+        const animalPen = village.getStructure(villager.foundFullAnimalPen) as AnimalPen | undefined
+
+        if (animalPen === undefined) {
+            villager.endButcherTask()
+            return
+        }
+
+        const pathLocation = addVectors(animalPen.location, directionToVector(animalPen.rotation))
+
+        const pathLocationDistance = calculateDistance(centerVector(pathLocation, true), villager.location)
+        if (pathLocationDistance > 0.5) {
+            villager.pathFindTo(pathLocation)
+            return
+        }
+
+        if (villager.foundHerdEntity === undefined) {
+            const entities = animalPen.getEntities(true).sort((entity1, entity2) =>
+                Number(entity1.villagerEntity ?? false) - Number(entity2.villagerEntity ?? false)
+            )
+
+            for (const entity of entities) {
+                const ranchEntity = village.ranchEntities[entity.id]
+                if (ranchEntity === undefined) {
+                    continue
+                }
+
+                villager.foundHerdEntity = { ...ranchEntity, id: entity.id }
+                break
+            }
+        }
+
+        if (villager.foundHerdEntity === undefined) {
+            villager.endButcherTask()
+            return
+        }
+
+        const ranchEntity = world.getEntity(villager.foundHerdEntity.id)
+        if (ranchEntity === undefined) {
+            villager.endButcherTask()
+            return
+        }
+
+        const ranchEntityLocation = ranchEntity.location
+
+        const ranchEntityDistance = calculateDistance(ranchEntityLocation, villager.location)
+        if (ranchEntityDistance > 4) {
+            villager.pathFindTo(ranchEntity)
+            return
+        }
+
+        const ranchEntityLeashableComponent = ranchEntity.getComponent(EntityComponentTypes.Leashable)
+        if (ranchEntityLeashableComponent === undefined) {
+            villager.endButcherTask()
+            return
+        }
+
+        villager.stopPath()
+
+        villager.playAnimation("animation.tektopia_villager.take")
+
+        ranchEntityLeashableComponent.leashTo(villager.entity)
+        villager.foundHerdEntity = undefined
+
+        villager.waiting = 20
     }
 
     tickHerdEntity(village: Village) {
@@ -1266,7 +1546,7 @@ export class Villager {
 
         const ranchEntityDistance = calculateDistance(ranchEntityLocation, villager.location)
         if (ranchEntityDistance > 3) {
-            villager.pathFindTo(ranchEntityLocation)
+            villager.pathFindTo(ranchEntity)
             return
         }
 
@@ -1607,7 +1887,7 @@ export class Villager {
                 this.taskProgress--
             }
             else {
-                const guardPost = village.getStructure(this.foundGuardPost) as GuardPost | undefined
+                const guardPost = village.getStructure(this.foundGuardPost) as StationPost | undefined
                 if (guardPost === undefined) {
                     this.currentTask = undefined
                     return
@@ -1635,7 +1915,7 @@ export class Villager {
                 return
             }
 
-            this.pathFindTo(randomVillager.location)
+            this.pathFindTo(randomVillager)
         }
     }
 
@@ -1664,10 +1944,11 @@ export class Villager {
             }
             else if (pathError !== undefined) {
                 foundItem.unreachable = 20
+                unreachableItemEntities.add(foundItem)
                 villager.currentTask = undefined
             }
             else {
-                villager.pathFindTo(foundItem.location)
+                villager.pathFindTo(foundItem)
             }
         }
         else {
@@ -1691,19 +1972,29 @@ export class Villager {
         }
     }
 
-    public openedGates: LocationString[] = []
+    public openedDoors: LocationString[] = []
 
-    private openGate(gate: Block) {
-        this.openedGates.add(locationToString(gate.location))
-        if (gate.permutation.getState("open_bit") === true) {
+    private openDoor(block: Block) {
+        const openable = getOpenableBlock(block)
+        if (openable === undefined) {
             return
         }
-        gate.setPermutation(gate.permutation.withState("open_bit", true))
-        gate.soundEvent("fence_gate.open")
+
+        const key = locationToString(openable.location)
+        if (!this.openedDoors.includes(key)) {
+            this.openedDoors.add(key)
+        }
+
+        if (openable.permutation.getState("open_bit") === true) {
+            return
+        }
+
+        openable.setPermutation(openable.permutation.withState("open_bit", true))
+        openable.soundEvent(openable.isDoor ? "door.open" : "fence_gate.open")
     }
 
-    private closeFarGates() {
-        if (this.openedGates.length === 0) {
+    private closeFarDoors() {
+        if (this.openedDoors.length === 0) {
             return
         }
 
@@ -1716,15 +2007,17 @@ export class Villager {
             return
         }
 
-        for (const key of this.openedGates) {
+        for (const key of this.openedDoors) {
             const location = stringToLocationCached(key)
-            const gate = dimension.getBlockSafe(location)
-            if (gate === undefined) {
+            const block = dimension.getBlockSafe(location)
+            if (block === undefined) {
                 continue
             }
 
-            if (!Registry.gateTypes.includes(gate.typeId) || gate.permutation.getState("open_bit") !== true) {
-                this.openedGates.remove(key)
+            const door = block.isOpenable ? getOpenableBlock(block) : undefined
+
+            if (door?.permutation.getState("open_bit") !== true) {
+                this.openedDoors.remove(key)
                 continue
             }
 
@@ -1733,28 +2026,39 @@ export class Villager {
                 continue
             }
 
+            const ESCAPE_RANGE = 3
+
             if (leashedEntity !== undefined) {
-                const ranchEntity = village.ranchEntities[leashedEntity.id]
-                const leashedLocation = leashedEntity.location
-                const range = !ranchEntity?.inPen ? 5 : 1
-                if (calculateDistance(center, leashedLocation) <= range) {
-                    continue
+                const escaping = Object.entries(village.ranchEntities).some(([id, other]) =>
+                    id !== leashedEntity.id &&
+                    other.inPen &&
+                    calculateDistance(center, other.location) <= ESCAPE_RANGE
+                )
+
+                if (!escaping) {
+                    const ranchEntity = village.ranchEntities[leashedEntity.id]
+                    const leashedLocation = leashedEntity.location
+                    const range = !ranchEntity?.inPen ? 5 : 1
+                    if (calculateDistance(center, leashedLocation) <= range) {
+                        continue
+                    }
                 }
             }
 
-            gate.setPermutation(gate.permutation.withState("open_bit", false))
-            gate.soundEvent("fence_gate.close")
-            this.openedGates.remove(key)
+            door.setPermutation(door.permutation.withState("open_bit", false))
+            door.soundEvent(door.isDoor ? "door.close" : "fence_gate.close")
+            this.openedDoors.remove(key)
         }
     }
 
     followPath(
-        pathNodeList: Vector3[],
-        targetLocation: Vector3,
+        stream: PathStream,
+        getTargetLocation: () => Vector3,
         cancelPath: () => void,
         isFinished: () => boolean
     ) {
         const villager = this
+        const pathNodeList = stream.nodes
 
         const village = villager.getVillage()
         if (village === undefined) {
@@ -1776,28 +2080,45 @@ export class Villager {
                     cancelPath()
                     return
                 }
+                const targetLocation = getTargetLocation()
                 const targetBlock = dimension.getBlockSafe(targetLocation)
                 if (targetBlock !== undefined && !targetBlock.isValidPath(villageBounds) && calculateDistance(centerVector(targetLocation), villager.location) <= 1.25) {
                     cancelPath()
                     return
                 }
                 villager.pathTickId = system.run(tickFollowPath)
-                if (pathNodeList[0] === undefined) {
+                const pathNodeIndex = stream.head ?? 0
+                const pathNode = pathNodeList[pathNodeIndex]
+                if (pathNode === undefined) {
+                    if (stream.status === "searching") {
+                        // The path is still being generated; wait for more nodes.
+                        villager.nextPathNode = undefined
+                        villager.setAnimation(undefined)
+                        return
+                    }
+                    const failure = getPathStreamFailure(stream)
+                    if (failure !== undefined && failure !== "cancelled") {
+                        villager.pathError = failure
+                    }
                     cancelPath()
                     return
                 }
                 if (debugFlags.villagerPathParticles && (system.currentTick + villager.index) % 20 === 0) {
-                    pathNodeList.forEach(pathNode => {
+                    for (let i = pathNodeIndex; i < pathNodeList.length; i++) {
+                        const debugPathNode = pathNodeList[i]
+                        if (debugPathNode === undefined) {
+                            continue
+                        }
                         try {
                             dimension.spawnParticle(
                                 "minecraft:villager_angry",
-                                centerVector(pathNode)
+                                centerVector(debugPathNode)
                             )
                         }
                         catch { }
-                    })
+                    }
                 }
-                const currentPathNode = centerVector(pathNodeList[0], true)
+                const currentPathNode = centerVector(pathNode, true)
                 const entityLocation = villager.location
                 if (villager.isOnGround) {
                     villager.lookAt(currentPathNode, true)
@@ -1817,8 +2138,8 @@ export class Villager {
                         currentPathNode.y -= 0.5
                     }
 
-                    if (Registry.gateTypes.includes(pathNodeBlock.typeId)) {
-                        villager.openGate(pathNodeBlock)
+                    if (pathNodeBlock.isOpenable) {
+                        villager.openDoor(pathNodeBlock)
                     }
                 }
                 villager.nextPathNode = currentPathNode
@@ -1847,7 +2168,7 @@ export class Villager {
                 }
 
                 if (!isBlocked) {
-                    villager.totalBlockTimer = 0
+                    villager.totalBlockTimer --
                     villager.blockingEntityTypeId = undefined
                 }
 
@@ -1895,7 +2216,11 @@ export class Villager {
                 }
 
                 if (Math.abs(currentPathNode.y - villager.location.y) <= 0.25 ? calculateChebyshevDistance(currentPathNode, villager.location) <= 0.25 : calculateChebyshevDistance(currentPathNode, villager.location) <= 0.5) {
-                    pathNodeList.shift()
+                    stream.head = pathNodeIndex + 1
+                    if (stream.head >= 64 && stream.head * 2 >= pathNodeList.length) {
+                        pathNodeList.splice(0, stream.head)
+                        stream.head = 0
+                    }
                 }
             }
             catch (error) {
@@ -1931,10 +2256,16 @@ system.runInterval(() => {
 })
 
 system.runInterval(() => {
-    const itemEntities = world.getEntities({ type: "item" })
-    for (const entity of itemEntities) {
+    for (const entity of unreachableItemEntities) {
+        if (!entity.isValid) {
+            unreachableItemEntities.delete(entity)
+            continue
+        }
         if (entity.unreachable > 0) {
             entity.unreachable--
+        }
+        if (entity.unreachable <= 0) {
+            unreachableItemEntities.delete(entity)
         }
     }
 }, 20)
@@ -2015,35 +2346,3 @@ Object.defineProperty(Entity.prototype, "isShearable", {
     }
 })
 
-const WOOL_BY_COLOR: readonly string[] = [
-    "minecraft:white_wool",
-    "minecraft:orange_wool",
-    "minecraft:magenta_wool",
-    "minecraft:light_blue_wool",
-    "minecraft:yellow_wool",
-    "minecraft:lime_wool",
-    "minecraft:pink_wool",
-    "minecraft:gray_wool",
-    "minecraft:light_gray_wool",
-    "minecraft:cyan_wool",
-    "minecraft:purple_wool",
-    "minecraft:blue_wool",
-    "minecraft:brown_wool",
-    "minecraft:green_wool",
-    "minecraft:red_wool",
-    "minecraft:black_wool"
-]
-
-Entity.prototype.getWoolItem = function () {
-    if (this.typeId !== "minecraft:sheep") {
-        return undefined
-    }
-
-    const entityColor = this.getComponent(EntityComponentTypes.Color)?.value ?? 0
-    const woolId = WOOL_BY_COLOR[entityColor]
-    if (woolId === undefined) {
-        return undefined
-    }
-
-    return new ItemStack(woolId, 1)
-}

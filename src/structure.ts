@@ -5,7 +5,8 @@ import {
     Dimension,
     type Vector3,
     EntityComponent,
-    EntityComponentTypes
+    EntityComponentTypes,
+    Entity
 } from "@minecraft/server"
 
 import { debugFlags } from "./debug"
@@ -37,6 +38,7 @@ const cardinalDirectionList = ["north", "east", "south", "west"] as CardinalDire
 export interface StructureValidationResult {
     result: boolean | undefined
     doorLocation?: Vector3 | undefined
+    floorLocations?: Vector3[]
     village?: Village
 }
 
@@ -104,7 +106,7 @@ Dimension.prototype.validateStructure = function* (block: Block, rotation: Cardi
             village
         )
     }
-    else if (structureId === "guard_post") {
+    else if (structureId === "guard_post" || structureId === "merchant_stall") {
         result = parseResult(true)
     }
     else if (["pig_pen", "cow_pen", "sheep_pen", "chicken_coop"].includes(structureId)) {
@@ -210,7 +212,7 @@ function findAnimalPenGate(
             continue
         }
 
-        if (Registry.gateTypes.includes(gateCheckBlock.typeId)) {
+        if (Registry.fenceGateTypes.includes(gateCheckBlock.typeId)) {
             gate = gateCheckBlock
         }
 
@@ -248,7 +250,8 @@ function resolvePenFloor(dimension: Dimension, location: Vector3): Block | null 
 }
 
 interface PenFloorFill {
-    queue: Block[]
+    queue: Array<Block | undefined>
+    queueIndex: number
     visited: Set<LocationString>
     floor: Vector3[]
     active: boolean
@@ -275,6 +278,7 @@ function* collectPenFloorLocations(
 
         fills.push({
             queue: [start],
+            queueIndex: 0,
             visited: new Set([locationToString(start.location)]),
             floor: [start.location],
             active: true,
@@ -289,7 +293,9 @@ function* collectPenFloorLocations(
                 continue
             }
 
-            const current = fill.queue.shift()
+            const current = fill.queue[fill.queueIndex]
+            fill.queue[fill.queueIndex] = undefined
+            fill.queueIndex++
             if (current === undefined) {
                 return fill.floor
             }
@@ -337,7 +343,7 @@ const fenceSearchYieldInterval = 16
 
 Object.defineProperty(Block.prototype, "isRanchBoundary", {
     get(this: Block) {
-        return Registry.fenceTypes.includes(this.typeId) || Registry.gateTypes.includes(this.typeId)
+        return Registry.fenceTypes.includes(this.typeId) || Registry.fenceGateTypes.includes(this.typeId)
     }
 })
 
@@ -393,13 +399,16 @@ function* scanFence(
     }
 
     const visited = new Set<LocationString>([gateString, locationToString(leftBlock.location)])
-    const queue: Block[] = [leftBlock]
+    const queue: Array<Block | undefined> = [leftBlock]
+    let queueIndex = 0
     const locations: Vector3[] = [gate.location, leftBlock.location]
     let enclosed = false
 
     let checked = 0
-    while (queue.length > 0) {
-        const current = queue.shift()
+    while (queueIndex < queue.length) {
+        const current = queue[queueIndex]
+        queue[queueIndex] = undefined
+        queueIndex++
         if (current === undefined) {
             continue
         }
@@ -536,7 +545,7 @@ function* validateDefaultStructure(
         if (checkBlock === undefined) {
             return parseResult(false)
         }
-        if (Registry.doorTypes.includes(checkBlock.typeId)) {
+        if (Registry.openableDoorTypes.includes(checkBlock.typeId)) {
             foundDoor = checkBlock
         }
     }
@@ -556,8 +565,9 @@ function* validateDefaultRoom(
 ): Generator<void, StructureValidationResult, void> {
     const parseResult = (
         result: boolean | undefined,
-        door?: Vector3
-    ): StructureValidationResult => ({ result, doorLocation: door })
+        door?: Vector3,
+        floorLocations?: Vector3[]
+    ): StructureValidationResult => ({ result, doorLocation: door, floorLocations })
 
     function getFloorBlock(location: Vector3) {
         return dimension.getBlockBelow(location, {
@@ -579,13 +589,16 @@ function* validateDefaultRoom(
     if (doorBlock === undefined) {
         return parseResult(undefined, doorLocation)
     }
-    if (!Registry.doorTypes.includes(doorBlock.typeId)) {
+    if (!Registry.openableDoorTypes.includes(doorBlock.typeId)) {
         return parseResult(false, doorLocation)
     }
 
-    const floorBlockList = []
+    const floorLocations: Vector3[] = []
     const startingLocation = addVectors(doorBlock, directionToVector(rotation))
-    const checkLocationList = [
+    const checkLocationList: Array<{
+        floor: Block | undefined
+        ceiling: Block | undefined
+    } | undefined> = [
         {
             floor: getFloorBlock(startingLocation),
             ceiling: getCeilingBlock(startingLocation)
@@ -593,9 +606,12 @@ function* validateDefaultRoom(
     ]
     const alreadyCheckedLocations = new Set([locationToString(addVector(doorLocation, "y", -1))])
 
+    let checkLocationIndex = 0
     let steps = 0
-    while (checkLocationList.length > 0) {
-        const currentLocation = checkLocationList.shift()
+    while (checkLocationIndex < checkLocationList.length) {
+        const currentLocation = checkLocationList[checkLocationIndex]
+        checkLocationList[checkLocationIndex] = undefined
+        checkLocationIndex++
         if (
             currentLocation?.ceiling !== undefined &&
             currentLocation.floor !== undefined &&
@@ -612,7 +628,7 @@ function* validateDefaultRoom(
                     )
                 }
 
-                floorBlockList.push(currentLocation.floor.aboveSafe())
+                floorLocations.push(addVector(currentLocation.floor, "y", 1))
 
                 const floorOffsetList = [
                     { x: 1, y: 0, z: 0 },
@@ -660,7 +676,7 @@ function* validateDefaultRoom(
         }
     }
 
-    return parseResult(floorBlockList.length >= 9, doorLocation)
+    return parseResult(floorLocations.length >= 9, doorLocation, floorLocations)
 }
 
 export interface StructureTypeMap {
@@ -673,7 +689,8 @@ export interface StructureTypeMap {
     sheep_pen: AnimalPen
     cow_pen: AnimalPen
     chicken_coop: AnimalPen
-    guard_post: GuardPost
+    guard_post: StationPost
+    merchant_stall: StationPost
 }
 
 export type StructureType = keyof StructureTypeMap
@@ -691,8 +708,8 @@ export interface AnimalPenData extends StructureData {
     type: "pig_pen" | "chicken_coop" | "sheep_pen" | "cow_pen"
 }
 
-export interface GuardPostData extends StructureData {
-    type: "guard_post"
+export interface StationPostData extends StructureData {
+    type: "guard_post" | "merchant_stall"
 }
 
 type StructureFactory = (locationString: LocationString, data: StructureData, dimension: Dimension, village: Village) => Structure
@@ -721,7 +738,7 @@ export class Structure<T extends StructureData = StructureData> {
 
     static from(locationString: LocationString, data: MineshaftData, dimension: Dimension, village: Village): Mineshaft
     static from(locationString: LocationString, data: AnimalPenData, dimension: Dimension, village: Village): AnimalPen
-    static from(locationString: LocationString, data: GuardPostData, dimension: Dimension, village: Village): GuardPost
+    static from(locationString: LocationString, data: StationPostData, dimension: Dimension, village: Village): StationPost
     static from(locationString: LocationString, data: StructureData, dimension: Dimension, village: Village): Structure
     static from(locationString: LocationString, data: StructureData, dimension: Dimension, village: Village): Structure {
         let structure = Structure.cache.get(data)
@@ -738,6 +755,11 @@ export class Structure<T extends StructureData = StructureData> {
     *validate(): Generator<void, boolean | undefined, void> {
         const validation = yield* validateDefaultRoom(this.dimension, this.location, this.rotation)
         return validation.result
+    }
+
+    getFloorLocations(): Vector3[] {
+        const validation = runToCompletion(validateDefaultRoom(this.dimension, this.location, this.rotation))
+        return validation.floorLocations ?? []
     }
 
     get type(): T["type"] {
@@ -944,7 +966,7 @@ export class AnimalPen extends Structure<AnimalPenData> {
 
     private getPenGate(): AnimalPenGate | undefined {
         const gate = this.dimension.getBlockSafe(this.location)
-        if (gate === undefined || !Registry.gateTypes.includes(gate.typeId)) {
+        if (gate === undefined || !Registry.fenceGateTypes.includes(gate.typeId)) {
             return undefined
         }
 
@@ -962,7 +984,7 @@ export class AnimalPen extends Structure<AnimalPenData> {
         return scan.enclosed === true ? scan.locations : []
     }
 
-    getFloorLocations(includeFences = false): Vector3[] {
+    override getFloorLocations(includeFences = false): Vector3[] {
         const penGate = this.getPenGate()
         if (penGate === undefined) {
             return []
@@ -987,40 +1009,49 @@ export class AnimalPen extends Structure<AnimalPenData> {
         return { floor, fence: this.getFenceLocations() }
     }
 
-    scanLocations(): { floor: Vector3[] | undefined, fence: Vector3[] | undefined } {
+    *scanLocationsIncremental(): Generator<void, { floor: Vector3[] | undefined, fence: Vector3[] | undefined }, void> {
         const penGate = this.getPenGate()
         if (penGate === undefined) {
             return { floor: undefined, fence: undefined }
         }
-        const floor = runToCompletion(collectPenFloorLocations(this.dimension, penGate.gate, penGate.direction))
-        const fence = runToCompletion(scanFence(this.dimension, penGate.gate, penGate.axis, true))
+        const floor = yield* collectPenFloorLocations(this.dimension, penGate.gate, penGate.direction)
+        const fence = yield* scanFence(this.dimension, penGate.gate, penGate.axis, true)
         return {
             floor: floor !== undefined && floor.length > 0 ? floor : undefined,
             fence: fence.enclosed === true ? fence.locations : undefined
         }
     }
 
+    scanLocations(): { floor: Vector3[] | undefined, fence: Vector3[] | undefined } {
+        return runToCompletion(this.scanLocationsIncremental())
+    }
+
     getAnimalCount(adultsOnly = false): number {
+        return this.getEntities(adultsOnly).length
+    }
+
+    getEntities(adultsOnly = false): Entity[] {
         const typeId = this.getAnimalTypeId()
-        let count = 0
+        const entities: Entity[] = []
 
         for (const [id, ranchEntity] of Object.entries(this.village.ranchEntities)) {
-            if (adultsOnly) {
-                const entity = world.getEntity(id)
-                if (entity === undefined) {
-                    continue
-                }
-
-                if (entity.hasComponent(EntityComponentTypes.IsBaby)) {
-                    continue
-                }
+            if (ranchEntity.structure !== this.locationString || ranchEntity.typeId !== typeId) {
+                continue
             }
 
-            if (ranchEntity.structure === this.locationString && ranchEntity.typeId === typeId) {
-                count++
+            const entity = world.getEntity(id)
+            if (entity?.isValid !== true) {
+                continue
             }
+
+            if (adultsOnly && entity.hasComponent(EntityComponentTypes.IsBaby)) {
+                continue
+            }
+
+            entities.push(entity)
         }
-        return count
+
+        return entities
     }
 
     get isFull(): boolean {
@@ -1038,8 +1069,8 @@ const GUARD_PATROL_RADIUS = 8
 const GUARD_LOCATION_ATTEMPTS = 10
 const GUARD_Y_OFFSETS = [0, 1, -1, 2, -2, 3, -3]
 
-export class GuardPost extends Structure<GuardPostData> {
-    constructor(locationString: LocationString, data: GuardPostData, dimension: Dimension, village: Village) {
+export class StationPost extends Structure<StationPostData> {
+    constructor(locationString: LocationString, data: StationPostData, dimension: Dimension, village: Village) {
         super(locationString, data, dimension, village)
     }
 
@@ -1102,7 +1133,8 @@ Structure.register("cow_pen", animalPenFactory)
 Structure.register("sheep_pen", animalPenFactory)
 Structure.register("chicken_coop", animalPenFactory)
 
-Structure.register("guard_post", (locationString, data, dimension, village) => new GuardPost(locationString, data as GuardPostData, dimension, village))
+Structure.register("guard_post", (locationString, data, dimension, village) => new StationPost(locationString, data as StationPostData, dimension, village))
+Structure.register("merchant_stall", (locationString, data, dimension, village) => new StationPost(locationString, data as StationPostData, dimension, village))
 
 function tickScanStructures() {
     system.runJob(scanStructures(() => system.runTimeout(tickScanStructures, 100)))

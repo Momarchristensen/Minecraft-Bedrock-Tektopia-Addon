@@ -6,6 +6,8 @@ import {
     world
 } from "@minecraft/server"
 
+import { getMixedColor } from "./sheepColors"
+
 import {
     addVectors,
     calculateDistance,
@@ -14,11 +16,16 @@ import {
 } from "./utils"
 
 const RANCH_TYPES = ["minecraft:pig", "minecraft:sheep", "minecraft:cow", "minecraft:chicken"]
+const RANCH_TYPE_SET = new Set(RANCH_TYPES)
+const ranchAnimalEntities = new Map<string, Entity>()
+let ranchAnimalEntitiesInitialized = false
 
 const BREEDING_DURATION = 30 * 20
 const BREEDING_COOLDOWN = 5 * 60 * 20
 const MEET_DISTANCE = 1.5
 const MEET_TICKS = 20
+
+const activeBreedingStates = new Set<EntityBreeding>()
 
 export interface BreedingSaveData {
     time: number
@@ -35,6 +42,9 @@ export class EntityBreeding {
         this._isBreeding = (entity.getProperty("tektopia:breeding") as boolean | undefined) ?? false
         this.time = entity.breedingData?.time ?? 0
         this.cooldown = entity.breedingData?.cooldown ?? 0
+        if (this.time > 0 || this.cooldown > 0 || this._isBreeding) {
+            activeBreedingStates.add(this)
+        }
     }
 
     private save() {
@@ -61,6 +71,7 @@ export class EntityBreeding {
             return
         }
         this.time = BREEDING_DURATION
+        activeBreedingStates.add(this)
         this.save()
     }
 
@@ -72,6 +83,10 @@ export class EntityBreeding {
     }
 
     tick() {
+        if (!this.entity.isValid) {
+            activeBreedingStates.delete(this)
+            return
+        }
         const wasActive = this.time > 0 || this.cooldown > 0
 
         if (this.time > 0) {
@@ -90,11 +105,11 @@ export class EntityBreeding {
             this._isBreeding = isBreeding
         }
 
-        if (
-            !this.entity.isValid ||
-            !isBreeding
-        ) {
+        if (!isBreeding) {
             this.waitTime = 0
+            if (this.time <= 0 && this.cooldown <= 0) {
+                activeBreedingStates.delete(this)
+            }
             return
         }
 
@@ -133,6 +148,16 @@ export class EntityBreeding {
         babyEntity.villagerEntity = true
         babyEntity.saveData("villagerEntity")
 
+        if (this.entity.typeId === "minecraft:sheep") {
+            const parentColor1 = this.entity.getComponent(EntityComponentTypes.Color)?.value
+            const parentColor2 = target.getComponent(EntityComponentTypes.Color)?.value
+            const babyColor = babyEntity.getComponent(EntityComponentTypes.Color)
+
+            if (parentColor1 !== undefined && parentColor2 !== undefined && babyColor !== undefined) {
+                babyColor.value = getMixedColor(parentColor1, parentColor2)
+            }
+        }
+
         this.entity.dimension.spawnXp(babySpawnLocation, randomInt(1, 7))
 
         this.finish()
@@ -144,14 +169,11 @@ const breedingStates = new WeakMap<Entity, EntityBreeding>()
 
 Object.defineProperty(Entity.prototype, "breeding", {
     get(this: Entity) {
-        if (!RANCH_TYPES.includes(this.typeId)) {
+        if (!this.isValid || !RANCH_TYPE_SET.has(this.typeId)) {
             return undefined
         }
         if (!this.loadedData) {
             this.loadData()
-            if (!this.loadedData) {
-                return undefined
-            }
         }
         let state = breedingStates.get(this)
         if (state === undefined) {
@@ -163,9 +185,59 @@ Object.defineProperty(Entity.prototype, "breeding", {
 })
 
 system.runInterval(() => {
-    for (const entity of world.getEntities()) {
-        if (RANCH_TYPES.includes(entity.typeId)) {
-            entity.breeding?.tick()
+    for (const breeding of activeBreedingStates) {
+        breeding.tick()
+    }
+})
+
+export function getRanchAnimals(): Iterable<Entity> {
+    for (const [entityId, entity] of ranchAnimalEntities) {
+        if (!entity.isValid) {
+            ranchAnimalEntities.delete(entityId)
         }
     }
+    return ranchAnimalEntities.values()
+}
+
+function initializeBreedingStates() {
+    ranchAnimalEntitiesInitialized = false
+    system.runJob(function* () {
+        let processed = 0
+        for (const entity of world.getEntities()) {
+            if (RANCH_TYPE_SET.has(entity.typeId)) {
+                ranchAnimalEntities.set(entity.id, entity)
+                void entity.breeding
+            }
+            if (++processed % 32 === 0) {
+                yield
+            }
+        }
+        ranchAnimalEntitiesInitialized = true
+    }())
+}
+
+export function isRanchAnimalRegistryInitialized() {
+    return ranchAnimalEntitiesInitialized
+}
+
+world.afterEvents.entitySpawn.subscribe(event => {
+    if (RANCH_TYPE_SET.has(event.entity.typeId)) {
+        ranchAnimalEntities.set(event.entity.id, event.entity)
+        void event.entity.breeding
+    }
+})
+
+world.afterEvents.entityLoad.subscribe(event => {
+    if (RANCH_TYPE_SET.has(event.entity.typeId)) {
+        ranchAnimalEntities.set(event.entity.id, event.entity)
+        void event.entity.breeding
+    }
+})
+
+world.afterEvents.entityRemove.subscribe(event => {
+    ranchAnimalEntities.delete(event.removedEntityId)
+})
+
+world.afterEvents.worldLoad.subscribe(() => {
+    initializeBreedingStates()
 })

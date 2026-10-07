@@ -2,7 +2,6 @@ import {
     Entity,
     Player,
     system,
-    System,
     type Vector3,
     world,
     World
@@ -23,8 +22,6 @@ function getGetter<T extends object, K extends keyof T>(prototype: T, property: 
 const originalFunctions = {
     worldGetDimension: World.prototype.getDimension,
     worldGetEntity: World.prototype.getEntity,
-
-    getCurrentTick: getGetter(System.prototype, "currentTick"),
 
     getLocation: getGetter(Entity.prototype, "location"),
     teleport: Entity.prototype.teleport,
@@ -147,18 +144,3 @@ Entity.prototype.teleport = function (location, teleportOptions) {
 
     return originalFunctions.teleport.call(this, location, teleportOptions)
 }
-
-let currentTick = originalFunctions.getCurrentTick.call(system)
-
-system.runInterval(() => {
-    currentTick++
-})
-
-Object.defineProperty(System.prototype, "currentTick", {
-    /**
-     * @this {System}
-     */
-    get() {
-        return currentTick
-    }
-})

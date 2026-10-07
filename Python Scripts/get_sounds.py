@@ -34,7 +34,7 @@ for key, value in blocks_data.items():
     if sound_name:
         block_to_sounds[key] = {}
 
-        for event_type in ["break", "place", "fence_gate.close", "fence_gate.open"]:
+        for event_type in ["break", "place", "fence_gate.close", "fence_gate.open", "door.open", "door.close"]:
             try:
                 event_sound = sounds_data["block_sounds"][sound_name]["events"][event_type]
                 block_to_sounds[key][event_type] = event_sound

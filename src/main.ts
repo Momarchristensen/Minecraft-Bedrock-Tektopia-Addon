@@ -5,6 +5,8 @@ import {
     world
 } from "@minecraft/server"
 
+import "./sheepColors"
+
 import "./block_extensions"
 
 import "./array_extensions"

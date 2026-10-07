@@ -44,6 +44,7 @@ import {
 
 import type {
     CheckEntityData,
+    LocationString,
     NodeRequirement,
     PathNode,
     Bounds
@@ -58,7 +59,33 @@ const VERTICAL_TOWARD_PENALTY = 2
 const VERTICAL_AWAY_PENALTY = 10
 const DIAGONAL_COST = 1.75
 
-type PathResult = "no_path" | "no_village" | "timeout" | "cancelled" | "error" | Vector3[]
+const BLOCKED_ENTITY_RADIUS = 0.75
+
+
+export type PathFailure = "no_path" | "no_village" | "timeout" | "cancelled" | "error"
+
+export type PathResult = PathFailure | Vector3[]
+
+/** A fixed location, or an entity whose *current* location is used as the destination. */
+export type PathTarget = Vector3 | Entity
+
+/**
+ * Path nodes streamed by `generatePath` while it is still searching.
+ * The producer only appends nodes that are final and in order; the consumer removes nodes from the front as it reaches
+ * them. `status` is "searching" while more nodes may still arrive, "complete" once the last node has been added,
+ * or a failure reason (nodes already streamed remain valid).
+ */
+export interface PathStream {
+    readonly nodes: Vector3[]
+    head?: number
+    status: "searching" | "complete" | PathFailure
+}
+
+const RETARGET_DISTANCE = 2
+const TARGET_POLL_TICKS = 4
+const TRACK_INTERVAL_TICKS = 2
+const TRACK_KEEP_NODES = 1
+const MAX_RESTARTS = 8
 
 interface Scratch {
     capacity: number
@@ -66,6 +93,9 @@ interface Scratch {
     closed: Uint8Array
     came: Int32Array
     blocked: Uint8Array
+    verdict: Int8Array
+    mark: Int32Array
+    link: Int32Array
     heap: IntHeap
 }
 
@@ -80,28 +110,37 @@ function acquireScratch(capacity: number): Scratch {
         closed: new Uint8Array(capacity),
         came: new Int32Array(capacity),
         blocked: new Uint8Array(capacity),
+        verdict: new Int8Array(256),
+        mark: new Int32Array(capacity),
+        link: new Int32Array(capacity),
         heap: new IntHeap()
     }
     scratch.g.fill(Infinity)
     scratch.closed.fill(0)
     scratch.blocked.fill(0)
+    scratch.verdict.fill(-1)
+    scratch.mark.fill(0)
     scratch.heap.size = 0
     return scratch
 }
 
 function buildBlockedCells(
-    entities: Array<{ location: Vector3, cancelPath?: boolean }>,
+    entities: Array<{ id: string, location: Vector3, cancelPath?: boolean }>,
     graph: PathGraph,
     bounds: Bounds,
-    blocked: Uint8Array
+    blocked: Uint8Array,
+    excludedEntityId: string
 ) {
-    const RADIUS = 1.0
+    const RADIUS = BLOCKED_ENTITY_RADIUS
     const minBX = Math.min(bounds.start.x, bounds.end.x) - RADIUS - 1
     const maxBX = Math.max(bounds.start.x, bounds.end.x) + RADIUS + 1
     const minBZ = Math.min(bounds.start.z, bounds.end.z) - RADIUS - 1
     const maxBZ = Math.max(bounds.start.z, bounds.end.z) + RADIUS + 1
 
     for (const other of entities) {
+        if (other.id === excludedEntityId) {
+            continue
+        }
         const loc = other.location
         if (loc.x < minBX || loc.x > maxBX || loc.z < minBZ || loc.z > maxBZ) {
             continue
@@ -134,12 +173,105 @@ function buildBlockedCells(
 }
 
 const pathCheckEntities: Record<string, PathEntity[]> = {}
+const pathCheckEntityIds = new Map<string, Set<string>>()
 
-export function generatePath(entity: Villager, start: Vector3, end: Vector3, token: { cancelled: boolean }) {
+
+export function getPathNodeBlockState(dimensionId: string, node: Vector3): 0 | 1 | 2 {
+    let blockState: 0 | 1 | 2 = 0
+    for (const entity of pathCheckEntities[dimensionId] ?? []) {
+        const { x, y, z } = entity.location
+        if (
+            Math.abs(x - (node.x + 0.5)) >= BLOCKED_ENTITY_RADIUS ||
+            Math.abs(y - node.y) >= BLOCKED_ENTITY_RADIUS ||
+            Math.abs(z - (node.z + 0.5)) >= BLOCKED_ENTITY_RADIUS
+        ) {
+            continue
+        }
+        if (entity.cancelPath) {
+            return 2
+        }
+        blockState = 1
+    }
+    return blockState
+}
+
+function isEntityTarget(target: PathTarget): target is Entity {
+    return "isValid" in target
+}
+
+export { isEntityTarget }
+
+export function createPathStream(): PathStream {
+    return { nodes: [], head: 0, status: "searching" }
+}
+
+export function getPathStreamFailure(stream: PathStream): PathFailure | undefined {
+    return stream.status === "searching" || stream.status === "complete" ? undefined : stream.status
+}
+
+function readTargetLocation(target: Entity, dimensionId: string): Vector3 | undefined {
+    try {
+        if (!target.isValid) {
+            return undefined
+        }
+        const health = target.getComponent(EntityComponentTypes.Health)
+        if (health !== undefined && health.currentValue <= 0) {
+            return undefined
+        }
+        if (target.dimension.id !== dimensionId) {
+            return undefined
+        }
+        return target.location
+    }
+    catch {
+        return undefined
+    }
+}
+
+/**
+ * Finds a path from `start` to `target`.
+ *
+ * The returned promise resolves exactly as before: with the complete node list, or with a failure reason.
+ *
+ * When a `stream` is supplied, nodes are also appended to `stream.nodes` while the search is still running.
+ * Only nodes that every remaining candidate route shares (the common prefix of the search frontier) are streamed,
+ * so a streamed node is never revised later. `stream.status` leaves "searching" only when no more nodes will arrive.
+ *
+ * When `target` is an entity, its current location is used as the destination for as long as the search (and, with
+ * a stream, the unconsumed part of the path) lasts. The open set is kept when the target moves; the search is only
+ * restarted from the last streamed node if the new destination cannot be reached through it.
+ */
+export function generatePath(
+    entity: Villager,
+    start: Vector3,
+    target: PathTarget,
+    token: { cancelled: boolean },
+    stream?: PathStream
+) {
     return new Promise<PathResult>(resolve => {
+        const emitted: Vector3[] = []
+        let settled = false
+        let runId = 0
+        let restarts = 0
+        let commitCount = 0
+        let tipKey: LocationString | undefined
+        let goalKey = "0,0,0" as LocationString
+        let lastPollTick = Number.NEGATIVE_INFINITY
+
+        const finish = (status: "complete" | PathFailure) => {
+            if (settled) {
+                return
+            }
+            settled = true
+            if (stream !== undefined) {
+                stream.status = status
+            }
+            resolve(status === "complete" ? emitted : status)
+        }
+
         const village = entity.getVillage()
         if (village === undefined) {
-            resolve("no_village")
+            finish("no_village")
             return
         }
         const villageInfo = village
@@ -147,84 +279,215 @@ export function generatePath(entity: Villager, start: Vector3, end: Vector3, tok
         const dimensionId = villageInfo.dimensionId
         const dimension = world.getDimension(dimensionId)
         const nodeList = villageInfo.pathNodes
+        const graph = villageInfo.graph
 
-        const startLocation = floorVector(start)
-        let endLocation = floorVector(end)
+        const targetEntity = isEntityTarget(target) ? target : undefined
+        const staticTarget: Vector3 | undefined = isEntityTarget(target) ? undefined : target
 
-        const endBlock = dimension.getBlockSafe(endLocation)
-        if (endBlock !== undefined && !endBlock.isValidPath(villageBounds)) {
-            const checkBlocks = [
-                endBlock.northSafe(),
-                endBlock.eastSafe(),
-                endBlock.southSafe(),
-                endBlock.westSafe()
-            ]
-            for (const block of checkBlocks) {
-                if (block?.isValidPath(villageBounds)) {
-                    endLocation = block.location
-                    break
+        const toGoalKey = (location: Vector3): LocationString | undefined => {
+            let endLocation = floorVector(location)
+            const endBlock = dimension.getBlockSafe(endLocation)
+            if (endBlock !== undefined && !endBlock.isValidPath(villageBounds)) {
+                const checkBlocks = [
+                    endBlock.northSafe(),
+                    endBlock.eastSafe(),
+                    endBlock.southSafe(),
+                    endBlock.westSafe()
+                ]
+                for (const block of checkBlocks) {
+                    if (block?.isValidPath(villageBounds)) {
+                        endLocation = block.location
+                        break
+                    }
                 }
+            }
+            const key = locationToString(endLocation)
+            if (nodeList[key] !== undefined) {
+                return key
+            }
+            const nearest = findNearestNodeLocation(nodeList, endLocation)
+            return nearest === undefined ? undefined : locationToString(nearest)
+        }
+
+        // Returns the new goal key if the target moved far enough from the current goal to be worth steering towards.
+        const evaluateTarget = (location: Vector3): LocationString | undefined => {
+            const key = toGoalKey(location)
+            if (key === undefined || key === goalKey) {
+                return undefined
+            }
+            return calculateChebyshevDistance(stringToLocation(key), stringToLocation(goalKey)) >= RETARGET_DISTANCE ? key : undefined
+        }
+
+        const pollTarget = (): LocationString | undefined => {
+            const tick = system.currentTick
+            if (targetEntity === undefined || tick - lastPollTick < TARGET_POLL_TICKS) {
+                return undefined
+            }
+            lastPollTick = tick
+            const location = readTargetLocation(targetEntity, dimensionId)
+            return location === undefined ? undefined : evaluateTarget(location)
+        }
+
+        const emitLocation = (node: Vector3) => {
+            emitted.push(node)
+            if (stream !== undefined) {
+                stream.nodes.push(node)
             }
         }
 
-        system.runJob(safeTickGeneratePath())
+        // Entity targets keep the stream open after the goal is reached so the unconsumed tail can follow the target.
+        const afterGoal = () => {
+            if (stream !== undefined && targetEntity !== undefined) {
+                system.runTimeout(trackTick, TRACK_INTERVAL_TICKS)
+                return
+            }
+            finish("complete")
+        }
 
-        function* safeTickGeneratePath() {
+        const trackTick = () => {
             try {
-                yield* tickGeneratePath()
+                if (settled) {
+                    return
+                }
+                if (token.cancelled) {
+                    finish("cancelled")
+                    return
+                }
+                if (stream === undefined || targetEntity === undefined || (stream.head ?? 0) >= stream.nodes.length) {
+                    finish("complete")
+                    return
+                }
+                const location = readTargetLocation(targetEntity, dimensionId)
+                if (location === undefined) {
+                    // Target is gone: finish the route that was already streamed.
+                    finish("complete")
+                    return
+                }
+                const key = evaluateTarget(location)
+                if (key === undefined) {
+                    system.runTimeout(trackTick, TRACK_INTERVAL_TICKS)
+                    return
+                }
+                // The streamed tail leads to where the target used to be. Keep only the node being walked
+                // towards and continue the search from there.
+                const head = stream.head ?? 0
+                const pendingCount = stream.nodes.length - head
+                const keep = Math.min(pendingCount, TRACK_KEEP_NODES)
+                const dropped = pendingCount - keep
+                if (dropped > 0) {
+                    stream.nodes.length = head + keep
+                    emitted.length -= dropped
+                }
+                const last = stream.nodes[head + keep - 1]
+                if (last === undefined) {
+                    finish("complete")
+                    return
+                }
+                tipKey = locationToString(last)
+                goalKey = key
+                system.runJob(guarded(run(++runId, tipKey)))
             }
             catch (error) {
                 if (debugFlags.pathfindingWarnings) {
                     console.warn("Pathfinding failed: ", error)
                 }
-                resolve("error")
+                finish("error")
             }
         }
 
-        function* tickGeneratePath() {
-            const isCancelled = () => token.cancelled
-            if (isCancelled()) {
-                resolve("cancelled")
+        function* guarded(inner: Generator<void, void, void>): Generator<void, void, void> {
+            try {
+                yield* inner
+            }
+            catch (error) {
+                if (debugFlags.pathfindingWarnings) {
+                    console.warn("Pathfinding failed: ", error)
+                }
+                finish("error")
+            }
+        }
+
+        function* begin(): Generator<void, void, void> {
+            if (token.cancelled) {
+                finish("cancelled")
                 return
             }
 
-            let startKey = locationToString(startLocation)
-            let endKey = locationToString(endLocation)
+            const initialLocation = targetEntity === undefined ? staticTarget : readTargetLocation(targetEntity, dimensionId)
+            if (initialLocation === undefined) {
+                finish("no_path")
+                return
+            }
 
+            const startLocation = floorVector(start)
+            let startKey = locationToString(startLocation)
             if (nodeList[startKey] === undefined) {
                 const nearestStart = findNearestNodeLocation(nodeList, startLocation)
                 if (nearestStart === undefined) {
-                    resolve("no_path")
+                    finish("no_path")
                     return
                 }
                 startKey = locationToString(nearestStart)
             }
-            if (nodeList[endKey] === undefined) {
-                const nearestEnd = findNearestNodeLocation(nodeList, endLocation)
-                if (nearestEnd === undefined) {
-                    resolve("no_path")
+
+            const initialGoalKey = toGoalKey(initialLocation)
+            if (initialGoalKey === undefined) {
+                finish("no_path")
+                return
+            }
+            goalKey = initialGoalKey
+
+            if (startKey === goalKey) {
+                emitLocation(stringToLocation(startKey))
+                commitCount = 1
+                tipKey = startKey
+                afterGoal()
+                return
+            }
+
+            yield* run(++runId, startKey)
+        }
+
+        // Runs searches until one finishes. A search only restarts (from the last streamed node) when
+        // the destination can no longer be reached through the nodes that were already streamed.
+        function* run(id: number, initialRootKey: LocationString): Generator<void, void, void> {
+            let rootKey = initialRootKey
+            while (true) {
+                const outcome = yield* search(id, rootKey)
+                if (outcome === "done") {
                     return
                 }
-                endKey = locationToString(nearestEnd)
+                restarts++
+                if (tipKey === undefined || restarts > MAX_RESTARTS) {
+                    finish("no_path")
+                    return
+                }
+                rootKey = tipKey
+                yield
+            }
+        }
+
+        function* search(id: number, rootKey: LocationString): Generator<void, "done" | "restart", void> {
+            // Stale (cancelled, replaced or settled) searches must never touch the stream again.
+            const halted = () => {
+                if (id !== runId || settled) {
+                    return true
+                }
+                if (token.cancelled) {
+                    finish("cancelled")
+                    return true
+                }
+                return false
+            }
+            if (halted()) {
+                return "done"
             }
 
-            const startVec = stringToLocation(startKey)
-
-            if (startKey === endKey) {
-                resolve([startVec])
-                return
-            }
-
-            const graph = villageInfo.graph
-            const startId = graph.idOf(startKey)
-            const endId = graph.idOf(endKey)
-            if (startId === -1 || endId === -1) {
-                resolve("no_path")
-                return
-            }
-            if (startId === endId) {
-                resolve([stringToLocation(startKey)])
-                return
+            const rootId = graph.idOf(rootKey)
+            const initialGoalId = graph.idOf(goalKey)
+            if (rootId === -1 || initialGoalId === -1) {
+                finish("no_path")
+                return "done"
             }
 
             const HEURISTIC_WEIGHT = 1
@@ -234,19 +497,17 @@ export function generatePath(entity: Villager, start: Vector3, end: Vector3, tok
             const { x: X, y: Y, z: Z, cost: COST, reqId: REQ, adjReq: ADJ_REQ, adj: ADJ, alive: ALIVE, degree: DEG } = graph
             const size = X.length
             const lookup = (x: number, y: number, z: number) => {
-                const id = graph.idAt(x, y, z)
-                return id < size ? id : -1
+                const nodeId = graph.idAt(x, y, z)
+                return nodeId < size ? nodeId : -1
             }
 
             graph.beginSearch()
             const scratch = acquireScratch(size)
             try {
-                const { g, closed, came, blocked, heap } = scratch
-                const checkEntityList = (pathCheckEntities[dimensionId] ?? []).filter(other => other.id !== entity.id)
-                buildBlockedCells(checkEntityList, graph, villageBounds, blocked)
+                const { g, closed, came, blocked, verdict, heap, mark, link } = scratch
+                buildBlockedCells(pathCheckEntities[dimensionId] ?? [], graph, villageBounds, blocked, entity.id)
 
                 const typeId = entity.typeId
-                const verdict = new Int8Array(256).fill(-1)
                 const allowed = (requirementId: number) => {
                     let value = verdict[requirementId] ?? -1
                     if (value === -1) {
@@ -256,40 +517,160 @@ export function generatePath(entity: Villager, start: Vector3, end: Vector3, tok
                     return value === 1
                 }
 
-                const ex = X[endId] ?? 0
-                const ey = Y[endId] ?? 0
-                const ez = Z[endId] ?? 0
-                const estimate = (id: number) => {
-                    const x = X[id] ?? 0
-                    const y = Y[id] ?? 0
-                    const z = Z[id] ?? 0
+                let goalId = initialGoalId
+                let ex = X[goalId] ?? 0
+                let ey = Y[goalId] ?? 0
+                let ez = Z[goalId] ?? 0
+                const estimate = (nodeId: number) => {
+                    const x = X[nodeId] ?? 0
+                    const y = Y[nodeId] ?? 0
+                    const z = Z[nodeId] ?? 0
                     const dx = Math.abs(x - ex)
                     const dz = Math.abs(z - ez)
                     const diagonal = Math.min(dx, dz)
                     return (Math.max(dx, dz) - diagonal) + (diagonal * DIAGONAL_COST) + (Math.abs(y - ey) * Y_WEIGHT)
                 }
 
-                const buildPath = (targetId: number) => {
-                    const path: Vector3[] = []
-                    let id = targetId
-                    while (id !== -1) {
-                        const x = X[id] ?? 0
-                        const y = Y[id] ?? 0
-                        const z = Z[id] ?? 0
-                        path.push({ x, y, z })
-                        id = came[id] ?? -1
+                // Node ids from the search root to `targetId`.
+                const chain: number[] = []
+                const fillChain = (targetId: number) => {
+                    chain.length = 0
+                    let nodeId = targetId
+                    while (nodeId !== -1) {
+                        chain.push(nodeId)
+                        nodeId = came[nodeId] ?? -1
                     }
-                    path.reverse()
-                    return path
+                    chain.reverse()
                 }
 
-                g[startId] = 0
-                came[startId] = -1
-                heap.push(startId, estimate(startId) * HEURISTIC_WEIGHT)
+                const emitNode = (nodeId: number) => {
+                    emitLocation({ x: X[nodeId] ?? 0, y: Y[nodeId] ?? 0, z: Z[nodeId] ?? 0 })
+                }
+
+                // Last node streamed so far. A restarted search is rooted here.
+                let tipId = tipKey === undefined ? -1 : rootId
+                commitCount = tipKey === undefined ? 0 : 1
+
+                const frontier: number[] = []
+                const walk: number[] = []
+                let cycle = 0
+
+                // Streams the part of the route that every open candidate shares. Closed nodes are never revised,
+                // and any final route continues through an open node, so that shared prefix is final.
+                const commitStable = () => {
+                    if (stream === undefined || settled || token.cancelled) {
+                        return
+                    }
+                    frontier.length = 0
+                    for (let i = 0; i < heap.size; i++) {
+                        const nodeId = heap.values[i] ?? -1
+                        if (nodeId !== -1 && closed[nodeId] === 0 && (g[nodeId] ?? Infinity) !== Infinity) {
+                            frontier.push(nodeId)
+                        }
+                    }
+                    const first = frontier[0]
+                    if (first === undefined) {
+                        return
+                    }
+                    const firstParent = came[first] ?? -1
+                    if (firstParent === -1) {
+                        return
+                    }
+                    fillChain(firstParent)
+                    cycle++
+                    for (let i = 0; i < chain.length; i++) {
+                        const nodeId = chain[i] ?? -1
+                        mark[nodeId] = cycle
+                        link[nodeId] = i
+                    }
+                    let limit = chain.length - 1
+                    for (let i = 1; i < frontier.length && limit >= commitCount; i++) {
+                        let nodeId = came[frontier[i] ?? -1] ?? -1
+                        walk.length = 0
+                        while (nodeId !== -1 && mark[nodeId] !== cycle) {
+                            walk.push(nodeId)
+                            nodeId = came[nodeId] ?? -1
+                        }
+                        if (nodeId === -1) {
+                            return
+                        }
+                        const shared = link[nodeId] ?? 0
+                        for (const walked of walk) {
+                            mark[walked] = cycle
+                            link[walked] = shared
+                        }
+                        if (shared < limit) {
+                            limit = shared
+                        }
+                    }
+                    if (limit < commitCount) {
+                        return
+                    }
+                    for (let i = commitCount; i <= limit; i++) {
+                        emitNode(chain[i] ?? -1)
+                    }
+                    commitCount = limit + 1
+                    tipId = chain[limit] ?? -1
+                    tipKey = locationToString({ x: X[tipId] ?? 0, y: Y[tipId] ?? 0, z: Z[tipId] ?? 0 })
+                }
+
+                const reachGoal = (targetId: number): "done" | "restart" => {
+                    fillChain(targetId)
+                    if (commitCount > 0 && chain[commitCount - 1] !== tipId) {
+                        return "restart"
+                    }
+                    for (let i = commitCount; i < chain.length; i++) {
+                        emitNode(chain[i] ?? -1)
+                    }
+                    commitCount = Math.max(commitCount, chain.length)
+                    tipId = targetId
+                    tipKey = locationToString({ x: X[targetId] ?? 0, y: Y[targetId] ?? 0, z: Z[targetId] ?? 0 })
+                    afterGoal()
+                    return "done"
+                }
+
+                const bestOpenNode = () => {
+                    let bestOpen = -1
+                    let bestOpenEstimate = Infinity
+                    for (let i = 0; i < heap.size; i++) {
+                        const nodeId = heap.values[i] ?? -1
+                        if (nodeId === -1 || closed[nodeId] === 1 || (g[nodeId] ?? Infinity) === Infinity) {
+                            continue
+                        }
+                        const value = estimate(nodeId)
+                        if (value < bestOpenEstimate) {
+                            bestOpenEstimate = value
+                            bestOpen = nodeId
+                        }
+                    }
+                    return bestOpen
+                }
+
+                // Re-prioritises the open set for a new goal without discarding any search progress.
+                const rebuildHeap = () => {
+                    cycle++
+                    frontier.length = 0
+                    for (let i = 0; i < heap.size; i++) {
+                        const nodeId = heap.values[i] ?? -1
+                        if (nodeId === -1 || closed[nodeId] === 1 || mark[nodeId] === cycle) {
+                            continue
+                        }
+                        mark[nodeId] = cycle
+                        frontier.push(nodeId)
+                    }
+                    heap.size = 0
+                    for (const nodeId of frontier) {
+                        heap.push(nodeId, (g[nodeId] ?? Infinity) + (estimate(nodeId) * HEURISTIC_WEIGHT))
+                    }
+                }
+
+                g[rootId] = 0
+                came[rootId] = -1
+                heap.push(rootId, estimate(rootId) * HEURISTIC_WEIGHT)
 
                 let expansions = 0
-                let bestId = startId
-                let bestHeuristic = estimate(startId)
+                let bestId = rootId
+                let bestHeuristic = estimate(rootId)
                 let bestG = 0
 
                 while (heap.size > 0) {
@@ -310,13 +691,11 @@ export function generatePath(entity: Villager, start: Vector3, end: Vector3, tok
                         catch { }
                     }
 
-                    if (current === endId) {
-                        resolve(buildPath(current))
-                        return
+                    if (halted()) {
+                        return "done"
                     }
-                    if (token.cancelled) {
-                        resolve("cancelled")
-                        return
+                    if (current === goalId) {
+                        return reachGoal(current)
                     }
 
                     const currentG = g[current] ?? Infinity
@@ -328,8 +707,25 @@ export function generatePath(entity: Villager, start: Vector3, end: Vector3, tok
                     }
 
                     if (++expansions > MAX_EXPANSIONS) {
-                        resolve(bestId === startId ? "timeout" : buildPath(bestId))
-                        return
+                        // Give up on the goal and walk to the closest point reached, as before.
+                        let candidate = bestId
+                        if (stream !== undefined && commitCount > 0) {
+                            fillChain(candidate)
+                            if (chain[commitCount - 1] !== tipId) {
+                                candidate = bestOpenNode()
+                            }
+                        }
+                        if (candidate === -1 || candidate === rootId) {
+                            finish("timeout")
+                            return "done"
+                        }
+                        fillChain(candidate)
+                        for (let i = commitCount; i < chain.length; i++) {
+                            emitNode(chain[i] ?? -1)
+                        }
+                        commitCount = Math.max(commitCount, chain.length)
+                        finish("complete")
+                        return "done"
                     }
                     if (ALIVE[current] === 0) {
                         continue
@@ -398,17 +794,41 @@ export function generatePath(entity: Villager, start: Vector3, end: Vector3, tok
                     }
 
                     if (expansions % YIELD_EVERY === 0) {
+                        commitStable()
                         yield
+                        if (halted()) {
+                            return "done"
+                        }
+                        const nextGoalKey = pollTarget()
+                        if (nextGoalKey !== undefined) {
+                            const nextGoalId = graph.idOf(nextGoalKey)
+                            if (nextGoalId !== -1) {
+                                goalKey = nextGoalKey
+                                goalId = nextGoalId
+                                ex = X[goalId] ?? 0
+                                ey = Y[goalId] ?? 0
+                                ez = Z[goalId] ?? 0
+                                bestHeuristic = Infinity
+                                bestG = Infinity
+                                rebuildHeap()
+                                if (closed[goalId] === 1) {
+                                    return reachGoal(goalId)
+                                }
+                            }
+                        }
                     }
                 }
 
-                resolve("no_path")
+                finish("no_path")
+                return "done"
             }
             finally {
                 scratchPool.push(scratch)
                 graph.endSearch()
             }
         }
+
+        system.runJob(guarded(begin()))
     })
 }
 
@@ -446,6 +866,7 @@ export function findNearestNodeLocation(nodeList: Record<string, PathNode>, loca
 
 interface PathEntity extends CheckEntityData {
     villager?: Villager
+    ignoreAsBlocker?: boolean
 }
 
 const CELL = 4
@@ -477,6 +898,9 @@ export function findPathBlocker(
                 if (other.id === selfId || calculateChebyshevDistance(other.location, node) >= 1.75) {
                     continue
                 }
+                if (other.ignoreAsBlocker === true) {
+                    continue
+                }
                 const villager = other.villager
                 if (villager !== undefined && (villager.isBlocked || !villager.isPathing || villager.totalBlockTimer > 100)) {
                     continue
@@ -503,88 +927,132 @@ function isPennedMob(village: Village, entity: Entity, location: Vector3) {
     return village.penTiles.has(locationToString(floorVector(addVector(location, "y", 0.1))))
 }
 
-system.runInterval(() => {
-    const pathingVillages = new Map<string, Village>()
-    const villagerById = new Map<string, Villager>()
+const pathingVillagers = new Set<Villager>()
+const pathingVillagerById = new Map<string, Villager>()
+let pathSnapshotTimeoutId: number | undefined
 
-    for (const villager of world.getVillagers()) {
-        villagerById.set(villager.id, villager)
-        if (!villager.isPathing) {
-            continue
+export function startPathSnapshot(villager: Villager) {
+    pathingVillagers.add(villager)
+    pathingVillagerById.set(villager.id, villager)
+    schedulePathSnapshot()
+}
+
+export function stopPathSnapshot(villager: Villager) {
+    pathingVillagers.delete(villager)
+    if (pathingVillagerById.get(villager.id) === villager) {
+        pathingVillagerById.delete(villager.id)
+    }
+}
+
+function schedulePathSnapshot() {
+    if (pathSnapshotTimeoutId === undefined && pathingVillagers.size > 0) {
+        pathSnapshotTimeoutId = system.runTimeout(tickPathSnapshot, 5)
+    }
+}
+
+function tickPathSnapshot() {
+    pathSnapshotTimeoutId = undefined
+    if (pathingVillagers.size === 0) {
+        for (const dimensionId of Registry.dimensionTypes) {
+            pathCheckEntities[dimensionId] = []
+            pathGrid.set(dimensionId, new Map())
+            pathCheckEntityIds.get(dimensionId)?.clear()
         }
-        const village = villager.getVillage()
-        if (village !== undefined) {
-            pathingVillages.set(`${village.dimensionId}|${village.centerString}`, village)
-        }
+        return
     }
 
-    for (const dimensionId of Registry.dimensionTypes) {
-        pathCheckEntities[dimensionId] = []
-        pathGrid.set(dimensionId, new Map())
-    }
+    try {
+        const pathingVillages = new Set<Village>()
 
-    for (const village of pathingVillages.values()) {
-        const dimensionId = village.dimensionId
-        const dimension = world.getDimension(dimensionId)
-        const flat = pathCheckEntities[dimensionId] ?? []
-        const grid = pathGrid.get(dimensionId) ?? new Map<number, PathEntity[]>()
-        const { start, end } = village.bounds
-
-        const entities = dimension.getEntities({
-            excludeTypes: pathIgnoreEntityTypes,
-            location: {
-                x: Math.min(start.x, end.x) - SNAPSHOT_MARGIN,
-                y: Math.min(start.y, end.y),
-                z: Math.min(start.z, end.z) - SNAPSHOT_MARGIN
-            },
-            volume: {
-                x: Math.abs(end.x - start.x) + (SNAPSHOT_MARGIN * 2),
-                y: Math.abs(end.y - start.y),
-                z: Math.abs(end.z - start.z) + (SNAPSHOT_MARGIN * 2)
-            }
-        })
-
-        const seen = new Set(flat.map(pathEntity => pathEntity.id))
-        for (const entity of entities) {
-            if (seen.has(entity.id)) {
+        for (const villager of pathingVillagers) {
+            if (!villager.isValid || !villager.isPathing) {
+                pathingVillagers.delete(villager)
+                pathingVillagerById.delete(villager.id)
                 continue
             }
-            if (entity instanceof Player && entity.getGameMode() === GameMode.Spectator) {
-                continue
-            }
-            const location = getLocationUncached(entity)
-            if (isPennedMob(village, entity, location)) {
-                continue
-            }
-            if (entity.getComponent(EntityComponentTypes.Leashable)?.isLeashed) {
-                continue
-            }
-
-            seen.add(entity.id)
-
-            const pathEntity: PathEntity = {
-                location,
-                id: entity.id,
-                typeId: entity.typeId,
-                cancelPath: pathCancelEntityTypes.includesFast(entity.typeId),
-                villager: villagerById.get(entity.id)
-            }
-            flat.push(pathEntity)
-
-            const key = cellKey(location.x, location.z)
-            const bucket = grid.get(key)
-            if (bucket === undefined) {
-                grid.set(key, [pathEntity])
-            }
-            else {
-                bucket.push(pathEntity)
+            const village = villager.getVillage()
+            if (village !== undefined) {
+                pathingVillages.add(village)
             }
         }
 
-        pathCheckEntities[dimensionId] = flat
-        pathGrid.set(dimensionId, grid)
+        for (const dimensionId of Registry.dimensionTypes) {
+            pathCheckEntities[dimensionId] = []
+            pathGrid.set(dimensionId, new Map())
+            pathCheckEntityIds.get(dimensionId)?.clear()
+        }
+
+        for (const village of pathingVillages) {
+            const dimensionId = village.dimensionId
+            const dimension = world.getDimension(dimensionId)
+            const flat = pathCheckEntities[dimensionId] ?? []
+            const grid = pathGrid.get(dimensionId) ?? new Map<number, PathEntity[]>()
+            const { start, end } = village.bounds
+
+            const entities = dimension.getEntities({
+                excludeTypes: pathIgnoreEntityTypes,
+                location: {
+                    x: Math.min(start.x, end.x) - SNAPSHOT_MARGIN,
+                    y: Math.min(start.y, end.y),
+                    z: Math.min(start.z, end.z) - SNAPSHOT_MARGIN
+                },
+                volume: {
+                    x: Math.abs(end.x - start.x) + (SNAPSHOT_MARGIN * 2),
+                    y: Math.abs(end.y - start.y),
+                    z: Math.abs(end.z - start.z) + (SNAPSHOT_MARGIN * 2)
+                }
+            })
+
+            let seen = pathCheckEntityIds.get(dimensionId)
+            if (seen === undefined) {
+                seen = new Set()
+                pathCheckEntityIds.set(dimensionId, seen)
+            }
+            for (const entity of entities) {
+                if (seen.has(entity.id)) {
+                    continue
+                }
+                if (entity instanceof Player && entity.getGameMode() === GameMode.Spectator) {
+                    continue
+                }
+                const location = getLocationUncached(entity)
+                if (isPennedMob(village, entity, location)) {
+                    continue
+                }
+                if (entity.getComponent(EntityComponentTypes.Leashable)?.isLeashed) {
+                    continue
+                }
+
+                seen.add(entity.id)
+
+                const pathEntity: PathEntity = {
+                    location,
+                    id: entity.id,
+                    typeId: entity.typeId,
+                    cancelPath: pathCancelEntityTypes.includesFast(entity.typeId),
+                    villager: entity.isVillager ? pathingVillagerById.get(entity.id) : undefined,
+                    ignoreAsBlocker: entity.isVillager && !pathingVillagerById.has(entity.id)
+                }
+                flat.push(pathEntity)
+
+                const key = cellKey(location.x, location.z)
+                const bucket = grid.get(key)
+                if (bucket === undefined) {
+                    grid.set(key, [pathEntity])
+                }
+                else {
+                    bucket.push(pathEntity)
+                }
+            }
+
+            pathCheckEntities[dimensionId] = flat
+            pathGrid.set(dimensionId, grid)
+        }
     }
-}, 5)
+    finally {
+        schedulePathSnapshot()
+    }
+}
 
 function checkRequirement(villagerType: string, requirement?: NodeRequirement) {
     if (requirement === undefined) {
@@ -808,7 +1276,8 @@ const avoidBlockTypes = new Set(["minecraft:web"])
 Block.prototype.canPathThrough = function () {
     return (
         this.canWalkThrough() ||
-        Registry.doorTypes.includesFast(this.typeId) ||
+        Registry.openableDoorTypes.includesFast(this.typeId) ||
+        Registry.fenceGateTypes.includesFast(this.typeId) ||
         avoidBlockTypes.has(this.typeId)
     )
 }

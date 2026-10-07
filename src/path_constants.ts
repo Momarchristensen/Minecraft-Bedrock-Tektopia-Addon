@@ -39,5 +39,6 @@ export const pathIgnoreEntityTypes = [
     "minecraft:fireworks_rocket",
     "minecraft:eye_of_ender_signal",
     "minecraft:area_effect_cloud",
-    "minecraft:item"
+    "minecraft:item",
+    "minecraft:cushion"
 ]

@@ -18,6 +18,8 @@ import {
     locationToString
 } from "./utils"
 
+import { getPathNodeBlockState } from "./path"
+
 import type {
     LocationString,
     NodeRequirement,
@@ -54,6 +56,18 @@ const DEFAULT_NODE_COLOR = {
     red: 122 / 255,
     green: 122 / 255,
     blue: 122 / 255
+}
+
+const BLOCKED_NODE_COLOR = {
+    red: 1,
+    green: 0,
+    blue: 0
+}
+
+const OCCUPIED_NODE_COLOR = {
+    red: 1,
+    green: 0.5,
+    blue: 0
 }
 
 const CONNECTION_LAYER_HEIGHT = 0.003
@@ -265,6 +279,10 @@ function* drawDebug(callback?: () => void) {
             const villageList = world.getVillages()
 
             for (const player of players) {
+                if (!player.isValid) {
+                    continue
+                }
+
                 const playerPos = player.location
                 const nearbyRange = 4
                 const minY = Math.floor(playerPos.y) - 1
@@ -297,7 +315,14 @@ function* drawDebug(callback?: () => void) {
                                 const colorMap = new MolangVariableMap()
 
                                 let nodeColor
-                                if (node.requirement !== undefined) {
+                                const blockState = getPathNodeBlockState(village.dimensionId, checkPos)
+                                if (blockState === 2) {
+                                    nodeColor = BLOCKED_NODE_COLOR
+                                }
+                                else if (blockState === 1) {
+                                    nodeColor = OCCUPIED_NODE_COLOR
+                                }
+                                else if (node.requirement !== undefined) {
                                     nodeColor = requirementColor(node.requirement)
                                 }
 

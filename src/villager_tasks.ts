@@ -113,7 +113,7 @@ export const tektopiaVillagers: Record<string, VillagerConfig> = {
                 name: "Breed",
                 required: false,
                 condition: (villager: Villager, village: Village) => villager.findBreedableEntity(village) !== undefined,
-                tick: (villager: Villager, village: Village) => villager.tickBreedEntity(village)
+                tick: (villager: Villager) => villager.tickBreedEntity()
             },
             {
                 id: "shear",
@@ -148,14 +148,14 @@ export const tektopiaVillagers: Record<string, VillagerConfig> = {
     "tektopia:butcher": {
         customTasks: [
             {
-                id: "guard_post",
-                name: "Guard Post",
+                id: "butcher_animal",
+                name: "Butcher Animal",
                 required: false,
-                condition: (villager: Villager, village: Village) => villager.findFullPen(village) !== undefined && villager.findButchStructure(village) !== undefined,
+                condition: (villager: Villager, village: Village) => villager.findFullPen(village) !== undefined && villager.findButcherStructure(village) !== undefined,
                 tick: (villager: Villager, village: Village) => villager.tickButcher(village)
             }
         ],
-        pickupItems: () => ["minecraft:beef", "minecraft:porkchop", "minecraft:chicken", "minecraft:mutton"]
+        pickupItems: () => ["minecraft:beef", "minecraft:porkchop", "minecraft:chicken", "minecraft:mutton", "minecraft:feather", "minecraft:leather", ...Registry.woolTypes]
     }
 }
 
