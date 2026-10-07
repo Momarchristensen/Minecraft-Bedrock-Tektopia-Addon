@@ -827,6 +827,8 @@ export class Villager {
         if (isEntityTarget(target) && !target.isValid) {
             return
         }
+        // The entity being walked to must never count as something blocking the way to itself
+        const targetId = isEntityTarget(target) ? target.id : undefined
         let lastTargetLocation: Vector3 = isEntityTarget(target) ? target.location : target
         const getTargetLocation = () => {
             if (isEntityTarget(target) && target.isValid) {
@@ -912,7 +914,7 @@ export class Villager {
 
             // Following starts right away; nodes arrive in the stream while the path is still being generated.
             const stream = createPathStream()
-            villager.followPath(stream, getTargetLocation, cancelPath, () => finished)
+            villager.followPath(stream, getTargetLocation, cancelPath, () => finished, targetId)
 
             generatePath(villager, startLocation, target, token, stream).then(result => {
                 if (finished || typeof result !== "string") {
@@ -2151,7 +2153,8 @@ export class Villager {
         stream: PathStream,
         getTargetLocation: () => Vector3,
         cancelPath: () => void,
-        isFinished: () => boolean
+        isFinished: () => boolean,
+        targetId?: string
     ) {
         const villager = this
         const pathNodeList = stream.nodes
@@ -2243,7 +2246,7 @@ export class Villager {
                     cancelPath()
                     return
                 }
-                const blocker = findPathBlocker(dimensionId, currentPathNode, villager.id, entityLocation, village)
+                const blocker = findPathBlocker(dimensionId, currentPathNode, villager.id, entityLocation, village, targetId)
                 if (blocker?.cancelPath === true) {
                     cancelPath()
                     return
@@ -2313,11 +2316,11 @@ export class Villager {
 
                 if (Math.abs(currentPathNode.y - villager.location.y) <= 0.25 ? calculateChebyshevDistance(currentPathNode, villager.location) <= 0.25 : calculateChebyshevDistance(currentPathNode, villager.location) <= 0.5) {
                     stream.head = pathNodeIndex + 1
-                    const before = stream.nodes.length
+                    // const before = stream.nodes.length
                     shortcutStream(stream, village.graph, pathNode)
-                    if (stream.nodes.length < before) {
-                        console.warn(`shortcut skipped ${before - stream.nodes.length} nodes`)
-                    }
+                    // if (stream.nodes.length < before) {
+                    //     console.warn(`shortcut skipped ${before - stream.nodes.length} nodes`)
+                    // }
                     if (stream.head >= 64 && stream.head * 2 >= pathNodeList.length) {
                         pathNodeList.splice(0, stream.head)
                         stream.head = 0
@@ -2449,6 +2452,6 @@ Object.defineProperty(Entity.prototype, "isShearable", {
             return false
         }
 
-        return !this.hasComponent(EntityComponentTypes.IsSheared)
+        return !this.hasComponent(EntityComponentTypes.IsSheared) && !this.hasComponent(EntityComponentTypes.IsBaby)
     }
 })

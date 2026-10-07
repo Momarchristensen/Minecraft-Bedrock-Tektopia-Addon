@@ -30,6 +30,7 @@
   "dependencies": {
     "@minecraft/server": "^2.11.0-beta.1.26.52-stable",
     "@minecraft/server-ui": "^2.3.0-beta.1.26.52-stable",
+    "async-lz-string": "^1.1.0",
     "lz-string": "^1.5.0"
   }
 }

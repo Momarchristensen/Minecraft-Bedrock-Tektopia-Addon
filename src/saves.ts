@@ -6,6 +6,8 @@ import {
     world
 } from "@minecraft/server"
 
+import { compressToBase64 as compressToBase64Async } from "async-lz-string"
+
 import LZString from "lz-string"
 
 import {
@@ -83,28 +85,55 @@ World.prototype.loadData = function () {
     this.loadedData = true
 }
 
-World.prototype.saveData = function () {
-    if (!this.loadedData) {
-        return
+// async-lz-string pauses between slices of work with setTimeout, which the Bedrock script runtime does not provide
+const globalScope = globalThis as unknown as Record<string, unknown>
+
+if (globalScope.setTimeout === undefined) {
+    globalScope.setTimeout = (callback: () => void, delay = 0) => {
+        return system.runTimeout(callback, Math.max(1, Math.ceil(delay / 50)))
     }
-    const worldSaveDataIdList = this.getDynamicPropertyIds()
+}
+
+type WorldSaveDataProperty = typeof worldSaveDataList[number]
+
+interface SerializedWorldProperty {
+    property: WorldSaveDataProperty["property"]
+    json: string
+}
+
+interface CompressedWorldProperty {
+    property: WorldSaveDataProperty["property"]
+    valueString: string
+}
+
+// Incremented by every synchronous save, so an asynchronous save that was started earlier knows its snapshot is stale
+let syncSaveCount = 0
+let activeAsyncSave: Promise<void> | undefined
+
+function serializeWorldProperty(world: World, property: WorldSaveDataProperty): SerializedWorldProperty | undefined {
+    let value: any = world[property.property]
+
+    if (property.compression !== undefined) {
+        try {
+            value = property.compression.compress(value)
+        }
+        catch (error) {
+            console.error(`Failed to compress ${property.property}, keeping the previous save:`, error)
+            return undefined
+        }
+    }
+
+    return {
+        property: property.property,
+        json: JSON.stringify(value)
+    }
+}
+
+function writeWorldSaveData(world: World, saves: CompressedWorldProperty[]) {
+    const worldSaveDataIdList = world.getDynamicPropertyIds()
     const propertiesToDelete = []
 
-    for (const property of worldSaveDataList) {
-        let value: any = this[property.property]
-
-        if (property.compression !== undefined) {
-            try {
-                value = property.compression.compress(value)
-            }
-            catch (error) {
-                console.error(`Failed to compress ${property.property}, keeping the previous save:`, error)
-                continue
-            }
-        }
-
-        const valueString = LZString.compressToBase64(JSON.stringify(value))
-
+    for (const { property, valueString } of saves) {
         let startingIndex = 0
 
         if (valueString.length > 32767) {
@@ -112,27 +141,102 @@ World.prototype.saveData = function () {
 
             for (let j = 0; j < stringList.length; j++) {
                 const saveString = stringList[j]
-                this.setDynamicProperty(`${property.property}:${j}`, saveString)
+                world.setDynamicProperty(`${property}:${j}`, saveString)
             }
 
             startingIndex = stringList.length
-            propertiesToDelete.push(property.property)
+            propertiesToDelete.push(property)
         }
         else {
-            this.setDynamicProperty(property.property, valueString)
+            world.setDynamicProperty(property, valueString)
         }
 
-        for (let j = startingIndex; worldSaveDataIdList.includes(`${property.property}:${j}`); j++) {
-            propertiesToDelete.push(`${property.property}:${j}`)
+        for (let j = startingIndex; worldSaveDataIdList.includes(`${property}:${j}`); j++) {
+            propertiesToDelete.push(`${property}:${j}`)
         }
     }
 
     for (const propertyId of propertiesToDelete) {
         if (worldSaveDataIdList.includes(propertyId)) {
-            this.setDynamicProperty(propertyId)
+            world.setDynamicProperty(propertyId)
         }
     }
 }
+
+function saveWorldDataSync(world: World) {
+    if (!world.loadedData) {
+        return
+    }
+    syncSaveCount++
+
+    const saves: CompressedWorldProperty[] = []
+
+    for (const property of worldSaveDataList) {
+        const serialized = serializeWorldProperty(world, property)
+        if (serialized === undefined) {
+            continue
+        }
+        saves.push({
+            property: serialized.property,
+            valueString: LZString.compressToBase64(serialized.json)
+        })
+    }
+
+    writeWorldSaveData(world, saves)
+}
+
+async function saveWorldDataAsync(world: World) {
+    const startingSyncSaveCount = syncSaveCount
+
+    // Snapshot everything now, so the data that gets saved is the data as it was when the save was requested
+    const serializedList: SerializedWorldProperty[] = []
+    for (const property of worldSaveDataList) {
+        const serialized = serializeWorldProperty(world, property)
+        if (serialized !== undefined) {
+            serializedList.push(serialized)
+        }
+    }
+
+    const saves: CompressedWorldProperty[] = []
+    for (const { property, json } of serializedList) {
+        try {
+            saves.push({
+                property,
+                valueString: await compressToBase64Async(json)
+            })
+        }
+        catch (error) {
+            console.error(`Failed to compress ${property} asynchronously, keeping the previous save:`, error)
+        }
+    }
+
+    if (syncSaveCount !== startingSyncSaveCount) {
+        // A synchronous save (such as the one on shutdown) already wrote newer data while this one was compressing
+        return
+    }
+
+    writeWorldSaveData(world, saves)
+}
+
+World.prototype.saveData = function (this: World, asynchronous = false) {
+    if (!asynchronous) {
+        saveWorldDataSync(this)
+        return undefined
+    }
+
+    if (!this.loadedData) {
+        return Promise.resolve()
+    }
+    if (activeAsyncSave !== undefined) {
+        return activeAsyncSave
+    }
+
+    const save = saveWorldDataAsync(this).finally(() => {
+        activeAsyncSave = undefined
+    })
+    activeAsyncSave = save
+    return save
+} as World["saveData"]
 
 export interface EntityData {
     breedingData?: BreedingSaveData | undefined
@@ -196,7 +300,12 @@ system.beforeEvents.shutdown.subscribe(() => {
 })
 
 system.runInterval(() => {
-    world.saveData()
+    world.sendMessage("Running Autosave")
+    world.saveData(true).then(()=> {
+        world.sendMessage("Autosave Complete")
+    }).catch((error: unknown) => {
+        console.error("Asynchronous world save failed:", error)
+    })
     loadEntities()
 }, 1200)
 

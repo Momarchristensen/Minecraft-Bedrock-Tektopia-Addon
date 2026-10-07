@@ -43,7 +43,8 @@ declare module "@minecraft/server" {
         lagTime?: number
         loadedData: boolean
         getVillages(): Village[]
-        saveData(): void
+        saveData(asynchronous?: false): void
+        saveData(asynchronous: true): Promise<void>
         loadData(): void
         getEntities(options?: EntityQueryOptions | undefined): Entity[]
         getVillagers(): Villager[]

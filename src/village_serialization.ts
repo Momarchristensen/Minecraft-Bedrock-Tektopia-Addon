@@ -33,6 +33,8 @@ const SAVE_PATH_NODES: boolean = true
 
 const SAVE_RESOURCE_LOCATIONS: boolean = true
 
+const SAVE_DERIVED_LOCATIONS: boolean = false
+
 const NAMESPACE = "minecraft:"
 
 type Triple = [number, number, number]
@@ -47,6 +49,14 @@ export type CompressedCost = [
     cost: number,
     nodeIndexDeltas: string
 ]
+
+export type PackedStructures = [
+    locations: string,
+    types: string[],
+    typeRotationIndices: string
+]
+
+export type CompressedStructures = PackedStructures | Record<LocationString, StructureData> | undefined
 
 export type CompressedVillage = [
     dimensionId: string,
@@ -66,10 +76,10 @@ export type CompressedVillage = [
     nodeRequirements: CompressedRequirement[],
     plantTypes: string[] | undefined,
     plantTypeIndices: string | undefined,
-    legacyStepRequirements: unknown, // no longer used: per-node step requirements were replaced by connectionRequirements
-    structures: Record<LocationString, StructureData> | undefined,
+    structures: CompressedStructures,
     nodeCosts: CompressedCost[] | undefined,
-    connectionRequirements: CompressedRequirement[] | undefined // indices are edge ids: (nodeIndex * 26) + offsetIndex to the neighbor
+    connectionRequirements: CompressedRequirement[] | undefined,
+    edgeMode: 1 | undefined
 ]
 
 const DIGITS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
@@ -212,7 +222,7 @@ function packTypedLocations(locationRecord: Record<LocationString, string>, orig
         let typeIndex = typeIndexByType.get(entry.type)
         if (typeIndex === undefined) {
             typeIndex = types.length
-            types.push(entry.type)
+            types.push(entry.type.startsWith(NAMESPACE) ? entry.type.slice(NAMESPACE.length) : entry.type)
             typeIndexByType.set(entry.type, typeIndex)
         }
         typeIndices.push(typeIndex)
@@ -236,8 +246,69 @@ function unpackTypedLocations(text: string, types: string[] | undefined, typeInd
         }
         const type = types[typeIndex]
         if (type !== undefined) {
-            result[locationToString(point)] = type
+            result[locationToString(point)] = type.includes(":") ? type : NAMESPACE + type
         }
+    }
+    return result
+}
+
+const STRUCTURE_ROTATIONS: Array<StructureData["rotation"]> = ["north", "east", "south", "west"]
+
+// Returns the packed form, or the plain record when something doesn't fit the packed form (so nothing is ever lost)
+function compressStructures(structures: Record<LocationString, StructureData>, origin: Vector3): CompressedStructures {
+    const entries: Array<{ point: Vector3, type: string, rotation: number }> = []
+    for (const key of Object.keys(structures) as LocationString[]) {
+        const structure = structures[key]
+        if (structure === undefined) {
+            continue
+        }
+
+        const rotation = STRUCTURE_ROTATIONS.indexOf(structure.rotation)
+        const point = stringToLocation(key)
+        if (rotation === -1 || Object.keys(structure).length !== 2 || locationToString(point) !== key) {
+            return structures
+        }
+        entries.push({ point, type: structure.type, rotation })
+    }
+
+    if (entries.length === 0) {
+        return undefined
+    }
+    entries.sort((a, b) => comparePoints(a.point, b.point))
+
+    const types: string[] = []
+    const typeIndexByType = new Map<string, number>()
+    const indices: number[] = []
+    for (const entry of entries) {
+        let typeIndex = typeIndexByType.get(entry.type)
+        if (typeIndex === undefined) {
+            typeIndex = types.length
+            types.push(entry.type)
+            typeIndexByType.set(entry.type, typeIndex)
+        }
+        indices.push((typeIndex * STRUCTURE_ROTATIONS.length) + entry.rotation)
+    }
+
+    return [packPoints(entries.map(entry => entry.point), origin), types, packUnsigned(indices)]
+}
+
+function decompressStructures(packed: PackedStructures, origin: Vector3): Record<LocationString, StructureData> {
+    const [packedLocations, types, packedIndices] = packed
+    const points = unpackPoints(packedLocations, origin)
+    const indices = unpackUnsigned(packedIndices)
+    const result: Record<LocationString, StructureData> = {}
+    for (const [i, point] of points.entries()) {
+        const packedIndex = indices[i]
+        if (packedIndex === undefined) {
+            continue
+        }
+
+        const type = types[Math.floor(packedIndex / STRUCTURE_ROTATIONS.length)]
+        const rotation = STRUCTURE_ROTATIONS[packedIndex % STRUCTURE_ROTATIONS.length]
+        if (type === undefined || rotation === undefined) {
+            continue
+        }
+        result[locationToString(point)] = { type: type as StructureData["type"], rotation }
     }
     return result
 }
@@ -257,6 +328,7 @@ for (let dx = -1; dx <= 1; dx++) {
     }
 }
 const FORWARD_START = 13
+const FORWARD_BITS = NEIGHBOR_OFFSETS.length - FORWARD_START
 
 function offsetIndex(dx: number, dy: number, dz: number) {
     const index = ((dx + 1) * 9) + ((dz + 1) * 3) + (dy + 1)
@@ -269,6 +341,63 @@ function offsetKey(location: Vector3, offset: Vector3) {
         y: location.y + offset.y,
         z: location.z + offset.z
     })
+}
+
+interface MaskStreams {
+    palette: number[]
+    indices: number[]
+    estimatedBits: number
+}
+
+// Palette-codes one mask per node. estimatedBits is a rough entropy cost, used to pick the cheaper edge encoding
+function buildMaskStreams(masks: number[]): MaskStreams {
+    const maskCounts = new Map<number, number>()
+    for (const mask of masks) {
+        maskCounts.set(mask, (maskCounts.get(mask) ?? 0) + 1)
+    }
+
+    const palette = [...maskCounts.keys()].sort((mask1, mask2) => {
+        const countDifference = (maskCounts.get(mask2) ?? 0) - (maskCounts.get(mask1) ?? 0)
+
+        return countDifference !== 0 ? countDifference : mask1 - mask2
+    })
+
+    const paletteIndexByMask = new Map<number, number>()
+    for (const [i, mask] of palette.entries()) {
+        paletteIndexByMask.set(mask, i)
+    }
+
+    let estimatedBits = palette.length * FORWARD_BITS
+    for (const count of maskCounts.values()) {
+        estimatedBits -= count * Math.log2(count / masks.length)
+    }
+
+    return {
+        palette,
+        indices: masks.map(mask => paletteIndexByMask.get(mask) ?? 0),
+        estimatedBits
+    }
+}
+
+// For every node: the forward neighbors that exist as nodes but are not connected to it
+function buildExceptionMasks(nodeLocations: Vector3[], indexByKey: Map<string, number>, connectedMasks: number[]): number[] {
+    const exceptionMasks: number[] = new Array(nodeLocations.length).fill(0)
+    for (const [i, location] of nodeLocations.entries()) {
+        const connected = connectedMasks[i] ?? 0
+        let exceptions = 0
+        for (let bitIndex = 0; bitIndex < FORWARD_BITS; bitIndex++) {
+            const offset = NEIGHBOR_OFFSETS[FORWARD_START + bitIndex]
+            if (offset === undefined || (connected & (1 << bitIndex)) !== 0) {
+                continue
+            }
+
+            if (indexByKey.has(offsetKey(location, offset))) {
+                exceptions |= 1 << bitIndex
+            }
+        }
+        exceptionMasks[i] = exceptions
+    }
+    return exceptionMasks
 }
 
 export function compressVillage(data: VillageSaveData): CompressedVillage {
@@ -375,22 +504,12 @@ export function compressVillage(data: VillageSaveData): CompressedVillage {
         }
     }
 
-    const maskCounts = new Map<number, number>()
-    for (const mask of forwardMasks) {
-        maskCounts.set(mask, (maskCounts.get(mask) ?? 0) + 1)
-    }
-
-    const palette = [...maskCounts.keys()].sort((mask1, mask2) => {
-        const countDifference = (maskCounts.get(mask2) ?? 0) - (maskCounts.get(mask1) ?? 0)
-
-        return countDifference !== 0 ? countDifference : mask1 - mask2
-    })
-
-    const paletteIndexByMask = new Map<number, number>()
-    for (const [i, mask] of palette.entries()) {
-        paletteIndexByMask.set(mask, i)
-    }
-    const maskIndices = forwardMasks.map(mask => paletteIndexByMask.get(mask) ?? 0)
+    // Most adjacent nodes are usually connected, so listing the pairs that are NOT connected can leave
+    // mostly empty masks that compress far better. Whichever encoding looks cheaper is used per village.
+    const connectedStreams = buildMaskStreams(forwardMasks)
+    const exceptionStreams = buildMaskStreams(buildExceptionMasks(nodeEntries.map(entry => entry.location), indexByKey, forwardMasks))
+    const useExceptions = exceptionStreams.estimatedBits < connectedStreams.estimatedBits
+    const maskStreams = useExceptions ? exceptionStreams : connectedStreams
 
     const nodeRequirements = packRequirementGroups(requirementGroups)
     const connectionRequirements = packRequirementGroups(connectionRequirementGroups)
@@ -412,20 +531,20 @@ export function compressVillage(data: VillageSaveData): CompressedVillage {
         SAVE_RESOURCE_LOCATIONS ? packLocations(data.saplingLocations, origin) : "",
         SAVE_RESOURCE_LOCATIONS ? packLocations(data.farmLocations, origin) : "",
         SAVE_RESOURCE_LOCATIONS ? packLocations(data.treeLocations, origin) : "",
-        SAVE_RESOURCE_LOCATIONS ? packLocations(data.harvestLocations, origin) : "",
+        SAVE_RESOURCE_LOCATIONS && SAVE_DERIVED_LOCATIONS ? packLocations(data.harvestLocations, origin) : "",
         SAVE_RESOURCE_LOCATIONS ? packLocations(data.sweetBerryLocations, origin) : "",
-        SAVE_RESOURCE_LOCATIONS ? packLocations(data.tillLocations, origin) : "",
+        SAVE_RESOURCE_LOCATIONS && SAVE_DERIVED_LOCATIONS ? packLocations(data.tillLocations, origin) : "",
         packedPlantLocations,
         packPoints(nodeEntries.map(entry => entry.location), origin),
-        packUnsigned(palette),
-        packUnsigned(maskIndices),
+        packUnsigned(maskStreams.palette),
+        packUnsigned(maskStreams.indices),
         nodeRequirements,
         plantTypes,
         plantTypeIndices,
-        undefined,
-        data.structures,
+        compressStructures(data.structures, origin),
         nodeCosts,
-        connectionRequirements
+        connectionRequirements,
+        useExceptions ? 1 : undefined
     ]
 }
 
@@ -448,12 +567,11 @@ export function decompressVillage(compressed: CompressedVillage): VillageSaveDat
         compressedRequirements,
         plantTypes,
         plantTypeIndices,
-        legacyStepRequirements,
         structures,
         compressedNodeCosts,
-        compressedConnectionRequirements
+        compressedConnectionRequirements,
+        edgeMode
     ] = compressed
-    void legacyStepRequirements
 
     const center: Vector3 = { x: centerCoords[0], y: centerCoords[1], z: centerCoords[2] }
     const origin = originOf(center)
@@ -473,6 +591,7 @@ export function decompressVillage(compressed: CompressedVillage): VillageSaveDat
 
     const maskPalette = unpackUnsigned(packedMaskPalette)
     const maskPaletteIndices = unpackUnsigned(packedMaskIndices)
+    const masksListExceptions = edgeMode === 1
 
     for (const [nodeIndex, point] of nodePoints.entries()) {
         const paletteIndex = maskPaletteIndices[nodeIndex]
@@ -495,8 +614,9 @@ export function decompressVillage(compressed: CompressedVillage): VillageSaveDat
             continue
         }
 
-        for (let bitIndex = 0; bitIndex < 13; bitIndex++) {
-            if ((neighborMask & (1 << bitIndex)) === 0) {
+        for (let bitIndex = 0; bitIndex < FORWARD_BITS; bitIndex++) {
+            // Normally a set bit means connected; in exception mode a set bit means "adjacent but not connected"
+            if (((neighborMask & (1 << bitIndex)) !== 0) === masksListExceptions) {
                 continue
             }
 
@@ -587,6 +707,6 @@ export function decompressVillage(compressed: CompressedVillage): VillageSaveDat
         sweetBerryLocations: unpackLocations(packedSweetBerryLocations, origin),
         plantLocations: unpackTypedLocations(packedPlantLocations, plantTypes, plantTypeIndices, origin),
         tillLocations: unpackLocations(packedTillLocations, origin),
-        structures: structures ?? {}
+        structures: Array.isArray(structures) ? decompressStructures(structures, origin) : structures ?? {}
     }
 }

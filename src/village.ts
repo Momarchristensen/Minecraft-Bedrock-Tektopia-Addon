@@ -1242,12 +1242,15 @@ function* refreshRanchEntities(villageList: Village[], callback: () => void): Ge
         }
 
         for (const village of villageList) {
-            const ranchEntities: Record<string, VillageRanchEntity> = {}
+            const ranchEntities = village.ranchEntities
+            const seenRanchEntityIds = new Set<string>()
             const ranchVillagerEntitiesByStructure = new Map<LocationString, string[]>()
             const penTiles = new Map<LocationString, LocationString>()
             const pens = village.findStructures({ includedTypes: ["pig_pen", "cow_pen", "chicken_coop", "sheep_pen"] })
             if (pens.length === 0) {
-                village.ranchEntities = ranchEntities
+                for (const id of Object.keys(ranchEntities)) {
+                    delete ranchEntities[id]
+                }
                 village.ranchVillagerEntitiesByStructure = ranchVillagerEntitiesByStructure
                 village.penTiles = penTiles
                 continue
@@ -1255,7 +1258,6 @@ function* refreshRanchEntities(villageList: Village[], callback: () => void): Ge
 
             const penFloors: Array<{ pen: typeof pens[number], columns: Map<string, number[]> }> = []
             for (const pen of pens) {
-                // Keep the previous scan if this one encounters an unloaded chunk.
                 const scanned = yield* pen.scanLocationsIncremental()
                 const previous = village.penCache.get(pen.locationString)
                 const floor = scanned.floor ?? previous?.floor ?? []
@@ -1321,15 +1323,31 @@ function* refreshRanchEntities(villageList: Village[], callback: () => void): Ge
 
                 const inPen = matchedPen !== undefined
                 const breeding = rancherEntity.breeding
-                ranchEntities[rancherEntity.id] = {
-                    typeId: rancherEntity.typeId,
-                    location: rancherEntityLocation,
-                    inPen,
-                    structure,
-                    breedable: breeding?.canBreed ?? false,
-                    villagerEntity: rancherEntity.villagerEntity ?? false,
-                    isShearable: rancherEntity.isShearable
+                const breedable = breeding?.canBreed ?? false
+                const villagerEntity = rancherEntity.villagerEntity ?? false
+
+                const existingRanchEntity = ranchEntities[rancherEntity.id]
+                if (existingRanchEntity === undefined) {
+                    ranchEntities[rancherEntity.id] = {
+                        typeId: rancherEntity.typeId,
+                        location: rancherEntityLocation,
+                        inPen,
+                        structure,
+                        breedable,
+                        villagerEntity,
+                        isShearable: rancherEntity.isShearable
+                    }
                 }
+                else {
+                    existingRanchEntity.typeId = rancherEntity.typeId
+                    existingRanchEntity.location = rancherEntityLocation
+                    existingRanchEntity.inPen = inPen
+                    existingRanchEntity.structure = structure
+                    existingRanchEntity.breedable = breedable
+                    existingRanchEntity.villagerEntity = villagerEntity
+                    existingRanchEntity.isShearable = rancherEntity.isShearable
+                }
+                seenRanchEntityIds.add(rancherEntity.id)
 
                 if (inPen && structure !== undefined && rancherEntity.villagerEntity) {
                     let villagerEntities = ranchVillagerEntitiesByStructure.get(structure)
@@ -1358,7 +1376,11 @@ function* refreshRanchEntities(villageList: Village[], callback: () => void): Ge
                 }
             }
 
-            village.ranchEntities = ranchEntities
+            for (const id of Object.keys(ranchEntities)) {
+                if (!seenRanchEntityIds.has(id)) {
+                    delete ranchEntities[id]
+                }
+            }
             village.ranchVillagerEntitiesByStructure = ranchVillagerEntitiesByStructure
             village.penTiles = penTiles
         }

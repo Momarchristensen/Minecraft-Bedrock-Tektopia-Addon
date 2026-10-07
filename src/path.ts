@@ -139,7 +139,8 @@ function buildBlockedCells(
     graph: PathGraph,
     bounds: Bounds,
     blocked: Uint8Array,
-    excludedEntityId: string
+    excludedEntityId: string,
+    targetEntityId?: string
 ) {
     const RADIUS = BLOCKED_ENTITY_RADIUS
     const minBX = Math.min(bounds.start.x, bounds.end.x) - RADIUS - 1
@@ -148,7 +149,7 @@ function buildBlockedCells(
     const maxBZ = Math.max(bounds.start.z, bounds.end.z) + RADIUS + 1
 
     for (const other of entities) {
-        if (other.id === excludedEntityId) {
+        if (other.id === excludedEntityId || other.id === targetEntityId) {
             continue
         }
         const loc = other.location
@@ -560,7 +561,7 @@ export function generatePath(
             const scratch = acquireScratch(size)
             try {
                 const { g, closed, came, blocked, verdict, heap, mark, link } = scratch
-                buildBlockedCells(pathCheckEntities[dimensionId] ?? [], graph, villageBounds, blocked, entity.id)
+                buildBlockedCells(pathCheckEntities[dimensionId] ?? [], graph, villageBounds, blocked, entity.id, targetEntity?.id)
 
                 const typeId = entity.typeId
                 const allowed = (requirementId: number) => {
@@ -930,7 +931,8 @@ export function findPathBlocker(
     node: Vector3,
     selfId: string,
     selfLocation: Vector3,
-    village: PathVillage
+    village: PathVillage,
+    targetId?: string
 ) {
     if (village.penTiles.has(locationToString(floorVector(addVector(selfLocation, "y", 0.1))))) {
         return undefined
@@ -947,7 +949,7 @@ export function findPathBlocker(
                 continue
             }
             for (const other of bucket) {
-                if (other.id === selfId || calculateChebyshevDistance(other.location, node) >= 1.75) {
+                if (other.id === selfId || other.id === targetId || calculateChebyshevDistance(other.location, node) >= 1.75) {
                     continue
                 }
                 if (other.ignoreAsBlocker === true) {
