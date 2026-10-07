@@ -103,6 +103,22 @@ function* scanItemFrames(callback?: () => void) {
                                 type: structureId,
                                 rotation
                             })
+
+                            if (structureId === "storage") {
+                                if (structureValidation.floorLocations !== undefined) {
+                                    const chestList = []
+                                    for (const floorLocation of structureValidation.floorLocations) {
+                                        const floorBlock = dimension.getBlockSafe(floorLocation)
+                                        if (floorBlock?.typeId !== "minecraft:chest") {
+                                            continue
+                                        }
+
+                                        chestList.push(floorBlock)
+                                    }
+
+                                    village.storage.setContainers(chestList)
+                                }
+                            }
                         }
                     }
                 }

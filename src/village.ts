@@ -18,7 +18,7 @@ import {
     isRanchAnimalRegistryInitialized
 } from "./breed"
 
-import { debugFlags } from "./debug"
+import { debugFlags } from "./debug_flags"
 
 import { LocationList } from "./location_list"
 
@@ -52,18 +52,19 @@ import {
 
 import {
     type CompressedVillage,
+    type VillageSaveData,
     compressVillage,
     decompressVillage
 } from "./village_serialization"
 
+import { VillageStorage } from "./village_storage"
+
 import type {
     NodeRequirement,
-    PathNode,
     LocationString,
-    Bounds
-} from "./minecraft_extensions"
-
-import type { Villager } from "./villager"
+    Bounds,
+    VillageRanchEntity
+} from "./types"
 
 system.beforeEvents.startup.subscribe(event => {
     const customCommandRegistry = event.customCommandRegistry
@@ -106,35 +107,9 @@ system.beforeEvents.startup.subscribe(event => {
 
 export const VILLAGE_RADIUS = 100
 
-export interface VillageSaveData {
-    center: Vector3
-    dimensionId: string
-    doorLocation: Vector3
-    pathNodes: Record<LocationString, PathNode>
-    sugarCaneLocations: LocationString[]
-    saplingLocations: LocationString[]
-    farmLocations: LocationString[]
-    harvestLocations: LocationString[]
-    plantLocations: Record<LocationString, string>
-    tillLocations: LocationString[]
-    sweetBerryLocations: LocationString[]
-    treeLocations: LocationString[]
-    structures: Record<LocationString, StructureData>
-}
-
 export interface StructureFilter<K extends StructureType = StructureType> {
     includedTypes?: readonly K[]
     excludedTypes?: readonly StructureType[]
-}
-
-export interface VillageRanchEntity {
-    typeId: string
-    location: Vector3
-    inPen: boolean
-    structure: LocationString | undefined
-    breedable: boolean
-    villagerEntity: boolean
-    isShearable: boolean
 }
 
 export class Village {
@@ -156,6 +131,7 @@ export class Village {
     readonly tillLocations: LocationList
     readonly sweetBerryLocations: LocationList
     readonly treeLocations: LocationList
+    readonly storage: VillageStorage
 
     searchingBlocks = false
     deletingInvalidNodes = false
@@ -175,6 +151,7 @@ export class Village {
         this.tillLocations = new LocationList(data.tillLocations)
         this.sweetBerryLocations = new LocationList(data.sweetBerryLocations)
         this.treeLocations = new LocationList(data.treeLocations)
+        this.storage = new VillageStorage(this)
     }
 
     static from(data: VillageSaveData): Village {
@@ -301,7 +278,7 @@ export class Village {
         return world.villageList.includes(this.data)
     }
 
-    getVillagers(): Villager[] {
+    getVillagers() {
         const dimensionId = this.data.dimensionId
         return world.getVillagers().filter(villager => {
             return villager.dimension.id === dimensionId && this.isInBounds(villager.location)
@@ -810,10 +787,10 @@ Object.defineProperty(Block.prototype, "isHarvestableSweetBerryBush", {
 
 Object.defineProperty(Block.prototype, "isHarvestable", {
     get(this: Block) {
-        return this.isHarvestableGourd ||
-            this.isHarvestableCrop ||
-            this.isHarvestableSweetBerryBush ||
-            this.isHarvestableSugarCane
+        return this.isHarvestableGourd
+            || this.isHarvestableCrop
+            || this.isHarvestableSweetBerryBush
+            || this.isHarvestableSugarCane
     }
 })
 

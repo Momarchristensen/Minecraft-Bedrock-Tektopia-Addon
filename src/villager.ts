@@ -11,7 +11,7 @@ import {
     world
 } from "@minecraft/server"
 
-import { debugFlags } from "./debug"
+import { debugFlags } from "./debug_flags"
 
 import { blockSounds } from "./generated"
 
@@ -22,6 +22,7 @@ import {
     generatePath,
     getPathStreamFailure,
     isEntityTarget,
+    shortcutStream,
     startPathSnapshot,
     stopPathSnapshot,
     updatePathNodes,
@@ -64,15 +65,20 @@ import {
 
 import {
     globalTasks,
+    resolvePickupItems,
     tektopiaVillagers
 } from "./villager_tasks"
 
-import type { LocationString } from "./minecraft_extensions"
+import type { DepositPlan } from "./minecraft_extensions"
 
 import type {
-    Village,
+    LocationString,
     VillageRanchEntity
-} from "./village"
+} from "./types"
+
+import type { Village } from "./village"
+
+import type { StorageChest } from "./village_storage"
 
 const villagerCache = new Map<string, Villager>()
 
@@ -139,6 +145,10 @@ export class Villager {
         location: Vector3
         type: string
     }
+
+    private foundDepositChest?: StorageChest
+    private foundDepositStand?: Vector3
+    private foundDepositPlan?: DepositPlan
 
     private foundHerdEntity?: VillageRanchEntity & { id: string }
     private foundBreedableEntity?: VillageRanchEntity & { id: string }
@@ -363,6 +373,62 @@ export class Villager {
             return undefined
         }
         return village.getStructure(stringToLocationCached(structureLocation))
+    }
+
+    private findChestStandLocation(village: Village, chest: StorageChest): Vector3 | undefined {
+        const origin = this.location
+        let best: Vector3 | undefined
+        let bestDistance = Infinity
+
+        for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+            for (const dy of [0, -1, 1]) {
+                const candidate = addVectors(chest.location, { x: dx, y: dy, z: dz })
+                if (village.pathNodes[locationToString(candidate)] === undefined) {
+                    continue
+                }
+
+                const distance = calculateDistance(centerVector(candidate, true), origin)
+                if (distance < bestDistance) {
+                    bestDistance = distance
+                    best = candidate
+                }
+            }
+        }
+
+        return best
+    }
+
+    findDepositTarget(village: Village): StorageChest | undefined {
+        this.foundDepositChest = undefined
+        this.foundDepositStand = undefined
+        this.foundDepositPlan = undefined
+
+        const inventory = this.getComponent(EntityComponentTypes.Inventory)?.container
+        const plan = inventory === undefined ? undefined : tektopiaVillagers[this.typeId]?.depositItems(inventory)
+        if (inventory === undefined || plan === undefined) {
+            return undefined
+        }
+
+        const largest = Object.entries(plan).sort((item1, item2) => item2[1] - item1[1])[0]
+        if (largest === undefined) {
+            return undefined
+        }
+
+        const [typeId, amount] = largest
+        const probe = new ItemStack(typeId, Math.min(amount, 64))
+        const chest = village.storage.findDepositChest(
+            probe,
+            this.location,
+            candidate => this.findChestStandLocation(village, candidate) !== undefined
+        )
+        if (chest === undefined) {
+            return undefined
+        }
+
+        this.foundDepositChest = chest
+        this.foundDepositStand = this.findChestStandLocation(village, chest)
+        this.foundDepositPlan = plan
+        return chest
     }
 
     findTree(village: Village): Vector3 | undefined {
@@ -716,9 +782,7 @@ export class Villager {
             return undefined
         }
 
-        if (typeof pickupItems === "function") {
-            pickupItems = pickupItems()
-        }
+        pickupItems = resolvePickupItems(pickupItems)
 
         const villagerLocation = this.location
         const nearbyItems = this.dimension.getEntities({
@@ -760,7 +824,6 @@ export class Villager {
             return
         }
 
-        // An entity target is followed: its current location is used as the destination while pathing.
         if (isEntityTarget(target) && !target.isValid) {
             return
         }
@@ -927,8 +990,8 @@ export class Villager {
         const villagerProps = tektopiaVillagers[this.typeId]
         let taskName = this.currentTask ?? "Idle"
         if (this.currentTask !== undefined) {
-            const task = globalTasks.find(candidate => candidate.id === this.currentTask) ??
-                villagerProps?.customTasks.find(candidate => candidate.id === this.currentTask)
+            const task = globalTasks.find(candidate => candidate.id === this.currentTask)
+                ?? villagerProps?.customTasks.find(candidate => candidate.id === this.currentTask)
 
             taskName = task?.name ?? taskName
         }
@@ -1002,7 +1065,7 @@ export class Villager {
 
         const nameTag = village === undefined ? "No Village" : [
             `Villager: ${formatTypeId(this.typeId)}`,
-            `Village: ${village.centerString ?? "None"}`,
+            `Village: ${village.centerString}`,
             `Task: ${taskName}`,
             `Progress: ${this.taskProgress}`,
             `Pathing: ${this.isPathing ? "Yes" : "No"}`,
@@ -1153,6 +1216,39 @@ export class Villager {
         }
     }
 
+    tickDeposit(village: Village) {
+        const chest = this.foundDepositChest
+        const plan = this.foundDepositPlan
+        const inventory = this.getComponent(EntityComponentTypes.Inventory)?.container
+
+        if (chest === undefined || plan === undefined || inventory === undefined || !chest.container.isValid) {
+            this.currentTask = undefined
+            return
+        }
+
+        const distance = calculateDistance(centerVector(chest.location, true), this.location)
+        if (distance < 2.5 || (!this.isPathing && distance < 3.5)) {
+            village.storage.depositPlanInto(chest, inventory, plan)
+            this.waiting = 10
+            this.currentTask = undefined
+            this.stopPath()
+            return
+        }
+
+        let stand = this.foundDepositStand
+        if (stand === undefined || village.pathNodes[locationToString(stand)] === undefined) {
+            stand = this.findChestStandLocation(village, chest)
+            this.foundDepositStand = stand
+        }
+
+        if (stand === undefined || this.pathError !== undefined) {
+            this.currentTask = undefined
+            return
+        }
+
+        this.pathFindTo(stand)
+    }
+
     get hasTask() {
         return this.currentTask !== undefined
     }
@@ -1261,7 +1357,7 @@ export class Villager {
 
         if (woolItem !== undefined) {
             if (ranchEntity.villagerEntity) {
-                woolItem.makeVillageItem()
+                woolItem.makeVillagerItem()
             }
 
             const amount = randomInt(1, 3)
@@ -1336,15 +1432,15 @@ export class Villager {
             }
 
             const pathLocation = floorLocations.reduce((closest, location) => {
-                const distance =
-                    Math.abs(location.x - centerLocation.x) +
-                    Math.abs(location.y - centerLocation.y) +
-                    Math.abs(location.z - centerLocation.z)
+                const distance
+                    = Math.abs(location.x - centerLocation.x)
+                    + Math.abs(location.y - centerLocation.y)
+                    + Math.abs(location.z - centerLocation.z)
 
-                const closestDistance =
-                    Math.abs(closest.x - centerLocation.x) +
-                    Math.abs(closest.y - centerLocation.y) +
-                    Math.abs(closest.z - centerLocation.z)
+                const closestDistance
+                    = Math.abs(closest.x - centerLocation.x)
+                    + Math.abs(closest.y - centerLocation.y)
+                    + Math.abs(closest.z - centerLocation.z)
 
                 return distance < closestDistance ? location : closest
             })
@@ -2030,9 +2126,9 @@ export class Villager {
 
             if (leashedEntity !== undefined) {
                 const escaping = Object.entries(village.ranchEntities).some(([id, other]) =>
-                    id !== leashedEntity.id &&
-                    other.inPen &&
-                    calculateDistance(center, other.location) <= ESCAPE_RANGE
+                    id !== leashedEntity.id
+                    && other.inPen
+                    && calculateDistance(center, other.location) <= ESCAPE_RANGE
                 )
 
                 if (!escaping) {
@@ -2168,7 +2264,7 @@ export class Villager {
                 }
 
                 if (!isBlocked) {
-                    villager.totalBlockTimer --
+                    villager.totalBlockTimer--
                     villager.blockingEntityTypeId = undefined
                 }
 
@@ -2217,6 +2313,11 @@ export class Villager {
 
                 if (Math.abs(currentPathNode.y - villager.location.y) <= 0.25 ? calculateChebyshevDistance(currentPathNode, villager.location) <= 0.25 : calculateChebyshevDistance(currentPathNode, villager.location) <= 0.5) {
                     stream.head = pathNodeIndex + 1
+                    const before = stream.nodes.length
+                    shortcutStream(stream, village.graph, pathNode)
+                    if (stream.nodes.length < before) {
+                        console.warn(`shortcut skipped ${before - stream.nodes.length} nodes`)
+                    }
                     if (stream.head >= 64 && stream.head * 2 >= pathNodeList.length) {
                         pathNodeList.splice(0, stream.head)
                         stream.head = 0
@@ -2278,7 +2379,7 @@ Block.prototype.destroy = function () {
     const itemList = lootTableManager.generateLootFromBlock(this, new ItemStack("minecraft:netherite_pickaxe")) ?? []
     const dimension = this.dimension
     for (const item of itemList) {
-        item.makeVillageItem()
+        item.makeVillagerItem()
         dimension.spawnItem(item, this.center())
     }
     this.soundEvent("break")
@@ -2296,10 +2397,16 @@ Block.prototype.replace = function (blockType) {
     this.soundEvent("place")
 }
 
-ItemStack.prototype.makeVillageItem = function () {
+ItemStack.prototype.makeVillagerItem = function () {
     this.nameTag = `§r§a${formatTypeId(this.typeId)}`
-    this.setLore(["§r§7Village Item"])
+    this.setLore(["§r§7Villager Item"])
 }
+
+Object.defineProperty(ItemStack.prototype, "isVillagerItem", {
+    get(this: ItemStack) {
+        return this.getLore()[0] === "§r§7Villager Item"
+    }
+})
 
 Block.prototype.soundEvent = function (eventId, soundOptions) {
     let options = soundOptions !== undefined ? { ...soundOptions } : undefined
@@ -2345,4 +2452,3 @@ Object.defineProperty(Entity.prototype, "isShearable", {
         return !this.hasComponent(EntityComponentTypes.IsSheared)
     }
 })
-

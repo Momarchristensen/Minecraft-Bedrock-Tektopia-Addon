@@ -4,11 +4,11 @@ import type {
     LocationString,
     NodeRequirement,
     PathNode
-} from "./minecraft_extensions"
+} from "./types"
 
 import type { Vector3 } from "@minecraft/server"
 
-export const MAX_DEGREE = 26 // getNodeNeighbors never yields more than 18; lower this to save ~25% memory
+export const MAX_DEGREE = 26
 
 type NumericArray = Int32Array | Float32Array | Float64Array | Uint8Array
 
@@ -104,10 +104,8 @@ export class PathGraph {
     alive = new Uint8Array(1024)
     degree = new Uint8Array(1024)
     adj = new Int32Array(1024 * MAX_DEGREE)
-    // requirement id for each edge in adj (same indexing as adj); 0 = no requirement
     adjReq = new Uint8Array(1024 * MAX_DEGREE)
 
-    // index 0 = "no requirement" (a blacklist with no types, always allowed)
     readonly requirements: NodeRequirement[] = [{ whiteList: false, types: [] }]
 
     private nextId = 0
@@ -204,6 +202,22 @@ export class PathGraph {
                 return
             }
         }
+    }
+
+    hasOpenEdge(from: number, to: number) {
+        const degree = this.degree[from]
+        if (degree === undefined) {
+            return false
+        }
+
+        const base = from * MAX_DEGREE
+        for (let i = 0; i < degree; i++) {
+            if (this.adj[base + i] === to) {
+                return (this.adjReq[base + i] ?? 0) === 0
+            }
+        }
+
+        return false
     }
 
     refreshNode(key: string) {

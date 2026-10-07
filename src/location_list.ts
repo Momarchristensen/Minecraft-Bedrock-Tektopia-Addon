@@ -1,6 +1,6 @@
 import { stringToLocation } from "./utils"
 
-import type { LocationString } from "./minecraft_extensions"
+import type { LocationString } from "./types"
 
 import type { Vector3 } from "@minecraft/server"
 

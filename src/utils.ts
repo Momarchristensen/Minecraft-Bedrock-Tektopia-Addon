@@ -3,7 +3,7 @@ import {
     type Vector3
 } from "@minecraft/server"
 
-import type { LocationString } from "./minecraft_extensions"
+import type { LocationString } from "./types"
 
 export type CardinalDirection = "north" | "south" | "east" | "west" | "up" | "down"
 
@@ -136,12 +136,12 @@ export function addVectors(...vectors: Vector3[]): Vector3 {
 }
 
 type Axis = "x" | "y" | "z"
-type Permutations<T extends string, U extends string = T> =
-    [T] extends [never] ?
-        never :
-        T extends unknown ?
-      T | `${T}${Permutations<Exclude<U, T>>}` :
-            never
+type Permutations<T extends string, U extends string = T>
+    = [T] extends [never]
+        ? never
+        : T extends unknown
+            ? T | `${T}${Permutations<Exclude<U, T>>}`
+            : never
 
 type Axes = Permutations<Axis>
 

@@ -4,12 +4,11 @@ import {
     Block,
     Dimension,
     type Vector3,
-    EntityComponent,
     EntityComponentTypes,
-    Entity
+    type Entity
 } from "@minecraft/server"
 
-import { debugFlags } from "./debug"
+import { debugFlags } from "./debug_flags"
 
 import { Registry } from "./registry"
 
@@ -29,9 +28,21 @@ import {
     subtractVectors
 } from "./utils"
 
-import type { LocationString } from "./minecraft_extensions"
+import type {
+    LocationString,
+    PathNode,
+    VillageRanchEntity
+} from "./types"
 
-import type { Village } from "./village"
+import type { VillageStorage } from "./village_storage"
+
+export interface StructureVillage {
+    readonly pathNodes: Record<LocationString, PathNode>
+    readonly ranchEntities: Record<string, VillageRanchEntity>
+    readonly storage: VillageStorage
+    isInBounds(location: Vector3): boolean
+    addStructure(location: Vector3, structureData: StructureData): void
+}
 
 const cardinalDirectionList = ["north", "east", "south", "west"] as CardinalDirection[]
 
@@ -39,7 +50,7 @@ export interface StructureValidationResult {
     result: boolean | undefined
     doorLocation?: Vector3 | undefined
     floorLocations?: Vector3[]
-    village?: Village
+    village?: StructureVillage
 }
 
 export const entityStructures: Record<string, "cow_pen" | "sheep_pen" | "chicken_coop" | "pig_pen"> = {
@@ -65,7 +76,7 @@ Dimension.prototype.validateStructure = function* (block: Block, rotation: Cardi
 
     const villageList = world.getVillages()
 
-    let village: Village | undefined
+    let village: StructureVillage | undefined
 
     if (structureId === "townhall") {
         const tooCloseToAnotherVillage = villageList
@@ -137,7 +148,7 @@ function* validateAnimalPenStructure(
     dimension: Dimension,
     block: Block,
     rotation: CardinalDirection,
-    _village: Village
+    _village: StructureVillage
 ): Generator<void, StructureValidationResult, void> {
     const parseResult = (
         result: boolean | undefined,
@@ -235,12 +246,12 @@ function resolvePenFloor(dimension: Dimension, location: Vector3): Block | null 
         }
 
         if (
-            block.canPathThrough() &&
-            !block.isRanchBoundary &&
-            !block.isLiquid &&
-            !below.canPathThrough() &&
-            !below.isLiquid &&
-            !below.isRanchBoundary
+            block.canPathThrough()
+            && !block.isRanchBoundary
+            && !block.isLiquid
+            && !below.canPathThrough()
+            && !below.isLiquid
+            && !below.isRanchBoundary
         ) {
             return block
         }
@@ -454,7 +465,7 @@ function* validateMineshaftStructure(
     dimension: Dimension,
     block: Block,
     rotation: CardinalDirection,
-    village: Village
+    village: StructureVillage
 ): Generator<void, StructureValidationResult, void> {
     const parseResult = (
         result: boolean | undefined,
@@ -613,9 +624,9 @@ function* validateDefaultRoom(
         checkLocationList[checkLocationIndex] = undefined
         checkLocationIndex++
         if (
-            currentLocation?.ceiling !== undefined &&
-            currentLocation.floor !== undefined &&
-            currentLocation.ceiling.y - currentLocation.floor.y > 2
+            currentLocation?.ceiling !== undefined
+            && currentLocation.floor !== undefined
+            && currentLocation.ceiling.y - currentLocation.floor.y > 2
         ) {
             const floorLocationString = locationToString(currentLocation.floor)
             if (!alreadyCheckedLocations.has(floorLocationString)) {
@@ -657,11 +668,11 @@ function* validateDefaultRoom(
 
                     floorBlock = floorBlock.belowSafe()
                     if (
-                        floorBlock !== undefined &&
-                        ceilingBlock !== undefined &&
-                        ceilingBlock.y - floorBlock.y > 2 &&
-                        currentLocation.ceiling.y - floorBlock.y > 2 &&
-                        ceilingBlock.y - checkLocation.y >= 2
+                        floorBlock !== undefined
+                        && ceilingBlock !== undefined
+                        && ceilingBlock.y - floorBlock.y > 2
+                        && currentLocation.ceiling.y - floorBlock.y > 2
+                        && ceilingBlock.y - checkLocation.y >= 2
                     ) {
                         checkLocationList.push({
                             floor: floorBlock,
@@ -712,7 +723,7 @@ export interface StationPostData extends StructureData {
     type: "guard_post" | "merchant_stall"
 }
 
-type StructureFactory = (locationString: LocationString, data: StructureData, dimension: Dimension, village: Village) => Structure
+type StructureFactory = (locationString: LocationString, data: StructureData, dimension: Dimension, village: StructureVillage) => Structure
 
 export class Structure<T extends StructureData = StructureData> {
     private static cache = new WeakMap<StructureData, Structure>()
@@ -722,9 +733,9 @@ export class Structure<T extends StructureData = StructureData> {
     readonly locationString
     private readonly data: T
     readonly dimension
-    readonly village: Village
+    readonly village: StructureVillage
 
-    protected constructor(locationString: LocationString, data: T, dimension: Dimension, village: Village) {
+    protected constructor(locationString: LocationString, data: T, dimension: Dimension, village: StructureVillage) {
         this.location = stringToLocation(locationString)
         this.locationString = locationString
         this.data = data
@@ -736,17 +747,17 @@ export class Structure<T extends StructureData = StructureData> {
         Structure.factories.set(type, factory)
     }
 
-    static from(locationString: LocationString, data: MineshaftData, dimension: Dimension, village: Village): Mineshaft
-    static from(locationString: LocationString, data: AnimalPenData, dimension: Dimension, village: Village): AnimalPen
-    static from(locationString: LocationString, data: StationPostData, dimension: Dimension, village: Village): StationPost
-    static from(locationString: LocationString, data: StructureData, dimension: Dimension, village: Village): Structure
-    static from(locationString: LocationString, data: StructureData, dimension: Dimension, village: Village): Structure {
+    static from(locationString: LocationString, data: MineshaftData, dimension: Dimension, village: StructureVillage): Mineshaft
+    static from(locationString: LocationString, data: AnimalPenData, dimension: Dimension, village: StructureVillage): AnimalPen
+    static from(locationString: LocationString, data: StationPostData, dimension: Dimension, village: StructureVillage): StationPost
+    static from(locationString: LocationString, data: StructureData, dimension: Dimension, village: StructureVillage): Structure
+    static from(locationString: LocationString, data: StructureData, dimension: Dimension, village: StructureVillage): Structure {
         let structure = Structure.cache.get(data)
         if (structure === undefined) {
             const factory = Structure.factories.get(data.type)
-            structure = factory !== undefined ?
-                factory(locationString, data, dimension, village) :
-                new Structure(locationString, data, dimension, village)
+            structure = factory !== undefined
+                ? factory(locationString, data, dimension, village)
+                : new Structure(locationString, data, dimension, village)
             Structure.cache.set(data, structure)
         }
         return structure
@@ -844,7 +855,7 @@ function getMineshaftMineBlock(
 type MineshaftTask = { type: "fill", block: Block, offset: Vector3 } | { type: "mine", block: Block } | { type: "light", block: Block }
 
 export class Mineshaft extends Structure<MineshaftData> {
-    constructor(locationString: LocationString, data: MineshaftData, dimension: Dimension, village: Village) {
+    constructor(locationString: LocationString, data: MineshaftData, dimension: Dimension, village: StructureVillage) {
         super(locationString, data, dimension, village)
     }
 
@@ -889,10 +900,10 @@ export class Mineshaft extends Structure<MineshaftData> {
             block: this.dimension.getBlockSafe(location)
         }))
 
-        const distanceToMineBlock =
-            ((mineBlock.location.x - this.location.x) * mineshaftDirection.x) +
-            ((mineBlock.location.y - this.location.y) * mineshaftDirection.y) +
-            ((mineBlock.location.z - this.location.z) * mineshaftDirection.z)
+        const distanceToMineBlock
+            = ((mineBlock.location.x - this.location.x) * mineshaftDirection.x)
+            + ((mineBlock.location.y - this.location.y) * mineshaftDirection.y)
+            + ((mineBlock.location.z - this.location.z) * mineshaftDirection.z)
 
         let lightBlock = this.dimension.getBlockSafe(this.location)
         for (let step = 0; step < distanceToMineBlock; step++) {
@@ -942,14 +953,11 @@ const animalPenAnimals: Record<AnimalPenData["type"], { typeId: string, size: nu
 export class AnimalPen extends Structure<AnimalPenData> {
     private floorSpaceCount?: number
 
-    constructor(locationString: LocationString, data: AnimalPenData, dimension: Dimension, village: Village) {
+    constructor(locationString: LocationString, data: AnimalPenData, dimension: Dimension, village: StructureVillage) {
         super(locationString, data, dimension, village)
     }
 
     override *validate(): Generator<void, boolean | undefined, void> {
-        // The structure location is the gate itself, so revalidate from the gate
-        // rather than re-deriving the item frame position (which is not recoverable
-        // from the gate alone).
         const gateBlock = this.dimension.getBlockSafe(this.location)
         if (gateBlock === undefined) {
             return undefined
@@ -1070,7 +1078,7 @@ const GUARD_LOCATION_ATTEMPTS = 10
 const GUARD_Y_OFFSETS = [0, 1, -1, 2, -2, 3, -3]
 
 export class StationPost extends Structure<StationPostData> {
-    constructor(locationString: LocationString, data: StationPostData, dimension: Dimension, village: Village) {
+    constructor(locationString: LocationString, data: StationPostData, dimension: Dimension, village: StructureVillage) {
         super(locationString, data, dimension, village)
     }
 

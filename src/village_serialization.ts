@@ -3,17 +3,31 @@ import {
     locationToString
 } from "./utils"
 
+import type { StructureData } from "./structure"
+
 import type {
     NodeRequirement,
     PathNode,
     LocationString
-} from "./minecraft_extensions"
-
-import type { StructureData } from "./structure"
-
-import type { VillageSaveData } from "./village"
+} from "./types"
 
 import type { Vector3 } from "@minecraft/server"
+
+export interface VillageSaveData {
+    center: Vector3
+    dimensionId: string
+    doorLocation: Vector3
+    pathNodes: Record<LocationString, PathNode>
+    sugarCaneLocations: LocationString[]
+    saplingLocations: LocationString[]
+    farmLocations: LocationString[]
+    harvestLocations: LocationString[]
+    plantLocations: Record<LocationString, string>
+    tillLocations: LocationString[]
+    sweetBerryLocations: LocationString[]
+    treeLocations: LocationString[]
+    structures: Record<LocationString, StructureData>
+}
 
 const SAVE_PATH_NODES: boolean = true
 

@@ -121,11 +121,11 @@ export class EntityBreeding {
         }
 
         const target = this.entity.getEntitiesFromViewDirection().find(entityRayCast => entityRayCast.entity.typeId === this.entity.typeId)?.entity
-        if (target === undefined ||
-            !target.isValid ||
-            target.typeId !== this.entity.typeId ||
-            target.breeding === undefined ||
-            target.breeding.time <= 0
+        if (target === undefined
+            || !target.isValid
+            || target.typeId !== this.entity.typeId
+            || target.breeding === undefined
+            || target.breeding.time <= 0
         ) {
             this.waitTime = 0
             return

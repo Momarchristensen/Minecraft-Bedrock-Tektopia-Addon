@@ -11,7 +11,7 @@ import {
 
 import { getLocationUncached } from "./cache"
 
-import { debugFlags } from "./debug"
+import { debugFlags } from "./debug_flags"
 
 import {
     pathCancelEntityTypes,
@@ -47,12 +47,9 @@ import type {
     LocationString,
     NodeRequirement,
     PathNode,
-    Bounds
-} from "./minecraft_extensions"
-
-import type { Village } from "./village"
-
-import type { Villager } from "./villager"
+    Bounds,
+    VillageRanchEntity
+} from "./types"
 
 const Y_WEIGHT = 3
 const VERTICAL_TOWARD_PENALTY = 2
@@ -61,20 +58,33 @@ const DIAGONAL_COST = 1.75
 
 const BLOCKED_ENTITY_RADIUS = 0.75
 
+/** The part of a `Village` that pathfinding reads. `Village` satisfies this structurally. */
+export interface PathVillage {
+    readonly bounds: Bounds
+    readonly dimensionId: string
+    readonly graph: PathGraph
+    readonly pathNodes: Record<LocationString, PathNode>
+    readonly penTiles: ReadonlyMap<LocationString, LocationString>
+    readonly ranchEntities: Record<string, VillageRanchEntity>
+}
+
+/** The part of a `Villager` that pathfinding reads. `Villager` satisfies this structurally. */
+export interface PathVillager {
+    readonly id: string
+    readonly typeId: string
+    readonly isValid: boolean
+    readonly isPathing: boolean
+    readonly isBlocked: boolean
+    readonly totalBlockTimer: number
+    getVillage(): PathVillage | undefined
+}
 
 export type PathFailure = "no_path" | "no_village" | "timeout" | "cancelled" | "error"
 
 export type PathResult = PathFailure | Vector3[]
 
-/** A fixed location, or an entity whose *current* location is used as the destination. */
 export type PathTarget = Vector3 | Entity
 
-/**
- * Path nodes streamed by `generatePath` while it is still searching.
- * The producer only appends nodes that are final and in order; the consumer removes nodes from the front as it reaches
- * them. `status` is "searching" while more nodes may still arrive, "complete" once the last node has been added,
- * or a failure reason (nodes already streamed remain valid).
- */
 export interface PathStream {
     readonly nodes: Vector3[]
     head?: number
@@ -84,7 +94,7 @@ export interface PathStream {
 const RETARGET_DISTANCE = 2
 const TARGET_POLL_TICKS = 4
 const TRACK_INTERVAL_TICKS = 2
-const TRACK_KEEP_NODES = 1
+const TRACK_MIN_IMPROVEMENT = 1
 const MAX_RESTARTS = 8
 
 interface Scratch {
@@ -175,15 +185,14 @@ function buildBlockedCells(
 const pathCheckEntities: Record<string, PathEntity[]> = {}
 const pathCheckEntityIds = new Map<string, Set<string>>()
 
-
 export function getPathNodeBlockState(dimensionId: string, node: Vector3): 0 | 1 | 2 {
     let blockState: 0 | 1 | 2 = 0
     for (const entity of pathCheckEntities[dimensionId] ?? []) {
         const { x, y, z } = entity.location
         if (
-            Math.abs(x - (node.x + 0.5)) >= BLOCKED_ENTITY_RADIUS ||
-            Math.abs(y - node.y) >= BLOCKED_ENTITY_RADIUS ||
-            Math.abs(z - (node.z + 0.5)) >= BLOCKED_ENTITY_RADIUS
+            Math.abs(x - (node.x + 0.5)) >= BLOCKED_ENTITY_RADIUS
+            || Math.abs(y - node.y) >= BLOCKED_ENTITY_RADIUS
+            || Math.abs(z - (node.z + 0.5)) >= BLOCKED_ENTITY_RADIUS
         ) {
             continue
         }
@@ -228,21 +237,40 @@ function readTargetLocation(target: Entity, dimensionId: string): Vector3 | unde
     }
 }
 
-/**
- * Finds a path from `start` to `target`.
- *
- * The returned promise resolves exactly as before: with the complete node list, or with a failure reason.
- *
- * When a `stream` is supplied, nodes are also appended to `stream.nodes` while the search is still running.
- * Only nodes that every remaining candidate route shares (the common prefix of the search frontier) are streamed,
- * so a streamed node is never revised later. `stream.status` leaves "searching" only when no more nodes will arrive.
- *
- * When `target` is an entity, its current location is used as the destination for as long as the search (and, with
- * a stream, the unconsumed part of the path) lasts. The open set is kept when the target moves; the search is only
- * restarted from the last streamed node if the new destination cannot be reached through it.
- */
+const SHORTCUT_LOOKAHEAD = 12
+
+export function shortcutStream(stream: PathStream, graph: PathGraph, reached: Vector3) {
+    const head = stream.head ?? 0
+    const reachedId = graph.idOf(locationToString(reached))
+    if (reachedId === -1) {
+        return
+    }
+
+    const end = Math.min(stream.nodes.length, head + SHORTCUT_LOOKAHEAD)
+    for (let i = end - 1; i > head; i--) {
+        const node = stream.nodes[i]
+        if (node === undefined) {
+            continue
+        }
+
+        const nodeId = graph.idOf(locationToString(node))
+        if (nodeId !== -1 && graph.hasOpenEdge(reachedId, nodeId)) {
+            stream.nodes.splice(head, i - head)
+            return
+        }
+    }
+}
+
+function estimateCost(dx: number, dy: number, dz: number) {
+    const absX = Math.abs(dx)
+    const absZ = Math.abs(dz)
+    const diagonal = Math.min(absX, absZ)
+
+    return (Math.max(absX, absZ) - diagonal) + (diagonal * DIAGONAL_COST) + (Math.abs(dy) * Y_WEIGHT)
+}
+
 export function generatePath(
-    entity: Villager,
+    entity: PathVillager,
     start: Vector3,
     target: PathTarget,
     token: { cancelled: boolean },
@@ -335,15 +363,6 @@ export function generatePath(
             }
         }
 
-        // Entity targets keep the stream open after the goal is reached so the unconsumed tail can follow the target.
-        const afterGoal = () => {
-            if (stream !== undefined && targetEntity !== undefined) {
-                system.runTimeout(trackTick, TRACK_INTERVAL_TICKS)
-                return
-            }
-            finish("complete")
-        }
-
         const trackTick = () => {
             try {
                 if (settled) {
@@ -359,7 +378,6 @@ export function generatePath(
                 }
                 const location = readTargetLocation(targetEntity, dimensionId)
                 if (location === undefined) {
-                    // Target is gone: finish the route that was already streamed.
                     finish("complete")
                     return
                 }
@@ -368,23 +386,52 @@ export function generatePath(
                     system.runTimeout(trackTick, TRACK_INTERVAL_TICKS)
                     return
                 }
-                // The streamed tail leads to where the target used to be. Keep only the node being walked
-                // towards and continue the search from there.
+
                 const head = stream.head ?? 0
-                const pendingCount = stream.nodes.length - head
-                const keep = Math.min(pendingCount, TRACK_KEEP_NODES)
-                const dropped = pendingCount - keep
-                if (dropped > 0) {
-                    stream.nodes.length = head + keep
-                    emitted.length -= dropped
-                }
-                const last = stream.nodes[head + keep - 1]
-                if (last === undefined) {
+                const goalLocation = stringToLocation(key)
+
+                const first = stream.nodes[head]
+                if (first === undefined) {
                     finish("complete")
                     return
                 }
-                tipKey = locationToString(last)
+
+                let keepIndex = head
+                let bestCost = estimateCost(first.x - goalLocation.x, first.y - goalLocation.y, first.z - goalLocation.z)
+
+                for (let i = head + 1; i < stream.nodes.length; i++) {
+                    const node = stream.nodes[i]
+                    if (node === undefined) {
+                        continue
+                    }
+
+                    const cost = estimateCost(node.x - goalLocation.x, node.y - goalLocation.y, node.z - goalLocation.z)
+                    if (cost < bestCost - TRACK_MIN_IMPROVEMENT) {
+                        bestCost = cost
+                        keepIndex = i
+                    }
+                }
+
+                const tip = stream.nodes[keepIndex]
+                if (tip === undefined) {
+                    finish("complete")
+                    return
+                }
+
+                const dropped = stream.nodes.length - (keepIndex + 1)
+                if (dropped > 0) {
+                    stream.nodes.length = keepIndex + 1
+                    emitted.length -= dropped
+                }
+
+                tipKey = locationToString(tip)
                 goalKey = key
+
+                if (tipKey === key) {
+                    afterGoal()
+                    return
+                }
+
                 system.runJob(guarded(run(++runId, tipKey)))
             }
             catch (error) {
@@ -393,6 +440,14 @@ export function generatePath(
                 }
                 finish("error")
             }
+        }
+
+        function afterGoal() {
+            if (stream !== undefined && targetEntity !== undefined) {
+                system.runTimeout(trackTick, TRACK_INTERVAL_TICKS)
+                return
+            }
+            finish("complete")
         }
 
         function* guarded(inner: Generator<void, void, void>): Generator<void, void, void> {
@@ -521,15 +576,12 @@ export function generatePath(
                 let ex = X[goalId] ?? 0
                 let ey = Y[goalId] ?? 0
                 let ez = Z[goalId] ?? 0
-                const estimate = (nodeId: number) => {
-                    const x = X[nodeId] ?? 0
-                    const y = Y[nodeId] ?? 0
-                    const z = Z[nodeId] ?? 0
-                    const dx = Math.abs(x - ex)
-                    const dz = Math.abs(z - ez)
-                    const diagonal = Math.min(dx, dz)
-                    return (Math.max(dx, dz) - diagonal) + (diagonal * DIAGONAL_COST) + (Math.abs(y - ey) * Y_WEIGHT)
-                }
+
+                const estimate = (nodeId: number) => estimateCost(
+                    (X[nodeId] ?? 0) - ex,
+                    (Y[nodeId] ?? 0) - ey,
+                    (Z[nodeId] ?? 0) - ez
+                )
 
                 // Node ids from the search root to `targetId`.
                 const chain: number[] = []
@@ -781,8 +833,8 @@ export function generatePath(
                         const diagonal = Math.min(dx, dz)
                         const moveCost = Math.max(
                             MIN_MOVE_COST,
-                            (Math.max(dx, dz) - diagonal) + (diagonal * DIAGONAL_COST) + Math.abs(cy - ny) +
-                            verticalPenalty + (blockState === 1 ? 50 : 0) + (COST[next] ?? 0)
+                            (Math.max(dx, dz) - diagonal) + (diagonal * DIAGONAL_COST) + Math.abs(cy - ny)
+                            + verticalPenalty + (blockState === 1 ? 50 : 0) + (COST[next] ?? 0)
                         )
 
                         const tentativeG = currentG + moveCost
@@ -865,7 +917,7 @@ export function findNearestNodeLocation(nodeList: Record<string, PathNode>, loca
 }
 
 interface PathEntity extends CheckEntityData {
-    villager?: Villager
+    villager?: PathVillager
     ignoreAsBlocker?: boolean
 }
 
@@ -878,7 +930,7 @@ export function findPathBlocker(
     node: Vector3,
     selfId: string,
     selfLocation: Vector3,
-    village: Village
+    village: PathVillage
 ) {
     if (village.penTiles.has(locationToString(floorVector(addVector(selfLocation, "y", 0.1))))) {
         return undefined
@@ -917,7 +969,7 @@ export function findPathBlocker(
 
 const SNAPSHOT_MARGIN = 4
 
-function isPennedMob(village: Village, entity: Entity, location: Vector3) {
+function isPennedMob(village: PathVillage, entity: Entity, location: Vector3) {
     if (entity instanceof Player || !entity.typeId.startsWith("minecraft:")) {
         return false
     }
@@ -927,17 +979,17 @@ function isPennedMob(village: Village, entity: Entity, location: Vector3) {
     return village.penTiles.has(locationToString(floorVector(addVector(location, "y", 0.1))))
 }
 
-const pathingVillagers = new Set<Villager>()
-const pathingVillagerById = new Map<string, Villager>()
+const pathingVillagers = new Set<PathVillager>()
+const pathingVillagerById = new Map<string, PathVillager>()
 let pathSnapshotTimeoutId: number | undefined
 
-export function startPathSnapshot(villager: Villager) {
+export function startPathSnapshot(villager: PathVillager) {
     pathingVillagers.add(villager)
     pathingVillagerById.set(villager.id, villager)
     schedulePathSnapshot()
 }
 
-export function stopPathSnapshot(villager: Villager) {
+export function stopPathSnapshot(villager: PathVillager) {
     pathingVillagers.delete(villager)
     if (pathingVillagerById.get(villager.id) === villager) {
         pathingVillagerById.delete(villager.id)
@@ -962,7 +1014,7 @@ function tickPathSnapshot() {
     }
 
     try {
-        const pathingVillages = new Set<Village>()
+        const pathingVillages = new Set<PathVillage>()
 
         for (const villager of pathingVillagers) {
             if (!villager.isValid || !villager.isPathing) {
@@ -1076,10 +1128,10 @@ export function updatePathNodes(blockList: Block[]) {
 
 function isNearVillageBounds(location: Vector3, bounds: Bounds, margin = 1) {
     return (
-        location.x >= Math.floor(Math.min(bounds.start.x, bounds.end.x)) - margin &&
-        location.x <= Math.ceil(Math.max(bounds.start.x, bounds.end.x)) + margin &&
-        location.z >= Math.floor(Math.min(bounds.start.z, bounds.end.z)) - margin &&
-        location.z <= Math.ceil(Math.max(bounds.start.z, bounds.end.z)) + margin
+        location.x >= Math.floor(Math.min(bounds.start.x, bounds.end.x)) - margin
+        && location.x <= Math.ceil(Math.max(bounds.start.x, bounds.end.x)) + margin
+        && location.z >= Math.floor(Math.min(bounds.start.z, bounds.end.z)) - margin
+        && location.z <= Math.ceil(Math.max(bounds.start.z, bounds.end.z)) + margin
     )
 }
 
@@ -1137,8 +1189,8 @@ function* updateNodesBlocks(callback?: () => void) {
 
                 const villageBounds = village.bounds
                 const villageBlocks = batch.filter(block =>
-                    block.dimension.id === village.dimensionId &&
-                    isNearVillageBounds(block.location, villageBounds)
+                    block.dimension.id === village.dimensionId
+                    && isNearVillageBounds(block.location, villageBounds)
                 )
                 if (villageBlocks.length === 0) {
                     continue
@@ -1275,18 +1327,18 @@ const avoidBlockTypes = new Set(["minecraft:web"])
 
 Block.prototype.canPathThrough = function () {
     return (
-        this.canWalkThrough() ||
-        Registry.openableDoorTypes.includesFast(this.typeId) ||
-        Registry.fenceGateTypes.includesFast(this.typeId) ||
-        avoidBlockTypes.has(this.typeId)
+        this.canWalkThrough()
+        || Registry.openableDoorTypes.includesFast(this.typeId)
+        || Registry.fenceGateTypes.includesFast(this.typeId)
+        || avoidBlockTypes.has(this.typeId)
     )
 }
 
 Block.prototype.canWalkThrough = function () {
     return (
-        (this.isAir || Registry.nonSolidBlocksSet.has(this.typeId) || this.destroyableLeaf()) &&
-        !avoidBlockTypes.has(this.typeId) &&
-        !this.isDangerous() && !this.isLiquid && !this.isWaterlogged
+        (this.isAir || Registry.nonSolidBlocksSet.has(this.typeId) || this.destroyableLeaf())
+        && !avoidBlockTypes.has(this.typeId)
+        && !this.isDangerous() && !this.isLiquid && !this.isWaterlogged
     )
 }
 

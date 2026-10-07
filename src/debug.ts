@@ -8,6 +8,14 @@ import {
 } from "@minecraft/server"
 
 import {
+    debugFlags,
+    debugFlagNames,
+    type DebugFlag
+} from "./debug_flags"
+
+import { getPathNodeBlockState } from "./path"
+
+import {
     addVector,
     addVectors,
     calculateDistance,
@@ -18,37 +26,16 @@ import {
     locationToString
 } from "./utils"
 
-import { getPathNodeBlockState } from "./path"
-
 import type {
     LocationString,
     NodeRequirement,
     PathNode
-} from "./minecraft_extensions"
+} from "./types"
 
 import type {
     RGB,
     Vector3
 } from "@minecraft/server"
-
-export const debugFlags = {
-    locationScanParticles: false,
-    searchBlocksParticles: false,
-    pathNodeParticles: false,
-    villageLocationParticles: false,
-    villagerDebugNameTags: false,
-    rancherDebugNameTags: false,
-    structureScanParticles: false,
-    pathScanParticles: false,
-    villagerPathParticles: false,
-    pathfindingWarnings: false,
-    nodeUpdatedWarnings: false,
-    rancherPenParticles: false
-}
-
-export type DebugFlag = keyof typeof debugFlags
-
-export const debugFlagNames = Object.keys(debugFlags) as DebugFlag[]
 
 const PROPERTY_PREFIX = "tektopia:debug:"
 
@@ -229,9 +216,9 @@ function* drawDebug(callback?: () => void) {
                     colorMap.setColorRGB("color", stringColor(property))
                     colorMaps.set(property, colorMap)
 
-                    const propertyLocations = property === "plantLocations" ?
-                        Object.keys(village.plantLocations) as LocationString[] :
-                        village[property]
+                    const propertyLocations = property === "plantLocations"
+                        ? Object.keys(village.plantLocations) as LocationString[]
+                        : village[property]
 
                     for (const location of propertyLocations) {
                         const locationVector = stringToLocation(location)

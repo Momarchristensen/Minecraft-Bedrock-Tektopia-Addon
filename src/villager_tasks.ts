@@ -1,12 +1,17 @@
 import { Registry } from "./registry"
 
+import type { DepositPlan } from "./minecraft_extensions"
+
 import type { Village } from "./village"
 
 import type { Villager } from "./villager"
 
+import type { Container } from "@minecraft/server"
+
 interface VillagerConfig {
     customTasks: Task[]
     pickupItems: string[] | (() => string[])
+    depositItems: (inventory: Container) => DepositPlan | undefined
 }
 
 interface Task {
@@ -57,7 +62,30 @@ export const tektopiaVillagers: Record<string, VillagerConfig> = {
             "minecraft:wheat",
             "minecraft:beetroot",
             "minecraft:sweet_berries"
-        ]
+        ],
+        depositItems(inventory: Container): DepositPlan | undefined {
+            const counts = inventory.getItemCounts({ includesTypes: resolvePickupItems(this.pickupItems) })
+            const plan: DepositPlan = {}
+
+            let deposit = inventory.isFull
+
+            if (!deposit) {
+                for (const count of Object.values(counts)) {
+                    if (count > 3) {
+                        deposit = true
+                        break
+                    }
+                }
+            }
+
+            if (deposit) {
+                for (const [typeId, count] of Object.entries(counts)) {
+                    plan[typeId] = count
+                }
+            }
+
+            return Object.keys(plan).length > 0 ? plan : undefined
+        }
     },
     "tektopia:lumberjack": {
         customTasks: [
@@ -69,7 +97,30 @@ export const tektopiaVillagers: Record<string, VillagerConfig> = {
                 tick: (villager: Villager, village: Village) => villager.tickChop(village)
             }
         ],
-        pickupItems: () => ["minecraft:apple", ...Registry.saplingTypes, ...Registry.logTypes]
+        pickupItems: () => ["minecraft:apple", ...Registry.saplingTypes, ...Registry.logTypes],
+        depositItems(inventory: Container): DepositPlan | undefined {
+            const counts = inventory.getItemCounts({ includesTypes: resolvePickupItems(this.pickupItems) })
+            const plan: DepositPlan = {}
+
+            let deposit = inventory.isFull
+
+            if (!deposit) {
+                for (const count of Object.values(counts)) {
+                    if (count > 8) {
+                        deposit = true
+                        break
+                    }
+                }
+            }
+
+            if (deposit) {
+                for (const [typeId, count] of Object.entries(counts)) {
+                    plan[typeId] = count
+                }
+            }
+
+            return Object.keys(plan).length > 0 ? plan : undefined
+        }
     },
     "tektopia:miner": {
         customTasks: [
@@ -97,7 +148,32 @@ export const tektopiaVillagers: Record<string, VillagerConfig> = {
             "minecraft:andesite",
             "minecraft:gravel",
             "minecraft:flint"
-        ]
+        ],
+        depositItems(inventory: Container): DepositPlan | undefined {
+            const counts = inventory.getItemCounts({ includesTypes: resolvePickupItems(this.pickupItems) })
+            const plan: DepositPlan = {}
+
+            let deposit = inventory.isFull
+
+            if (!deposit) {
+                let total = 0
+                for (const count of Object.values(counts)) {
+                    total += count
+                }
+
+                if (total >= 192) {
+                    deposit = true
+                }
+            }
+
+            if (deposit) {
+                for (const [typeId, count] of Object.entries(counts)) {
+                    plan[typeId] = count
+                }
+            }
+
+            return Object.keys(plan).length > 0 ? plan : undefined
+        }
     },
     "tektopia:rancher": {
         customTasks: [
@@ -123,7 +199,8 @@ export const tektopiaVillagers: Record<string, VillagerConfig> = {
                 tick: (villager: Villager) => villager.tickShearEntity()
             }
         ],
-        pickupItems: () => [...Registry.woolTypes, ...Registry.eggTypes]
+        pickupItems: () => [...Registry.woolTypes, ...Registry.eggTypes],
+        depositItems: () => undefined
     },
     "tektopia:guard": {
         customTasks: [
@@ -143,7 +220,8 @@ export const tektopiaVillagers: Record<string, VillagerConfig> = {
                 tick: (villager: Villager, village: Village) => villager.tickGuardVillage(village)
             }
         ],
-        pickupItems: () => ["minecraft:apple", ...Registry.saplingTypes, ...Registry.logTypes]
+        pickupItems: () => ["minecraft:apple", ...Registry.saplingTypes, ...Registry.logTypes],
+        depositItems: () => undefined
     },
     "tektopia:butcher": {
         customTasks: [
@@ -155,7 +233,8 @@ export const tektopiaVillagers: Record<string, VillagerConfig> = {
                 tick: (villager: Villager, village: Village) => villager.tickButcher(village)
             }
         ],
-        pickupItems: () => ["minecraft:beef", "minecraft:porkchop", "minecraft:chicken", "minecraft:mutton", "minecraft:feather", "minecraft:leather", ...Registry.woolTypes]
+        pickupItems: () => ["minecraft:beef", "minecraft:porkchop", "minecraft:chicken", "minecraft:mutton", "minecraft:feather", "minecraft:leather", ...Registry.woolTypes],
+        depositItems: () => undefined
     }
 }
 
@@ -181,6 +260,13 @@ export const globalTasks: Task[] = [
         tick: (villager: Villager) => villager.tickPickupItem()
     },
     {
+        id: "deposit",
+        name: "Deposit Items",
+        required: false,
+        condition: (villager, village) => villager.findDepositTarget(village) !== undefined,
+        tick: (villager, village) => villager.tickDeposit(village)
+    },
+    {
         id: "tool",
         name: "Get Tool",
         required: true,
@@ -193,3 +279,11 @@ export const globalTasks: Task[] = [
         condition: () => false
     }
 ]
+
+export function resolvePickupItems(pickupItems: VillagerConfig["pickupItems"]) {
+    const resolvedPickupItems = typeof pickupItems === "function"
+        ? pickupItems()
+        : pickupItems
+
+    return resolvedPickupItems
+}

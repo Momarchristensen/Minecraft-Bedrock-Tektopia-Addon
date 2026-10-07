@@ -63,7 +63,7 @@ module.exports = [
       "@stylistic/quotes": ["warn", "double"],
       "@stylistic/semi": ["warn", "never"],
       "@stylistic/comma-dangle": ["warn", "never"],
-      "@stylistic/operator-linebreak": ["warn", "after"],
+      "@stylistic/operator-linebreak": ["warn", "before"],
 
       "@stylistic/brace-style": [
         "warn",

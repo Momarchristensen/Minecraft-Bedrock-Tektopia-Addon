@@ -13,14 +13,14 @@ import {
     splitString
 } from "./utils"
 
-import {
-    Village,
-    type VillageSaveData
-} from "./village"
+import { Village } from "./village"
 
 import type { BreedingSaveData } from "./breed"
 
-import type { CompressedVillage } from "./village_serialization"
+import type {
+    CompressedVillage,
+    VillageSaveData
+} from "./village_serialization"
 
 export const worldSaveDataList = [
     {

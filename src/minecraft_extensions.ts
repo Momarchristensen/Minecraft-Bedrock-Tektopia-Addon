@@ -9,47 +9,28 @@ import type {
     StructureValidationResult
 } from "./structure"
 
+import type {
+    Bounds,
+    NodeRequirement
+} from "./types"
+
 import type { CardinalDirection } from "./utils"
 
 import type { TillResult } from "./variables"
 
-import type {
-    Village,
-    VillageSaveData
-} from "./village"
+import type { Village } from "./village"
+
+import type { VillageSaveData } from "./village_serialization"
 
 import type { Villager } from "./villager"
 
-import type {
-    ItemLockMode,
-    Vector3,
-    WorldSoundOptions,
-    BlockType,
-    EntityQueryOptions
-} from "@minecraft/server"
-
-export type LocationString = string & {
-    readonly __vectorString: unique symbol
-}
-
 export interface ItemStackFilter {
-    typeId?: string
-    amount?: number
-    lore?: string[]
-    lockMode?: ItemLockMode
-    keepOnDeath?: boolean
-    nameTag?: string
-    canDestroy?: string[]
-    canPlaceOn?: string[]
-    enchantments?: Array<{
-        id: string
-        level?: number
-    }>
-    unbreakable?: boolean
-    data?: number
-    dynamicProperties?: Record<string, boolean | number | string | Vector3>
-    tags?: string[]
+    includesTypes?: string[]
+    excludesTypes?: string[]
+    isVillagerItem?: boolean
 }
+
+export type DepositPlan = Record<string, number>
 
 declare module "@minecraft/server" {
     interface World {
@@ -138,37 +119,21 @@ declare module "@minecraft/server" {
 
     interface ItemStack {
         matchesFilter(filter: ItemStackFilter): boolean
-        makeVillageItem(): void
+        makeVillagerItem(): void
+        readonly isVillagerItem: boolean
     }
 
     interface Player {
         resetCache(): void
         spawnBorderParticles(bounds: Bounds): void
     }
-}
 
-export interface CheckEntityData {
-    location: Vector3
-    id: string
-    typeId: string
-    cancelPath: boolean
-}
-
-export interface NodeRequirement {
-    whiteList: boolean
-    types: string[]
-}
-
-export interface PathNode {
-    neighbors: LocationString[]
-    requirement?: NodeRequirement
-    nodeRequirements?: Record<LocationString, NodeRequirement>
-    cost?: number
-}
-
-export interface Bounds {
-    start: Vector3
-    end: Vector3
+    interface Container {
+        getItemCount(itemFilter: ItemStackFilter): number
+        getItemCounts(itemFilter: ItemStackFilter): Record<string, number>
+        [Symbol.iterator](): Iterator<ItemStack | undefined>
+        readonly isFull: boolean
+    }
 }
 
 declare global {
