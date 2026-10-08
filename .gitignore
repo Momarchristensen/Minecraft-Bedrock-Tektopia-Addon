@@ -25,6 +25,8 @@ build/
 behavior_packs/Tektopia/scripts/*
 src.zip
 Tektopia Files/
+Python Scripts/output.geo.json
+Python Scripts/output.animation.json
 
 # Generated dependency graph (make_dep_graph.py)
 dependencies.dot
