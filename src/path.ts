@@ -56,9 +56,8 @@ const VERTICAL_TOWARD_PENALTY = 2
 const VERTICAL_AWAY_PENALTY = 10
 const DIAGONAL_COST = 1.75
 
-const BLOCKED_ENTITY_RADIUS = 0.75
+const BLOCKED_ENTITY_RADIUS = 1
 
-/** The part of a `Village` that pathfinding reads. `Village` satisfies this structurally. */
 export interface PathVillage {
     readonly bounds: Bounds
     readonly dimensionId: string
@@ -68,7 +67,6 @@ export interface PathVillage {
     readonly ranchEntities: Record<string, VillageRanchEntity>
 }
 
-/** The part of a `Villager` that pathfinding reads. `Villager` satisfies this structurally. */
 export interface PathVillager {
     readonly id: string
     readonly typeId: string
@@ -338,7 +336,6 @@ export function generatePath(
             return nearest === undefined ? undefined : locationToString(nearest)
         }
 
-        // Returns the new goal key if the target moved far enough from the current goal to be worth steering towards.
         const evaluateTarget = (location: Vector3): LocationString | undefined => {
             const key = toGoalKey(location)
             if (key === undefined || key === goalKey) {
@@ -504,8 +501,6 @@ export function generatePath(
             yield* run(++runId, startKey)
         }
 
-        // Runs searches until one finishes. A search only restarts (from the last streamed node) when
-        // the destination can no longer be reached through the nodes that were already streamed.
         function* run(id: number, initialRootKey: LocationString): Generator<void, void, void> {
             let rootKey = initialRootKey
             while (true) {
@@ -524,7 +519,6 @@ export function generatePath(
         }
 
         function* search(id: number, rootKey: LocationString): Generator<void, "done" | "restart", void> {
-            // Stale (cancelled, replaced or settled) searches must never touch the stream again.
             const halted = () => {
                 if (id !== runId || settled) {
                     return true
@@ -584,7 +578,6 @@ export function generatePath(
                     (Z[nodeId] ?? 0) - ez
                 )
 
-                // Node ids from the search root to `targetId`.
                 const chain: number[] = []
                 const fillChain = (targetId: number) => {
                     chain.length = 0
@@ -600,7 +593,6 @@ export function generatePath(
                     emitLocation({ x: X[nodeId] ?? 0, y: Y[nodeId] ?? 0, z: Z[nodeId] ?? 0 })
                 }
 
-                // Last node streamed so far. A restarted search is rooted here.
                 let tipId = tipKey === undefined ? -1 : rootId
                 commitCount = tipKey === undefined ? 0 : 1
 
@@ -608,8 +600,6 @@ export function generatePath(
                 const walk: number[] = []
                 let cycle = 0
 
-                // Streams the part of the route that every open candidate shares. Closed nodes are never revised,
-                // and any final route continues through an open node, so that shared prefix is final.
                 const commitStable = () => {
                     if (stream === undefined || settled || token.cancelled) {
                         return
@@ -699,7 +689,6 @@ export function generatePath(
                     return bestOpen
                 }
 
-                // Re-prioritises the open set for a new goal without discarding any search progress.
                 const rebuildHeap = () => {
                     cycle++
                     frontier.length = 0
@@ -760,7 +749,6 @@ export function generatePath(
                     }
 
                     if (++expansions > MAX_EXPANSIONS) {
-                        // Give up on the goal and walk to the closest point reached, as before.
                         let candidate = bestId
                         if (stream !== undefined && commitCount > 0) {
                             fillChain(candidate)
@@ -885,7 +873,17 @@ export function generatePath(
     })
 }
 
-export function findNearestNodeLocation(nodeList: Record<string, PathNode>, location: Vector3, maxRadius = 1.5) {
+/**
+ * Which side of its block an entity is leaning towards on each horizontal axis: -1 or 1 when it is near that edge of the block,
+ * 0 when it is centered on the axis. Both axes 0 means centered (search everywhere), one axis set means near an edge
+ * (search that side only), both set means near a corner (search that quadrant).
+ */
+export interface SearchBias {
+    x: -1 | 0 | 1
+    z: -1 | 0 | 1
+}
+
+export function findNearestNodeLocation(nodeList: Record<string, PathNode>, location: Vector3, maxRadius = 1.5, bias?: SearchBias) {
     if (nodeList[locationToString(location)] !== undefined) {
         return location
     }
@@ -896,6 +894,10 @@ export function findNearestNodeLocation(nodeList: Record<string, PathNode>, loca
             for (let dy = -radius; dy <= radius; dy++) {
                 for (let dz = -radius; dz <= radius; dz++) {
                     if (Math.max(Math.abs(dx), Math.abs(dy), Math.abs(dz)) !== radius) {
+                        continue
+                    }
+                    // A biased search only looks on the side(s) the entity is leaning towards
+                    if (bias !== undefined && ((bias.x !== 0 && dx * bias.x < 0) || (bias.z !== 0 && dz * bias.z < 0))) {
                         continue
                     }
                     const candidate = addVectors(location, { x: dx, y: dy, z: dz })
@@ -1108,7 +1110,7 @@ function tickPathSnapshot() {
     }
 }
 
-function checkRequirement(villagerType: string, requirement?: NodeRequirement) {
+export function checkRequirement(villagerType: string, requirement?: NodeRequirement) {
     if (requirement === undefined) {
         return true
     }

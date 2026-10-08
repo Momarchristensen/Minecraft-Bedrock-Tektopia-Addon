@@ -84,18 +84,83 @@ export type CompressedVillage = [
 
 const DIGITS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
 const DIGIT_VALUES: Record<string, number> = {}
+const SAVE_BATCH_SIZE = 128
+
 for (let i = 0; i < DIGITS.length; i++) {
     DIGIT_VALUES[DIGITS.charAt(i)] = i
 }
 
-function packUnsigned(values: number[]): string {
+function yieldAfterBatch(index: number): boolean {
+    return (index + 1) % SAVE_BATCH_SIZE === 0
+}
+
+function arrayItem<T>(items: T[], index: number): T {
+    const item = items[index]
+    if (item === undefined) {
+        throw new Error(`Missing array item at index ${index}`)
+    }
+    return item
+}
+
+function* sortInTicks<T>(items: T[], compare: (left: T, right: T) => number): Generator<void, void, void> {
+    if (items.length < 2) {
+        return
+    }
+
+    let source = items
+    let target = new Array<T>(items.length)
+    let work = 0
+
+    for (let width = 1; width < items.length; width *= 2) {
+        for (let start = 0; start < items.length; start += width * 2) {
+            const middle = Math.min(start + width, items.length)
+            const end = Math.min(start + (width * 2), items.length)
+            let left = start
+            let right = middle
+
+            for (let i = start; i < end; i++) {
+                if (left < middle && (right >= end || compare(arrayItem(source, left), arrayItem(source, right)) <= 0)) {
+                    target[i] = arrayItem(source, left)
+                    left++
+                }
+                else {
+                    target[i] = arrayItem(source, right)
+                    right++
+                }
+
+                if (++work % SAVE_BATCH_SIZE === 0) {
+                    yield
+                }
+            }
+        }
+
+        const previousSource = source
+        source = target
+        target = previousSource
+    }
+
+    if (source !== items) {
+        for (let i = 0; i < items.length; i++) {
+            items[i] = arrayItem(source, i)
+            if (yieldAfterBatch(i)) {
+                yield
+            }
+        }
+    }
+}
+
+function* packUnsigned(values: number[]): Generator<void, string, void> {
     let result = ""
-    for (let value of values) {
+    for (let i = 0; i < values.length; i++) {
+        let value = arrayItem(values, i)
         while (value >= 32) {
             result += DIGITS.charAt((value % 32) + 32)
             value = Math.floor(value / 32)
         }
         result += DIGITS.charAt(value)
+        if (yieldAfterBatch(i)) {
+            yield
+        }
     }
     return result
 }
@@ -130,8 +195,15 @@ function unzigzag(value: number) {
     return value % 2 === 0 ? value / 2 : -(value + 1) / 2
 }
 
-function packSigned(values: number[]): string {
-    return packUnsigned(values.map(value => zigzag(value)))
+function* packSigned(values: number[]): Generator<void, string, void> {
+    const signedValues: number[] = new Array(values.length)
+    for (let i = 0; i < values.length; i++) {
+        signedValues[i] = zigzag(arrayItem(values, i))
+        if (yieldAfterBatch(i)) {
+            yield
+        }
+    }
+    return yield* packUnsigned(signedValues)
 }
 
 function unpackSigned(text: string): number[] {
@@ -152,7 +224,7 @@ function comparePoints(vector1: Vector3, vector2: Vector3) {
     return vector1.y - vector2.y
 }
 
-function packPoints(sortedPoints: Vector3[], origin: Vector3): string {
+function* packPoints(sortedPoints: Vector3[], origin: Vector3): Generator<void, string, void> {
     if (sortedPoints.length === 0) {
         return ""
     }
@@ -169,8 +241,14 @@ function packPoints(sortedPoints: Vector3[], origin: Vector3): string {
         px = point.x
         py = point.y
         pz = point.z
+        if (yieldAfterBatch(i)) {
+            yield
+        }
     }
-    return `${packSigned(dx)}.${packSigned(dz)}.${packSigned(dy)}`
+    const packedX = yield* packSigned(dx)
+    const packedZ = yield* packSigned(dz)
+    const packedY = yield* packSigned(dy)
+    return `${packedX}.${packedZ}.${packedY}`
 }
 
 function unpackPoints(text: string, origin: Vector3): Vector3[] {
@@ -194,31 +272,43 @@ function unpackPoints(text: string, origin: Vector3): Vector3[] {
     return points
 }
 
-function packLocations(locationList: LocationString[], origin: Vector3): string {
-    const points = locationList.map(location => stringToLocation(location))
-    points.sort(comparePoints)
-    return packPoints(points, origin)
+function* packLocations(locationList: LocationString[], origin: Vector3): Generator<void, string, void> {
+    const points: Vector3[] = []
+    for (let i = 0; i < locationList.length; i++) {
+        points.push(stringToLocation(arrayItem(locationList, i)))
+        if (yieldAfterBatch(i)) {
+            yield
+        }
+    }
+    yield* sortInTicks(points, comparePoints)
+    return yield* packPoints(points, origin)
 }
 
 function unpackLocations(text: string, origin: Vector3): LocationString[] {
     return unpackPoints(text, origin).map(point => locationToString(point))
 }
 
-function packTypedLocations(locationRecord: Record<LocationString, string>, origin: Vector3): [locations: string, types: string[], typeIndices: string] {
+function* packTypedLocations(locationRecord: Record<LocationString, string>, origin: Vector3): Generator<void, [locations: string, types: string[], typeIndices: string], void> {
     const entries: Array<{ point: Vector3, type: string }> = []
-    for (const key of Object.keys(locationRecord) as LocationString[]) {
+    const keys = Object.keys(locationRecord) as LocationString[]
+    for (let i = 0; i < keys.length; i++) {
+        const key = arrayItem(keys, i)
         const type = locationRecord[key]
         if (type === undefined) {
             continue
         }
         entries.push({ point: stringToLocation(key), type })
+        if (yieldAfterBatch(i)) {
+            yield
+        }
     }
-    entries.sort((a, b) => comparePoints(a.point, b.point))
+    yield* sortInTicks(entries, (a, b) => comparePoints(a.point, b.point))
 
     const types: string[] = []
     const typeIndexByType = new Map<string, number>()
     const typeIndices: number[] = []
-    for (const entry of entries) {
+    for (let i = 0; i < entries.length; i++) {
+        const entry = arrayItem(entries, i)
         let typeIndex = typeIndexByType.get(entry.type)
         if (typeIndex === undefined) {
             typeIndex = types.length
@@ -226,9 +316,21 @@ function packTypedLocations(locationRecord: Record<LocationString, string>, orig
             typeIndexByType.set(entry.type, typeIndex)
         }
         typeIndices.push(typeIndex)
+        if (yieldAfterBatch(i)) {
+            yield
+        }
     }
 
-    return [packPoints(entries.map(entry => entry.point), origin), types, packUnsigned(typeIndices)]
+    const points: Vector3[] = new Array(entries.length)
+    for (let i = 0; i < entries.length; i++) {
+        points[i] = arrayItem(entries, i).point
+        if (yieldAfterBatch(i)) {
+            yield
+        }
+    }
+    const locations = yield* packPoints(points, origin)
+    const packedTypeIndices = yield* packUnsigned(typeIndices)
+    return [locations, types, packedTypeIndices]
 }
 
 function unpackTypedLocations(text: string, types: string[] | undefined, typeIndices: string | undefined, origin: Vector3): Record<LocationString, string> {
@@ -255,9 +357,11 @@ function unpackTypedLocations(text: string, types: string[] | undefined, typeInd
 const STRUCTURE_ROTATIONS: Array<StructureData["rotation"]> = ["north", "east", "south", "west"]
 
 // Returns the packed form, or the plain record when something doesn't fit the packed form (so nothing is ever lost)
-function compressStructures(structures: Record<LocationString, StructureData>, origin: Vector3): CompressedStructures {
+function* compressStructures(structures: Record<LocationString, StructureData>, origin: Vector3): Generator<void, CompressedStructures, void> {
     const entries: Array<{ point: Vector3, type: string, rotation: number }> = []
-    for (const key of Object.keys(structures) as LocationString[]) {
+    const keys = Object.keys(structures) as LocationString[]
+    for (let i = 0; i < keys.length; i++) {
+        const key = arrayItem(keys, i)
         const structure = structures[key]
         if (structure === undefined) {
             continue
@@ -269,17 +373,21 @@ function compressStructures(structures: Record<LocationString, StructureData>, o
             return structures
         }
         entries.push({ point, type: structure.type, rotation })
+        if (yieldAfterBatch(i)) {
+            yield
+        }
     }
 
     if (entries.length === 0) {
         return undefined
     }
-    entries.sort((a, b) => comparePoints(a.point, b.point))
+    yield* sortInTicks(entries, (a, b) => comparePoints(a.point, b.point))
 
     const types: string[] = []
     const typeIndexByType = new Map<string, number>()
     const indices: number[] = []
-    for (const entry of entries) {
+    for (let i = 0; i < entries.length; i++) {
+        const entry = arrayItem(entries, i)
         let typeIndex = typeIndexByType.get(entry.type)
         if (typeIndex === undefined) {
             typeIndex = types.length
@@ -287,9 +395,21 @@ function compressStructures(structures: Record<LocationString, StructureData>, o
             typeIndexByType.set(entry.type, typeIndex)
         }
         indices.push((typeIndex * STRUCTURE_ROTATIONS.length) + entry.rotation)
+        if (yieldAfterBatch(i)) {
+            yield
+        }
     }
 
-    return [packPoints(entries.map(entry => entry.point), origin), types, packUnsigned(indices)]
+    const points: Vector3[] = new Array(entries.length)
+    for (let i = 0; i < entries.length; i++) {
+        points[i] = arrayItem(entries, i).point
+        if (yieldAfterBatch(i)) {
+            yield
+        }
+    }
+    const locations = yield* packPoints(points, origin)
+    const packedIndices = yield* packUnsigned(indices)
+    return [locations, types, packedIndices]
 }
 
 function decompressStructures(packed: PackedStructures, origin: Vector3): Record<LocationString, StructureData> {
@@ -349,40 +469,61 @@ interface MaskStreams {
     estimatedBits: number
 }
 
-// Palette-codes one mask per node. estimatedBits is a rough entropy cost, used to pick the cheaper edge encoding
-function buildMaskStreams(masks: number[]): MaskStreams {
+function* buildMaskStreams(masks: number[]): Generator<void, MaskStreams, void> {
     const maskCounts = new Map<number, number>()
-    for (const mask of masks) {
+    for (let i = 0; i < masks.length; i++) {
+        const mask = arrayItem(masks, i)
         maskCounts.set(mask, (maskCounts.get(mask) ?? 0) + 1)
+        if (yieldAfterBatch(i)) {
+            yield
+        }
     }
 
-    const palette = [...maskCounts.keys()].sort((mask1, mask2) => {
+    const palette = [...maskCounts.keys()]
+    yield* sortInTicks(palette, (mask1, mask2) => {
         const countDifference = (maskCounts.get(mask2) ?? 0) - (maskCounts.get(mask1) ?? 0)
 
         return countDifference !== 0 ? countDifference : mask1 - mask2
     })
 
     const paletteIndexByMask = new Map<number, number>()
-    for (const [i, mask] of palette.entries()) {
+    for (let i = 0; i < palette.length; i++) {
+        const mask = arrayItem(palette, i)
         paletteIndexByMask.set(mask, i)
+        if (yieldAfterBatch(i)) {
+            yield
+        }
     }
 
     let estimatedBits = palette.length * FORWARD_BITS
+    let maskCountIndex = 0
     for (const count of maskCounts.values()) {
         estimatedBits -= count * Math.log2(count / masks.length)
+        if (yieldAfterBatch(maskCountIndex++)) {
+            yield
+        }
+    }
+
+    const indices: number[] = new Array(masks.length)
+    for (let i = 0; i < masks.length; i++) {
+        indices[i] = paletteIndexByMask.get(arrayItem(masks, i)) ?? 0
+        if (yieldAfterBatch(i)) {
+            yield
+        }
     }
 
     return {
         palette,
-        indices: masks.map(mask => paletteIndexByMask.get(mask) ?? 0),
+        indices,
         estimatedBits
     }
 }
 
 // For every node: the forward neighbors that exist as nodes but are not connected to it
-function buildExceptionMasks(nodeLocations: Vector3[], indexByKey: Map<string, number>, connectedMasks: number[]): number[] {
+function* buildExceptionMasks(nodeLocations: Vector3[], indexByKey: Map<string, number>, connectedMasks: number[]): Generator<void, number[], void> {
     const exceptionMasks: number[] = new Array(nodeLocations.length).fill(0)
-    for (const [i, location] of nodeLocations.entries()) {
+    for (let i = 0; i < nodeLocations.length; i++) {
+        const location = arrayItem(nodeLocations, i)
         const connected = connectedMasks[i] ?? 0
         let exceptions = 0
         for (let bitIndex = 0; bitIndex < FORWARD_BITS; bitIndex++) {
@@ -396,19 +537,36 @@ function buildExceptionMasks(nodeLocations: Vector3[], indexByKey: Map<string, n
             }
         }
         exceptionMasks[i] = exceptions
+        if (yieldAfterBatch(i)) {
+            yield
+        }
     }
     return exceptionMasks
 }
 
-export function compressVillage(data: VillageSaveData): CompressedVillage {
+export function* compressVillage(data: VillageSaveData): Generator<void, CompressedVillage, void> {
     const center = data.center
     const origin = originOf(center)
-    const nodeEntries = SAVE_PATH_NODES ? (Object.keys(data.pathNodes) as LocationString[]).map(key => ({ key, location: stringToLocation(key) })) : []
-    nodeEntries.sort((a, b) => comparePoints(a.location, b.location))
+    const nodeEntries: Array<{ key: LocationString, location: Vector3 }> = []
+    if (SAVE_PATH_NODES) {
+        const nodeKeys = Object.keys(data.pathNodes) as LocationString[]
+        for (let i = 0; i < nodeKeys.length; i++) {
+            const key = arrayItem(nodeKeys, i)
+            nodeEntries.push({ key, location: stringToLocation(key) })
+            if (yieldAfterBatch(i)) {
+                yield
+            }
+        }
+    }
+    yield* sortInTicks(nodeEntries, (a, b) => comparePoints(a.location, b.location))
 
     const indexByKey = new Map<string, number>()
-    for (const [i, entry] of nodeEntries.entries()) {
+    for (let i = 0; i < nodeEntries.length; i++) {
+        const entry = arrayItem(nodeEntries, i)
         indexByKey.set(entry.key, i)
+        if (yieldAfterBatch(i)) {
+            yield
+        }
     }
     const forwardMasks: number[] = new Array(nodeEntries.length).fill(0)
 
@@ -435,15 +593,22 @@ export function compressVillage(data: VillageSaveData): CompressedVillage {
         group.last = index
     }
 
-    function packRequirementGroups(groups: RequirementGroups) {
+    function* packRequirementGroups(groups: RequirementGroups): Generator<void, CompressedRequirement[], void> {
         const result: CompressedRequirement[] = []
+        let i = 0
         for (const group of groups.values()) {
-            result.push([group.whiteList, group.types, packUnsigned(group.deltas)])
+            result.push([group.whiteList, group.types, yield* packUnsigned(group.deltas)])
+            if (yieldAfterBatch(i++)) {
+                yield
+            }
         }
         return result
     }
 
-    for (const [i, { key, location }] of nodeEntries.entries()) {
+    for (let i = 0; i < nodeEntries.length; i++) {
+        const { key, location } = arrayItem(nodeEntries, i)
+        yield
+
         const node = data.pathNodes[key]
 
         if (node === undefined) {
@@ -504,22 +669,49 @@ export function compressVillage(data: VillageSaveData): CompressedVillage {
         }
     }
 
-    // Most adjacent nodes are usually connected, so listing the pairs that are NOT connected can leave
-    // mostly empty masks that compress far better. Whichever encoding looks cheaper is used per village.
-    const connectedStreams = buildMaskStreams(forwardMasks)
-    const exceptionStreams = buildMaskStreams(buildExceptionMasks(nodeEntries.map(entry => entry.location), indexByKey, forwardMasks))
+    yield
+    const connectedStreams = yield* buildMaskStreams(forwardMasks)
+    yield
+    const nodeLocations: Vector3[] = new Array(nodeEntries.length)
+    for (let i = 0; i < nodeEntries.length; i++) {
+        nodeLocations[i] = arrayItem(nodeEntries, i).location
+        if (yieldAfterBatch(i)) {
+            yield
+        }
+    }
+    const exceptionMasks = yield* buildExceptionMasks(nodeLocations, indexByKey, forwardMasks)
+    const exceptionStreams = yield* buildMaskStreams(exceptionMasks)
     const useExceptions = exceptionStreams.estimatedBits < connectedStreams.estimatedBits
     const maskStreams = useExceptions ? exceptionStreams : connectedStreams
 
-    const nodeRequirements = packRequirementGroups(requirementGroups)
-    const connectionRequirements = packRequirementGroups(connectionRequirementGroups)
+    const nodeRequirements = yield* packRequirementGroups(requirementGroups)
+    const connectionRequirements = yield* packRequirementGroups(connectionRequirementGroups)
 
     const nodeCosts: CompressedCost[] = []
+    let costGroupIndex = 0
     for (const [cost, costGroup] of costGroups) {
-        nodeCosts.push([cost, packUnsigned(costGroup.deltas)])
+        nodeCosts.push([cost, yield* packUnsigned(costGroup.deltas)])
+        if (yieldAfterBatch(costGroupIndex++)) {
+            yield
+        }
     }
 
-    const [packedPlantLocations, plantTypes, plantTypeIndices]: ReturnType<typeof packTypedLocations> = SAVE_RESOURCE_LOCATIONS ? packTypedLocations(data.plantLocations, origin) : ["", [], ""]
+    const [packedPlantLocations, plantTypes, plantTypeIndices] = SAVE_RESOURCE_LOCATIONS
+        ? yield* packTypedLocations(data.plantLocations, origin)
+        : ["", [], ""]
+
+    const packedSugarCaneLocations = SAVE_RESOURCE_LOCATIONS ? yield* packLocations(data.sugarCaneLocations, origin) : ""
+    const packedSaplingLocations = SAVE_RESOURCE_LOCATIONS ? yield* packLocations(data.saplingLocations, origin) : ""
+    const packedFarmLocations = SAVE_RESOURCE_LOCATIONS ? yield* packLocations(data.farmLocations, origin) : ""
+    const packedTreeLocations = SAVE_RESOURCE_LOCATIONS ? yield* packLocations(data.treeLocations, origin) : ""
+    const packedHarvestLocations = SAVE_RESOURCE_LOCATIONS && SAVE_DERIVED_LOCATIONS ? yield* packLocations(data.harvestLocations, origin) : ""
+    const packedSweetBerryLocations = SAVE_RESOURCE_LOCATIONS ? yield* packLocations(data.sweetBerryLocations, origin) : ""
+    const packedTillLocations = SAVE_RESOURCE_LOCATIONS && SAVE_DERIVED_LOCATIONS ? yield* packLocations(data.tillLocations, origin) : ""
+    const packedNodeLocations = yield* packPoints(nodeLocations, origin)
+
+    const packedMaskPalette = yield* packUnsigned(maskStreams.palette)
+    const packedMaskIndices = yield* packUnsigned(maskStreams.indices)
+    const packedStructures = yield* compressStructures(data.structures, origin)
 
     const dimensionId = data.dimensionId
     const door = data.doorLocation
@@ -527,21 +719,21 @@ export function compressVillage(data: VillageSaveData): CompressedVillage {
         dimensionId.startsWith(NAMESPACE) ? dimensionId.slice(NAMESPACE.length) : dimensionId,
         [center.x, center.y, center.z],
         [door.x - origin.x, door.y - origin.y, door.z - origin.z],
-        SAVE_RESOURCE_LOCATIONS ? packLocations(data.sugarCaneLocations, origin) : "",
-        SAVE_RESOURCE_LOCATIONS ? packLocations(data.saplingLocations, origin) : "",
-        SAVE_RESOURCE_LOCATIONS ? packLocations(data.farmLocations, origin) : "",
-        SAVE_RESOURCE_LOCATIONS ? packLocations(data.treeLocations, origin) : "",
-        SAVE_RESOURCE_LOCATIONS && SAVE_DERIVED_LOCATIONS ? packLocations(data.harvestLocations, origin) : "",
-        SAVE_RESOURCE_LOCATIONS ? packLocations(data.sweetBerryLocations, origin) : "",
-        SAVE_RESOURCE_LOCATIONS && SAVE_DERIVED_LOCATIONS ? packLocations(data.tillLocations, origin) : "",
+        packedSugarCaneLocations,
+        packedSaplingLocations,
+        packedFarmLocations,
+        packedTreeLocations,
+        packedHarvestLocations,
+        packedSweetBerryLocations,
+        packedTillLocations,
         packedPlantLocations,
-        packPoints(nodeEntries.map(entry => entry.location), origin),
-        packUnsigned(maskStreams.palette),
-        packUnsigned(maskStreams.indices),
+        packedNodeLocations,
+        packedMaskPalette,
+        packedMaskIndices,
         nodeRequirements,
         plantTypes,
         plantTypeIndices,
-        compressStructures(data.structures, origin),
+        packedStructures,
         nodeCosts,
         connectionRequirements,
         useExceptions ? 1 : undefined

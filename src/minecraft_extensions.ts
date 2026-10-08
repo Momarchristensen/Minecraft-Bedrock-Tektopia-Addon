@@ -45,6 +45,7 @@ declare module "@minecraft/server" {
         getVillages(): Village[]
         saveData(asynchronous?: false): void
         saveData(asynchronous: true): Promise<void>
+        autoSave(): void
         loadData(): void
         getEntities(options?: EntityQueryOptions | undefined): Entity[]
         getVillagers(): Villager[]

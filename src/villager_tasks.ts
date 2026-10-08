@@ -152,7 +152,8 @@ export const tektopiaVillagers: Record<string, VillagerConfig> = {
             "minecraft:diorite",
             "minecraft:andesite",
             "minecraft:gravel",
-            "minecraft:flint"
+            "minecraft:flint",
+            "minecraft:cobbled_deepslate"
         ],
         depositItems(inventory: Container): DepositPlan | undefined {
             return createDepositPlan(
@@ -182,6 +183,15 @@ export const tektopiaVillagers: Record<string, VillagerConfig> = {
                     || villager.isHoldingLeash,
                 tick: (villager: Villager, village: Village) =>
                     villager.tickHerdEntity(village)
+            },
+            {
+                id: "close_gate",
+                name: "Close Gate",
+                required: false,
+                condition: (villager: Villager, village: Village) =>
+                    villager.findOpenGate(village) !== undefined,
+                tick: (villager: Villager) =>
+                    villager.tickCloseGate()
             },
             {
                 id: "breed",

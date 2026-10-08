@@ -1,6 +1,8 @@
 import {
     Entity,
     EntityComponentTypes,
+    EntityDamageCause,
+    ItemStack,
     system,
     type VanillaEntityIdentifier,
     world
@@ -18,6 +20,7 @@ import {
 const RANCH_TYPES = ["minecraft:pig", "minecraft:sheep", "minecraft:cow", "minecraft:chicken"]
 const RANCH_TYPE_SET = new Set(RANCH_TYPES)
 const ranchAnimalEntities = new Map<string, Entity>()
+const chickenEggLayTimers = new Map<string, number>()
 let ranchAnimalEntitiesInitialized = false
 
 const BREEDING_DURATION = 30 * 20
@@ -26,6 +29,70 @@ const MEET_DISTANCE = 1.5
 const MEET_TICKS = 20
 
 const activeBreedingStates = new Set<EntityBreeding>()
+
+function initializeChickenEggLayTimer(entity: Entity) {
+    if (entity.typeId === "minecraft:chicken" && !chickenEggLayTimers.has(entity.id)) {
+        chickenEggLayTimers.set(entity.id, randomInt(300, 600))
+    }
+}
+
+function spawnRanchDrop(entity: Entity, typeId: string, amount: number, villagerItem: boolean) {
+    if (amount <= 0) {
+        return
+    }
+
+    const item = new ItemStack(typeId, amount)
+    if (villagerItem) {
+        item.makeVillagerItem()
+    }
+    entity.dimension.spawnItem(item, entity.location)
+}
+
+function dropRanchAnimalLoot(entity: Entity, cause: EntityDamageCause) {
+    if (!RANCH_TYPE_SET.has(entity.typeId) || entity.hasComponent(EntityComponentTypes.IsBaby)) {
+        return
+    }
+
+    const villagerItem = entity.villagerEntity === true
+    const cooked = [
+        EntityDamageCause.fire,
+        EntityDamageCause.fireTick,
+        EntityDamageCause.lava,
+        EntityDamageCause.campfire
+    ].includes(cause)
+    const meat = (raw: string, cookedType: string, amount: number) =>
+        spawnRanchDrop(entity, cooked ? cookedType : raw, amount, villagerItem)
+
+    switch (entity.typeId) {
+        case "minecraft:chicken":
+            meat("minecraft:chicken", "minecraft:cooked_chicken", 1)
+            spawnRanchDrop(entity, "minecraft:feather", randomInt(0, 2), villagerItem)
+            break
+        case "minecraft:cow":
+            meat("minecraft:beef", "minecraft:cooked_beef", randomInt(1, 3))
+            spawnRanchDrop(entity, "minecraft:leather", randomInt(0, 2), villagerItem)
+            break
+        case "minecraft:pig":
+            meat("minecraft:porkchop", "minecraft:cooked_porkchop", randomInt(1, 3))
+            if (entity.hasComponent(EntityComponentTypes.IsSaddled)) {
+                spawnRanchDrop(entity, "minecraft:saddle", 1, villagerItem)
+            }
+            break
+        case "minecraft:sheep": {
+            meat("minecraft:mutton", "minecraft:cooked_mutton", randomInt(1, 2))
+            if (!entity.hasComponent(EntityComponentTypes.IsSheared)) {
+                const wool = entity.getWoolItem()
+                if (wool !== undefined) {
+                    if (villagerItem) {
+                        wool.makeVillagerItem()
+                    }
+                    entity.dimension.spawnItem(wool, entity.location)
+                }
+            }
+            break
+        }
+    }
+}
 
 export interface BreedingSaveData {
     time: number
@@ -206,6 +273,7 @@ function initializeBreedingStates() {
         for (const entity of world.getEntities()) {
             if (RANCH_TYPE_SET.has(entity.typeId)) {
                 ranchAnimalEntities.set(entity.id, entity)
+                initializeChickenEggLayTimer(entity)
                 void entity.breeding
             }
             if (++processed % 32 === 0) {
@@ -223,6 +291,7 @@ export function isRanchAnimalRegistryInitialized() {
 world.afterEvents.entitySpawn.subscribe(event => {
     if (RANCH_TYPE_SET.has(event.entity.typeId)) {
         ranchAnimalEntities.set(event.entity.id, event.entity)
+        initializeChickenEggLayTimer(event.entity)
         void event.entity.breeding
     }
 })
@@ -230,12 +299,59 @@ world.afterEvents.entitySpawn.subscribe(event => {
 world.afterEvents.entityLoad.subscribe(event => {
     if (RANCH_TYPE_SET.has(event.entity.typeId)) {
         ranchAnimalEntities.set(event.entity.id, event.entity)
+        initializeChickenEggLayTimer(event.entity)
         void event.entity.breeding
     }
 })
 
 world.afterEvents.entityRemove.subscribe(event => {
     ranchAnimalEntities.delete(event.removedEntityId)
+    chickenEggLayTimers.delete(event.removedEntityId)
+})
+
+world.afterEvents.entityDie.subscribe(event => {
+    const entity = event.deadEntity
+    chickenEggLayTimers.delete(entity.id)
+    dropRanchAnimalLoot(entity, event.damageSource.cause)
+})
+
+system.runInterval(() => {
+    for (const [entityId, secondsRemaining] of chickenEggLayTimers) {
+        const chicken = ranchAnimalEntities.get(entityId)
+        if (!chicken?.isValid) {
+            chickenEggLayTimers.delete(entityId)
+            continue
+        }
+        if (chicken.hasComponent(EntityComponentTypes.IsBaby)) {
+            continue
+        }
+
+        const rideable = chicken.getComponent(EntityComponentTypes.Rideable)
+        if ((rideable?.getRiders().length ?? 0) > 0) {
+            continue
+        }
+        if (secondsRemaining > 0) {
+            chickenEggLayTimers.set(entityId, secondsRemaining - 1)
+            continue
+        }
+
+        const climate = chicken.getProperty("minecraft:climate_variant")
+        const eggType = climate === "warm"
+            ? "minecraft:brown_egg"
+            : climate === "cold"
+                ? "minecraft:blue_egg"
+                : "minecraft:egg"
+        const egg = new ItemStack(eggType)
+        if (chicken.villagerEntity === true) {
+            egg.makeVillagerItem()
+        }
+
+        try {
+            chicken.dimension.spawnItem(egg, chicken.location)
+            chickenEggLayTimers.set(entityId, randomInt(300, 600))
+        }
+        catch { }
+    }
 })
 
 world.afterEvents.worldLoad.subscribe(() => {

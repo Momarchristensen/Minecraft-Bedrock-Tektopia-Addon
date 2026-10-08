@@ -1,0 +1,146 @@
+{
+    "format_version": "1.26.50",
+    "minecraft:block": {
+        "description": {
+            "identifier": "tektopia:chair",
+            "menu_category": {
+                "category": "items"
+            },
+            "traits": {
+                "minecraft:placement_direction": {
+                    "enabled_states": [
+                        "minecraft:cardinal_direction"
+                    ],
+                    "y_rotation_offset": 180
+                }
+            }
+        },
+        "components": {
+            "minecraft:collision_box": [
+                {
+                    "origin": [
+                        -4.5,
+                        6.5,
+                        -3.5
+                    ],
+                    "size": [
+                        9,
+                        1,
+                        8
+                    ]
+                },
+                {
+                    "origin": [
+                        -4.5,
+                        7.5,
+                        3.5
+                    ],
+                    "size": [
+                        9,
+                        8,
+                        1
+                    ]
+                }
+            ],
+            "minecraft:selection_box": {
+                "origin": [
+                    -4.5,
+                    0,
+                    -4.5
+                ],
+                "size": [
+                    9,
+                    15.5,
+                    9
+                ]
+            },
+            "minecraft:destructible_by_explosion": true,
+            "minecraft:destructible_by_mining": true,
+            "minecraft:display_name": "Chair",
+            "minecraft:flammable": false,
+            "minecraft:geometry": "geometry.tektopia_chair",
+            "minecraft:light_dampening": 0,
+            "minecraft:light_emission": 0,
+            "minecraft:material_instances": {
+                "*": {
+                    "texture": "oak_planks",
+                    "ambient_occlusion": 1,
+                    "face_dimming": true,
+                    "render_method": "opaque"
+                }
+            },
+            "minecraft:liquid_detection": {
+                "detection_rules": [
+                    {
+                        "can_contain_liquid": true,
+                        "use_liquid_clipping": false,
+                        "liquid_type": "water"
+                    }
+                ]
+            },
+            "minecraft:map_color": "#b8945f",
+            "minecraft:sound": {
+                "sound": "wood"
+            },
+            "minecraft:placement_filter": {
+                "conditions": [
+                    {
+                        "allowed_faces": [
+                            "up"
+                        ]
+                    }
+                ]
+            }
+        },
+        "permutations": [
+            {
+                "condition": "query.block_state('minecraft:cardinal_direction') == 'north'",
+                "components": {
+                    "minecraft:transformation": {
+                        "rotation": [
+                            0,
+                            0,
+                            0
+                        ]
+                    }
+                }
+            },
+            {
+                "condition": "query.block_state('minecraft:cardinal_direction') == 'west'",
+                "components": {
+                    "minecraft:transformation": {
+                        "rotation": [
+                            0,
+                            90,
+                            0
+                        ]
+                    }
+                }
+            },
+            {
+                "condition": "query.block_state('minecraft:cardinal_direction') == 'south'",
+                "components": {
+                    "minecraft:transformation": {
+                        "rotation": [
+                            0,
+                            180,
+                            0
+                        ]
+                    }
+                }
+            },
+            {
+                "condition": "query.block_state('minecraft:cardinal_direction') == 'east'",
+                "components": {
+                    "minecraft:transformation": {
+                        "rotation": [
+                            0,
+                            -90,
+                            0
+                        ]
+                    }
+                }
+            }
+        ]
+    }
+}

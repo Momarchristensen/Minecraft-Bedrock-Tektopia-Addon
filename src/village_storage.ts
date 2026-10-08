@@ -351,6 +351,25 @@ export class VillageStorage implements Iterable<ItemStack> {
         return sameType ?? fitsAll ?? fitsSome
     }
 
+    // True if some chest other than `except` already holds this item type and still has room for it
+    hasOtherChestWithType(
+        itemStack: ItemStack,
+        except: StorageChest,
+        accept?: (chest: StorageChest) => boolean
+    ): boolean {
+        for (const chest of this.liveChests()) {
+            if (chest === except || (accept !== undefined && !accept(chest))) {
+                continue
+            }
+
+            if (containsType(chest.container, itemStack.typeId) && getRoomFor(chest.container, itemStack) > 0) {
+                return true
+            }
+        }
+
+        return false
+    }
+
     canDeposit(source: Container, itemFilter?: ItemStackFilter): boolean {
         for (const item of source) {
             if (item === undefined) {
@@ -424,7 +443,13 @@ export class VillageStorage implements Iterable<ItemStack> {
         return total
     }
 
-    depositPlanInto(chest: StorageChest, source: Container, plan: DepositPlan): number {
+    depositPlanInto(
+        chest: StorageChest,
+        source: Container,
+        plan: DepositPlan,
+        accept?: (chest: StorageChest) => boolean,
+        preferExisting = true
+    ): number {
         if (!chest.container.isValid) {
             return 0
         }
@@ -445,6 +470,10 @@ export class VillageStorage implements Iterable<ItemStack> {
                 continue
             }
 
+            if (preferExisting && !containsType(chest.container, item.typeId) && this.hasOtherChestWithType(item, chest, accept)) {
+                continue
+            }
+
             const moved = moveItems(source, slot, chest.container, wanted)
 
             remaining[item.typeId] = wanted - moved
@@ -452,6 +481,31 @@ export class VillageStorage implements Iterable<ItemStack> {
         }
 
         return total
+    }
+
+    // Human-readable reason a deposit into `chest` moved nothing, for debug logging
+    explainDepositFailure(chest: StorageChest, source: Container, plan: DepositPlan): string {
+        const container = chest.container
+        const parts = [`chest has ${container.size} slots, ${container.emptySlotsCount} empty`]
+
+        for (const typeId of Object.keys(plan)) {
+            for (let slot = 0; slot < source.size; slot++) {
+                const item = source.getItem(slot)
+
+                if (item?.typeId !== typeId) {
+                    continue
+                }
+
+                parts.push(
+                    `${typeId} x${item.amount} (villagerItem ${item.isVillagerItem}): `
+                    + `room ${getRoomFor(container, item)}, chestHasType ${containsType(container, typeId)}, `
+                    + `otherChestHasType ${this.hasOtherChestWithType(item, chest)}`
+                )
+                break
+            }
+        }
+
+        return parts.join("; ")
     }
 
     addItem(itemStack: ItemStack): ItemStack | undefined {
@@ -528,7 +582,7 @@ Container.prototype.getItemCounts = function (itemFilter) {
 
     for (const item of this) {
         if (item?.matchesFilter(itemFilter)) {
-            totals[item.typeId] = (totals[item.typeId] ?? 0) + 1
+            totals[item.typeId] = (totals[item.typeId] ?? 0) + item.amount
         }
     }
 

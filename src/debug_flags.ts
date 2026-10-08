@@ -9,6 +9,7 @@ export const debugFlags = {
     pathScanParticles: false,
     villagerPathParticles: false,
     pathfindingWarnings: false,
+    depositWarnings: false,
     nodeUpdatedWarnings: false,
     rancherPenParticles: false
 }

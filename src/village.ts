@@ -37,7 +37,6 @@ import {
     centerVector,
     floorVector,
     isVectorBetween,
-    randomInt,
     randomItem,
     stringToLocation,
     subtractVectors,
@@ -181,7 +180,7 @@ export class Village {
         }
     }
 
-    static compress(data: VillageSaveData): CompressedVillage {
+    static compress(data: VillageSaveData): Generator<void, CompressedVillage, void> {
         return compressVillage(data)
     }
 
@@ -1118,7 +1117,19 @@ Player.prototype.spawnBorderParticles = function (bounds) { //not debug
     }
 
     const emit = (x: number, z: number) => {
-        player.spawnParticle(BORDER_PARTICLE_ID, { x, y: py + randomInt(-10, 10), z })
+        player.spawnParticle(BORDER_PARTICLE_ID, { x, y: py + ((Math.random() * 20) - 10), z })
+    }
+
+    // Spawns about one particle per block of visible border, at random positions along it instead of on whole block coordinates
+    const emitAlong = (from: number, to: number, emitAt: (position: number) => void) => {
+        const length = to - from
+        if (length <= 0) {
+            return
+        }
+        const count = Math.floor(length) + (Math.random() < length % 1 ? 1 : 0)
+        for (let i = 0; i < count; i++) {
+            emitAt(from + (Math.random() * length))
+        }
     }
 
     for (const edgeZ of [minZ, maxZ]) {
@@ -1127,11 +1138,7 @@ Player.prototype.spawnBorderParticles = function (bounds) { //not debug
             continue
         }
         const half = Math.sqrt((range * range) - (dz * dz))
-        const from = Math.max(minX, Math.ceil(px - half))
-        const to = Math.min(maxX, Math.floor(px + half))
-        for (let x = from; x <= to; x++) {
-            emit(x, edgeZ)
-        }
+        emitAlong(Math.max(minX, px - half), Math.min(maxX, px + half), x => emit(x, edgeZ))
     }
 
     for (const edgeX of [minX, maxX]) {
@@ -1140,11 +1147,7 @@ Player.prototype.spawnBorderParticles = function (bounds) { //not debug
             continue
         }
         const half = Math.sqrt((range * range) - (dx * dx))
-        const from = Math.max(minZ + 1, Math.ceil(pz - half))
-        const to = Math.min(maxZ - 1, Math.floor(pz + half))
-        for (let z = from; z <= to; z++) {
-            emit(edgeX, z)
-        }
+        emitAlong(Math.max(minZ, pz - half), Math.min(maxZ, pz + half), z => emit(edgeX, z))
     }
 }
 
@@ -1224,11 +1227,29 @@ system.runInterval(() => {
     }
 }, 20)
 
+// Fence blocks sit on the pen's border, but small mobs (chickens) can stand inside a fence block's cell while
+// still outside the pen. Only the part of a fence block that faces the pen interior counts as inside:
+// each quarter of the block counts if a floor tile touches it (either side or the diagonal between them),
+// which gives half a block on straight fences, a quarter on outer corners and three quarters on inner corners.
+function isInsideFenceBlock(floorColumns: Set<string>, location: Vector3): boolean {
+    const blockX = Math.floor(location.x)
+    const blockZ = Math.floor(location.z)
+    const sx = location.x - blockX >= 0.5 ? 1 : -1
+    const sz = location.z - blockZ >= 0.5 ? 1 : -1
+
+    return floorColumns.has(`${blockX + sx},${blockZ}`)
+        || floorColumns.has(`${blockX},${blockZ + sz}`)
+        || floorColumns.has(`${blockX + sx},${blockZ + sz}`)
+}
+
 function* refreshRanchEntities(villageList: Village[], callback: () => void): Generator<void, void, void> {
     try {
         const rancherEntitiesByDimension = new Map<string, Entity[]>()
         let processedEntities = 0
         for (const entity of getRanchAnimals()) {
+            if (!entity.isValid) {
+                continue
+            }
             const dimensionId = entity.dimension.id
             let entities = rancherEntitiesByDimension.get(dimensionId)
             if (entities === undefined) {
@@ -1256,7 +1277,7 @@ function* refreshRanchEntities(villageList: Village[], callback: () => void): Ge
                 continue
             }
 
-            const penFloors: Array<{ pen: typeof pens[number], columns: Map<string, number[]> }> = []
+            const penFloors: Array<{ pen: typeof pens[number], columns: Map<string, number[]>, floorColumns: Set<string> }> = []
             for (const pen of pens) {
                 const scanned = yield* pen.scanLocationsIncremental()
                 const previous = village.penCache.get(pen.locationString)
@@ -1264,6 +1285,7 @@ function* refreshRanchEntities(villageList: Village[], callback: () => void): Ge
                 const fence = scanned.fence ?? previous?.fence ?? []
                 village.penCache.set(pen.locationString, { floor, fence })
                 const columns = new Map<string, number[]>()
+                const floorColumns = new Set<string>()
                 let processedLocations = 0
                 for (const locations of [floor, fence]) {
                     for (const location of locations) {
@@ -1272,6 +1294,9 @@ function* refreshRanchEntities(villageList: Village[], callback: () => void): Ge
                         }
                         penTiles.set(locationToString(location), pen.locationString)
                         const key = `${location.x},${location.z}`
+                        if (locations === floor) {
+                            floorColumns.add(key)
+                        }
                         const ys = columns.get(key)
                         if (ys === undefined) {
                             columns.set(key, [location.y])
@@ -1284,7 +1309,7 @@ function* refreshRanchEntities(villageList: Village[], callback: () => void): Ge
                         }
                     }
                 }
-                penFloors.push({ pen, columns })
+                penFloors.push({ pen, columns, floorColumns })
             }
 
             let processedEntitiesInVillage = 0
@@ -1300,9 +1325,12 @@ function* refreshRanchEntities(villageList: Village[], callback: () => void): Ge
                 const columnKey = `${Math.floor(rancherEntityLocation.x)},${Math.floor(rancherEntityLocation.z)}`
                 let matchedPen: LocationString | undefined
                 let fallbackPen: LocationString | undefined
-                for (const { pen, columns } of penFloors) {
+                for (const { pen, columns, floorColumns } of penFloors) {
                     const ys = columns.get(columnKey)
                     if (!ys?.some(y => rancherEntityLocation.y >= y - 0.5 && rancherEntityLocation.y < y + 3)) {
+                        continue
+                    }
+                    if (!floorColumns.has(columnKey) && !isInsideFenceBlock(floorColumns, rancherEntityLocation)) {
                         continue
                     }
                     if (pen.getAnimalTypeId() === rancherEntity.typeId) {

@@ -4,7 +4,7 @@
         "description": "Created using Visual Studio Code",
         "name": "Tektopia",
         "uuid": "639397ca-8974-41ea-9984-c8b68f0a6035",
-        "version": [1, 0, 4],
+        "version": [1, 0, 5],
         "min_engine_version": [ 1, 18, 30 ]
     },
     "modules": [

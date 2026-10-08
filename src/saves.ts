@@ -1,4 +1,6 @@
 import {
+    CommandPermissionLevel,
+    CustomCommandStatus,
     Entity,
     Player,
     system,
@@ -34,7 +36,18 @@ export const worldSaveDataList = [
         property: "villageList",
         default: [],
         compression: {
-            compress: (value: VillageSaveData[]) => value.map(village => Village.compress(village)),
+            // A generator so the work can be spread across ticks (system.runJob) or drained immediately when saving synchronously
+            *compress(value: VillageSaveData[]): Generator<void, CompressedVillage[], void> {
+                const compressed: CompressedVillage[] = []
+
+                // Iterate over a snapshot so villages added or removed while the job is paused can't skip or duplicate entries
+                for (const village of [...value]) {
+                    compressed.push(yield* Village.compress(village))
+                    yield
+                }
+
+                return compressed
+            },
             decompress: (value: CompressedVillage[]) => {
                 const villages: VillageSaveData[] = []
                 for (const compressed of value) {
@@ -85,7 +98,6 @@ World.prototype.loadData = function () {
     this.loadedData = true
 }
 
-// async-lz-string pauses between slices of work with setTimeout, which the Bedrock script runtime does not provide
 const globalScope = globalThis as unknown as Record<string, unknown>
 
 if (globalScope.setTimeout === undefined) {
@@ -106,16 +118,38 @@ interface CompressedWorldProperty {
     valueString: string
 }
 
-// Incremented by every synchronous save, so an asynchronous save that was started earlier knows its snapshot is stale
 let syncSaveCount = 0
 let activeAsyncSave: Promise<void> | undefined
 
-function serializeWorldProperty(world: World, property: WorldSaveDataProperty): SerializedWorldProperty | undefined {
-    let value: any = world[property.property]
+// Runs a generator to completion immediately, ignoring its yields
+function runGeneratorSync<T>(generator: Generator<void, T, void>): T {
+    let result = generator.next()
+    while (!result.done) {
+        result = generator.next()
+    }
+    return result.value
+}
+
+// Runs a generator across ticks with system.runJob and resolves with its return value
+function runJobAsync<T>(generator: Generator<void, T, void>): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+        system.runJob(function* () {
+            try {
+                resolve(yield* generator)
+            }
+            catch (error) {
+                reject(error)
+            }
+        }())
+    })
+}
+
+function* serializeWorldProperty(worldObject: World, property: WorldSaveDataProperty): Generator<void, SerializedWorldProperty | undefined, void> {
+    let value: any = worldObject[property.property]
 
     if (property.compression !== undefined) {
         try {
-            value = property.compression.compress(value)
+            value = yield* property.compression.compress(value)
         }
         catch (error) {
             console.error(`Failed to compress ${property.property}, keeping the previous save:`, error)
@@ -129,8 +163,22 @@ function serializeWorldProperty(world: World, property: WorldSaveDataProperty): 
     }
 }
 
-function writeWorldSaveData(world: World, saves: CompressedWorldProperty[]) {
-    const worldSaveDataIdList = world.getDynamicPropertyIds()
+function* serializeWorldProperties(worldObject: World): Generator<void, SerializedWorldProperty[], void> {
+    const serializedList: SerializedWorldProperty[] = []
+
+    for (const property of worldSaveDataList) {
+        const serialized = yield* serializeWorldProperty(worldObject, property)
+        if (serialized !== undefined) {
+            serializedList.push(serialized)
+        }
+        yield
+    }
+
+    return serializedList
+}
+
+function writeWorldSaveData(worldInstance: World, saves: CompressedWorldProperty[]) {
+    const worldSaveDataIdList = worldInstance.getDynamicPropertyIds()
     const propertiesToDelete = []
 
     for (const { property, valueString } of saves) {
@@ -141,14 +189,14 @@ function writeWorldSaveData(world: World, saves: CompressedWorldProperty[]) {
 
             for (let j = 0; j < stringList.length; j++) {
                 const saveString = stringList[j]
-                world.setDynamicProperty(`${property}:${j}`, saveString)
+                worldInstance.setDynamicProperty(`${property}:${j}`, saveString)
             }
 
             startingIndex = stringList.length
             propertiesToDelete.push(property)
         }
         else {
-            world.setDynamicProperty(property, valueString)
+            worldInstance.setDynamicProperty(property, valueString)
         }
 
         for (let j = startingIndex; worldSaveDataIdList.includes(`${property}:${j}`); j++) {
@@ -158,67 +206,60 @@ function writeWorldSaveData(world: World, saves: CompressedWorldProperty[]) {
 
     for (const propertyId of propertiesToDelete) {
         if (worldSaveDataIdList.includes(propertyId)) {
-            world.setDynamicProperty(propertyId)
+            worldInstance.setDynamicProperty(propertyId)
         }
     }
 }
 
-function saveWorldDataSync(world: World) {
-    if (!world.loadedData) {
+function saveWorldDataSync(worldInstance: World) {
+    if (!worldInstance.loadedData) {
         return
     }
     syncSaveCount++
 
     const saves: CompressedWorldProperty[] = []
 
-    for (const property of worldSaveDataList) {
-        const serialized = serializeWorldProperty(world, property)
-        if (serialized === undefined) {
-            continue
-        }
+    for (const serialized of runGeneratorSync(serializeWorldProperties(worldInstance))) {
         saves.push({
             property: serialized.property,
             valueString: LZString.compressToBase64(serialized.json)
         })
     }
 
-    writeWorldSaveData(world, saves)
+    writeWorldSaveData(worldInstance, saves)
 }
 
-async function saveWorldDataAsync(world: World) {
+async function saveWorldDataAsync(worldInstance: World) {
     const startingSyncSaveCount = syncSaveCount
 
-    // Snapshot everything now, so the data that gets saved is the data as it was when the save was requested
-    const serializedList: SerializedWorldProperty[] = []
-    for (const property of worldSaveDataList) {
-        const serialized = serializeWorldProperty(world, property)
-        if (serialized !== undefined) {
-            serializedList.push(serialized)
-        }
-    }
+    const serializedList = await runJobAsync(serializeWorldProperties(worldInstance))
 
-    const saves: CompressedWorldProperty[] = []
-    for (const { property, json } of serializedList) {
+    const savePromises = serializedList.map(async ({ property, json }) => {
         try {
-            saves.push({
+            return {
                 property,
                 valueString: await compressToBase64Async(json)
-            })
+            }
         }
         catch (error) {
             console.error(`Failed to compress ${property} asynchronously, keeping the previous save:`, error)
+            return undefined
         }
-    }
+    })
+
+    const saves = (await Promise.all(savePromises)).filter((save): save is CompressedWorldProperty => save !== undefined)
 
     if (syncSaveCount !== startingSyncSaveCount) {
-        // A synchronous save (such as the one on shutdown) already wrote newer data while this one was compressing
         return
     }
 
-    writeWorldSaveData(world, saves)
+    writeWorldSaveData(worldInstance, saves)
 }
 
-World.prototype.saveData = function (this: World, asynchronous = false) {
+function saveWorldData(this: World, asynchronous?: false): void
+function saveWorldData(this: World, asynchronous: true): Promise<void>
+
+function saveWorldData(this: World, asynchronous = false): void | Promise<void> {
     if (!asynchronous) {
         saveWorldDataSync(this)
         return undefined
@@ -236,7 +277,9 @@ World.prototype.saveData = function (this: World, asynchronous = false) {
     })
     activeAsyncSave = save
     return save
-} as World["saveData"]
+}
+
+World.prototype.saveData = saveWorldData
 
 export interface EntityData {
     breedingData?: BreedingSaveData | undefined
@@ -299,13 +342,34 @@ system.beforeEvents.shutdown.subscribe(() => {
     world.saveData()
 })
 
-system.runInterval(() => {
+World.prototype.autoSave = function () {
     world.sendMessage("Running Autosave")
-    world.saveData(true).then(()=> {
+    world.saveData(true).then(() => {
         world.sendMessage("Autosave Complete")
     }).catch((error: unknown) => {
         console.error("Asynchronous world save failed:", error)
     })
+}
+
+system.beforeEvents.startup.subscribe(event => {
+    const customCommandRegistry = event.customCommandRegistry
+    customCommandRegistry.registerCommand({
+        name: "tektopia:autosave",
+        cheatsRequired: false,
+        description: "Trigger an autosave",
+        permissionLevel: CommandPermissionLevel.Admin
+    }, () => {
+        system.run(() => world.autoSave())
+
+        return {
+            status: CustomCommandStatus.Success,
+            message: "Autosave started."
+        }
+    })
+})
+
+system.runInterval(() => {
+    world.autoSave()
     loadEntities()
 }, 1200)
 

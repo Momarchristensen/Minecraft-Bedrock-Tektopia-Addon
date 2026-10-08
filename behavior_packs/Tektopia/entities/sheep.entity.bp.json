@@ -18,16 +18,6 @@
       "tektopia:persistent": {
         "minecraft:persistent": {}
       },
-      "minecraft:loot_sheared": {
-        "minecraft:loot": {
-          "table": "loot_tables/entities/sheep_sheared.json"
-        }
-      },
-      "minecraft:loot_wooly": {
-        "minecraft:loot": {
-          "table": "loot_tables/entities/sheep.json"
-        }
-      },
       "minecraft:rideable_sheared": {
         "minecraft:rideable": {
           "seat_count": 1,
@@ -400,8 +390,7 @@
           "component_groups": [
             "minecraft:sheep_adult",
             "minecraft:sheep_dyeable",
-            "minecraft:rideable_wooly",
-            "minecraft:loot_wooly"
+            "minecraft:rideable_wooly"
           ]
         }
       },
@@ -432,8 +421,7 @@
         "add": {
           "component_groups": [
             "minecraft:sheep_adult",
-            "minecraft:rideable_wooly",
-            "minecraft:loot_wooly"
+            "minecraft:rideable_wooly"
           ]
         }
       },
@@ -441,14 +429,13 @@
         "remove": {
           "component_groups": [
             "minecraft:sheep_dyeable",
-            "minecraft:loot_wooly"
+            "minecraft:rideable_wooly"
           ]
         },
         "add": {
           "component_groups": [
             "minecraft:sheep_sheared",
-            "minecraft:rideable_sheared",
-            "minecraft:loot_sheared"
+            "minecraft:rideable_sheared"
           ]
         }
       },
@@ -470,13 +457,7 @@
               "value": "minecraft:is_baby"
             },
             "add": {
-              "component_groups": [
-                "minecraft:rideable_wooly",
-                "minecraft:loot_wooly"
-              ]
-            },
-            "remove": {
-              "component_groups": ["minecraft:loot_sheared"]
+              "component_groups": ["minecraft:rideable_wooly"]
             }
           }
         ]

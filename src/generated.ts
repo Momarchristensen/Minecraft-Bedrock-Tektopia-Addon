@@ -11,6 +11,8 @@ interface BlockSounds {
     "fence_gate.open": SoundEventEntry
     "door.close": SoundEventEntry
     "door.open": SoundEventEntry
+    "chest.open": SoundEventEntry
+    "chest.close": SoundEventEntry
 }
 
 export type SoundEvents = keyof BlockSounds
@@ -63,7 +65,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     acacia_door: {
         break: {
@@ -109,7 +113,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     acacia_double_slab: {
         break: {
@@ -155,7 +161,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     acacia_fence: {
         break: {
@@ -201,7 +209,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     acacia_fence_gate: {
         break: {
@@ -247,7 +257,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     acacia_hanging_sign: {
         break: {
@@ -269,7 +281,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     acacia_leaves: {
         break: {
@@ -291,7 +305,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     acacia_log: {
         break: {
@@ -337,7 +353,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     acacia_planks: {
         break: {
@@ -383,7 +401,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     acacia_pressure_plate: {
         break: {
@@ -429,7 +449,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     acacia_sapling: {
         break: {
@@ -451,7 +473,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     acacia_shelf: {
         break: "block.shelf.break",
@@ -459,7 +483,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     acacia_slab: {
         break: {
@@ -505,7 +531,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     acacia_stairs: {
         break: {
@@ -551,7 +579,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     acacia_standing_sign: {
         break: {
@@ -597,7 +627,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     acacia_trapdoor: {
         break: {
@@ -643,7 +675,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     acacia_wall_sign: {
         break: {
@@ -689,7 +723,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     acacia_wood: {
         break: {
@@ -735,7 +771,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     activator_rail: {
         break: {
@@ -769,7 +807,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.iron_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     allium: {
         break: {
@@ -791,7 +831,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     allow: {
         break: {
@@ -813,7 +855,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     amethyst_block: {
         break: {
@@ -829,7 +873,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     amethyst_cluster: {
         break: {
@@ -843,7 +889,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     ancient_debris: {
         break: {
@@ -865,7 +913,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     andesite: {
         break: {
@@ -887,7 +937,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     andesite_double_slab: {
         break: {
@@ -909,7 +961,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     andesite_slab: {
         break: {
@@ -931,7 +985,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     andesite_stairs: {
         break: {
@@ -953,7 +1009,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     andesite_wall: {
         break: {
@@ -975,7 +1033,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     anvil: {
         break: {
@@ -997,7 +1057,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     azalea: {
         break: {
@@ -1019,7 +1081,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     azalea_leaves: {
         break: {
@@ -1041,7 +1105,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     azalea_leaves_flowered: {
         break: {
@@ -1063,7 +1129,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     azure_bluet: {
         break: {
@@ -1085,7 +1153,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     bamboo: {
         break: {
@@ -1107,7 +1177,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     bamboo_block: {
         break: {
@@ -1153,7 +1225,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.bamboo_wood_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     bamboo_button: {
         break: {
@@ -1199,7 +1273,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.bamboo_wood_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     bamboo_door: {
         break: {
@@ -1245,7 +1321,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.bamboo_wood_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     bamboo_double_slab: {
         break: {
@@ -1291,7 +1369,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.bamboo_wood_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     bamboo_fence: {
         break: {
@@ -1337,7 +1417,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.bamboo_wood_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     bamboo_fence_gate: {
         break: {
@@ -1383,7 +1465,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.bamboo_wood_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     bamboo_hanging_sign: {
         break: {
@@ -1405,7 +1489,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     bamboo_mosaic: {
         break: {
@@ -1451,7 +1537,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.bamboo_wood_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     bamboo_mosaic_double_slab: {
         break: {
@@ -1497,7 +1585,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.bamboo_wood_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     bamboo_mosaic_slab: {
         break: {
@@ -1543,7 +1633,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.bamboo_wood_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     bamboo_mosaic_stairs: {
         break: {
@@ -1589,7 +1681,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.bamboo_wood_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     bamboo_planks: {
         break: {
@@ -1635,7 +1729,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.bamboo_wood_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     bamboo_pressure_plate: {
         break: {
@@ -1681,7 +1777,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.bamboo_wood_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     bamboo_sapling: {
         break: {
@@ -1703,7 +1801,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     bamboo_shelf: {
         break: "block.shelf.break",
@@ -1711,7 +1811,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     bamboo_slab: {
         break: {
@@ -1757,7 +1859,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.bamboo_wood_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     bamboo_stairs: {
         break: {
@@ -1803,7 +1907,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.bamboo_wood_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     bamboo_standing_sign: {
         break: {
@@ -1849,7 +1955,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.bamboo_wood_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     bamboo_trapdoor: {
         break: {
@@ -1895,7 +2003,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.bamboo_wood_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     bamboo_wall_sign: {
         break: {
@@ -1941,7 +2051,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.bamboo_wood_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     barrel: {
         break: {
@@ -1987,7 +2099,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     basalt: {
         break: {
@@ -2009,7 +2123,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     beacon: {
         break: {
@@ -2031,7 +2147,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     bed: {
         break: {
@@ -2077,7 +2195,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     bedrock: {
         break: {
@@ -2099,7 +2219,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     beetroot: {
         break: {
@@ -2145,7 +2267,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     bell: {
         break: {
@@ -2179,7 +2303,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.iron_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     big_dripleaf: {
         break: {
@@ -2201,7 +2327,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     birch_button: {
         break: {
@@ -2247,7 +2375,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     birch_door: {
         break: {
@@ -2293,7 +2423,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     birch_double_slab: {
         break: {
@@ -2339,7 +2471,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     birch_fence: {
         break: {
@@ -2385,7 +2519,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     birch_fence_gate: {
         break: {
@@ -2431,7 +2567,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     birch_hanging_sign: {
         break: {
@@ -2453,7 +2591,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     birch_leaves: {
         break: {
@@ -2475,7 +2615,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     birch_log: {
         break: {
@@ -2521,7 +2663,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     birch_planks: {
         break: {
@@ -2567,7 +2711,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     birch_pressure_plate: {
         break: {
@@ -2613,7 +2759,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     birch_sapling: {
         break: {
@@ -2635,7 +2783,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     birch_shelf: {
         break: "block.shelf.break",
@@ -2643,7 +2793,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     birch_slab: {
         break: {
@@ -2689,7 +2841,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     birch_stairs: {
         break: {
@@ -2735,7 +2889,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     birch_standing_sign: {
         break: {
@@ -2781,7 +2937,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     birch_trapdoor: {
         break: {
@@ -2827,7 +2985,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     birch_wall_sign: {
         break: {
@@ -2873,7 +3033,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     birch_wood: {
         break: {
@@ -2919,7 +3081,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     black_candle: {
         break: {
@@ -2935,7 +3099,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     black_candle_cake: {
         break: {
@@ -2957,7 +3123,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     black_carpet: {
         break: {
@@ -2979,7 +3147,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     black_concrete: {
         break: {
@@ -3001,7 +3171,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     black_concrete_double_slab: {
         break: {
@@ -3023,7 +3195,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     black_concrete_powder: {
         break: {
@@ -3045,7 +3219,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     black_concrete_slab: {
         break: {
@@ -3067,7 +3243,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     black_concrete_stairs: {
         break: {
@@ -3089,7 +3267,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     black_glazed_terracotta: {
         break: {
@@ -3111,7 +3291,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     black_shulker_box: {
         break: {
@@ -3133,7 +3315,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     black_stained_glass: {
         break: {
@@ -3155,7 +3339,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     black_stained_glass_pane: {
         break: {
@@ -3177,7 +3363,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     black_terracotta: {
         break: null,
@@ -3185,7 +3373,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     black_wool: {
         break: {
@@ -3207,7 +3397,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     black_wool_double_slab: {
         break: {
@@ -3229,7 +3421,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     black_wool_slab: {
         break: {
@@ -3251,7 +3445,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     black_wool_stairs: {
         break: {
@@ -3273,7 +3469,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     blackstone: {
         break: {
@@ -3295,7 +3493,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     blackstone_double_slab: {
         break: {
@@ -3317,7 +3517,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     blackstone_slab: {
         break: {
@@ -3339,7 +3541,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     blackstone_stairs: {
         break: {
@@ -3361,7 +3565,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     blackstone_wall: {
         break: {
@@ -3383,7 +3589,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     blast_furnace: {
         break: {
@@ -3405,7 +3613,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     blue_candle: {
         break: {
@@ -3421,7 +3631,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     blue_candle_cake: {
         break: {
@@ -3443,7 +3655,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     blue_carpet: {
         break: {
@@ -3465,7 +3679,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     blue_concrete: {
         break: {
@@ -3487,7 +3703,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     blue_concrete_double_slab: {
         break: {
@@ -3509,7 +3727,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     blue_concrete_powder: {
         break: {
@@ -3531,7 +3751,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     blue_concrete_slab: {
         break: {
@@ -3553,7 +3775,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     blue_concrete_stairs: {
         break: {
@@ -3575,7 +3799,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     blue_glazed_terracotta: {
         break: {
@@ -3597,7 +3823,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     blue_ice: {
         break: {
@@ -3619,7 +3847,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     blue_orchid: {
         break: {
@@ -3641,7 +3871,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     blue_shulker_box: {
         break: {
@@ -3663,7 +3895,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     blue_stained_glass: {
         break: {
@@ -3685,7 +3919,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     blue_stained_glass_pane: {
         break: {
@@ -3707,7 +3943,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     blue_terracotta: {
         break: null,
@@ -3715,7 +3953,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     blue_wool: {
         break: {
@@ -3737,7 +3977,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     blue_wool_double_slab: {
         break: {
@@ -3759,7 +4001,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     blue_wool_slab: {
         break: {
@@ -3781,7 +4025,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     blue_wool_stairs: {
         break: {
@@ -3803,7 +4049,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     bone_block: {
         break: {
@@ -3825,7 +4073,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     bookshelf: {
         break: {
@@ -3871,7 +4121,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     border_block: {
         break: {
@@ -3893,7 +4145,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     brain_coral: {
         break: {
@@ -3915,7 +4169,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     brain_coral_block: {
         break: {
@@ -3937,7 +4193,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     brain_coral_fan: {
         break: {
@@ -3959,7 +4217,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     brain_coral_wall_fan: {
         break: {
@@ -3981,7 +4241,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     brewing_stand: {
         break: {
@@ -4003,7 +4265,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     brick_double_slab: {
         break: {
@@ -4025,7 +4289,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     brick_slab: {
         break: {
@@ -4047,7 +4313,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     brick_wall: {
         break: {
@@ -4069,7 +4337,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     brown_candle: {
         break: {
@@ -4085,7 +4355,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     brown_candle_cake: {
         break: {
@@ -4107,7 +4379,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     brown_carpet: {
         break: {
@@ -4129,7 +4403,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     brown_concrete: {
         break: {
@@ -4151,7 +4427,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     brown_concrete_double_slab: {
         break: {
@@ -4173,7 +4451,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     brown_concrete_powder: {
         break: {
@@ -4195,7 +4475,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     brown_concrete_slab: {
         break: {
@@ -4217,7 +4499,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     brown_concrete_stairs: {
         break: {
@@ -4239,7 +4523,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     brown_glazed_terracotta: {
         break: {
@@ -4261,7 +4547,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     brown_mushroom: {
         break: {
@@ -4283,7 +4571,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     brown_mushroom_block: {
         break: {
@@ -4329,7 +4619,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     brown_shulker_box: {
         break: {
@@ -4351,7 +4643,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     brown_stained_glass: {
         break: {
@@ -4373,7 +4667,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     brown_stained_glass_pane: {
         break: {
@@ -4395,7 +4691,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     brown_terracotta: {
         break: null,
@@ -4403,7 +4701,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     brown_wool: {
         break: {
@@ -4425,7 +4725,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     brown_wool_double_slab: {
         break: {
@@ -4447,7 +4749,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     brown_wool_slab: {
         break: {
@@ -4469,7 +4773,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     brown_wool_stairs: {
         break: {
@@ -4491,7 +4797,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     bubble_coral: {
         break: {
@@ -4513,7 +4821,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     bubble_coral_block: {
         break: {
@@ -4535,7 +4845,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     bubble_coral_fan: {
         break: {
@@ -4557,7 +4869,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     bubble_coral_wall_fan: {
         break: {
@@ -4579,7 +4893,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     budding_amethyst: {
         break: {
@@ -4595,7 +4911,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     bush: {
         break: {
@@ -4617,7 +4935,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     cactus: {
         break: {
@@ -4639,7 +4959,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     cactus_flower: {
         break: {
@@ -4653,7 +4975,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     cake: {
         break: {
@@ -4675,7 +4999,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     calcite: {
         break: {
@@ -4689,7 +5015,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     calibrated_sculk_sensor: {
         break: {
@@ -4711,7 +5039,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     campfire: {
         break: {
@@ -4757,7 +5087,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     candle: {
         break: {
@@ -4773,7 +5105,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     candle_cake: {
         break: {
@@ -4795,7 +5129,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     carpet: {
         break: {
@@ -4817,7 +5153,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     carrots: {
         break: {
@@ -4839,7 +5177,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     cartography_table: {
         break: {
@@ -4885,7 +5225,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     carved_pumpkin: {
         break: {
@@ -4931,7 +5273,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     cave_vines: {
         break: {
@@ -4953,7 +5297,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     cave_vines_body_with_berries: {
         break: {
@@ -4975,7 +5321,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     cave_vines_head_with_berries: {
         break: {
@@ -4997,7 +5345,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     chain: {
         break: {
@@ -5019,7 +5369,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     chain_command_block: {
         break: {
@@ -5053,7 +5405,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.iron_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     cherry_button: {
         break: {
@@ -5099,7 +5453,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.cherry_wood_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     cherry_door: {
         break: {
@@ -5145,7 +5501,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.cherry_wood_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     cherry_double_slab: {
         break: {
@@ -5191,7 +5549,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.cherry_wood_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     cherry_fence: {
         break: {
@@ -5237,7 +5597,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.cherry_wood_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     cherry_fence_gate: {
         break: {
@@ -5283,7 +5645,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.cherry_wood_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     cherry_hanging_sign: {
         break: {
@@ -5305,7 +5669,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     cherry_leaves: {
         break: {
@@ -5319,7 +5685,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     cherry_log: {
         break: {
@@ -5365,7 +5733,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.cherry_wood_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     cherry_planks: {
         break: {
@@ -5411,7 +5781,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.cherry_wood_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     cherry_pressure_plate: {
         break: {
@@ -5457,7 +5829,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.cherry_wood_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     cherry_sapling: {
         break: {
@@ -5479,7 +5853,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     cherry_shelf: {
         break: "block.shelf.break",
@@ -5487,7 +5863,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     cherry_slab: {
         break: {
@@ -5533,7 +5911,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.cherry_wood_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     cherry_stairs: {
         break: {
@@ -5579,7 +5959,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.cherry_wood_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     cherry_standing_sign: {
         break: {
@@ -5625,7 +6007,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.cherry_wood_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     cherry_trapdoor: {
         break: {
@@ -5671,7 +6055,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.cherry_wood_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     cherry_wall_sign: {
         break: {
@@ -5717,7 +6103,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.cherry_wood_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     cherry_wood: {
         break: {
@@ -5763,7 +6151,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.cherry_wood_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     chest: {
         break: {
@@ -5809,7 +6199,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     chipped_anvil: {
         break: {
@@ -5831,7 +6223,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     chiseled_bookshelf: {
         break: {
@@ -5847,7 +6241,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     chiseled_cinnabar: {
         break: {
@@ -5861,7 +6257,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     chiseled_copper: {
         break: {
@@ -5892,7 +6290,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "door.close": {
             pitch: 1.0,
             sound: "close_door.copper"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     chiseled_deepslate: {
         break: {
@@ -5914,7 +6314,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     chiseled_nether_bricks: {
         break: {
@@ -5936,7 +6338,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     chiseled_polished_blackstone: {
         break: {
@@ -5958,7 +6362,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     chiseled_quartz_block: {
         break: {
@@ -5980,7 +6386,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     chiseled_red_sandstone: {
         break: {
@@ -6002,7 +6410,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     chiseled_resin_bricks: {
         break: {
@@ -6018,7 +6428,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     chiseled_sandstone: {
         break: {
@@ -6040,7 +6452,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     chiseled_stone_bricks: {
         break: {
@@ -6062,7 +6476,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     chiseled_sulfur: {
         break: {
@@ -6076,7 +6492,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     chiseled_tuff: {
         break: {
@@ -6092,7 +6510,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     chiseled_tuff_bricks: {
         break: {
@@ -6108,7 +6528,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     chorus_flower: {
         break: {
@@ -6130,7 +6552,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     chorus_plant: {
         break: {
@@ -6152,7 +6576,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     cinnabar: {
         break: {
@@ -6166,7 +6592,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     cinnabar_brick_double_slab: {
         break: {
@@ -6180,7 +6608,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     cinnabar_brick_slab: {
         break: {
@@ -6194,7 +6624,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     cinnabar_brick_stairs: {
         break: {
@@ -6208,7 +6640,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     cinnabar_brick_wall: {
         break: {
@@ -6222,7 +6656,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     cinnabar_bricks: {
         break: {
@@ -6236,7 +6672,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     cinnabar_double_slab: {
         break: {
@@ -6250,7 +6688,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     cinnabar_slab: {
         break: {
@@ -6264,7 +6704,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     cinnabar_stairs: {
         break: {
@@ -6278,7 +6720,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     cinnabar_wall: {
         break: {
@@ -6292,7 +6736,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     clay: {
         break: {
@@ -6314,7 +6760,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     closed_eyeblossom: {
         break: null,
@@ -6322,7 +6770,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     coal_block: {
         break: {
@@ -6344,7 +6794,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     coal_ore: {
         break: {
@@ -6366,7 +6818,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     coarse_dirt: {
         break: {
@@ -6388,7 +6842,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     cobbled_deepslate: {
         break: {
@@ -6410,7 +6866,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     cobbled_deepslate_double_slab: {
         break: {
@@ -6432,7 +6890,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     cobbled_deepslate_slab: {
         break: {
@@ -6454,7 +6914,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     cobbled_deepslate_stairs: {
         break: {
@@ -6476,7 +6938,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     cobbled_deepslate_wall: {
         break: {
@@ -6498,7 +6962,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     cobblestone: {
         break: {
@@ -6520,7 +6986,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     cobblestone_double_slab: {
         break: {
@@ -6542,7 +7010,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     cobblestone_slab: {
         break: {
@@ -6564,7 +7034,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     cobblestone_wall: {
         break: {
@@ -6586,7 +7058,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     cocoa: {
         break: {
@@ -6632,7 +7106,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     command_block: {
         break: {
@@ -6666,7 +7142,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.iron_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     composter: {
         break: {
@@ -6712,7 +7190,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     concrete: {
         break: {
@@ -6734,7 +7214,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     concretePowder: {
         break: {
@@ -6756,7 +7238,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     conduit: {
         break: {
@@ -6778,7 +7262,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     copper_bars: {
         break: {
@@ -6809,7 +7295,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "door.close": {
             pitch: 1.0,
             sound: "close_door.copper"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     copper_block: {
         break: {
@@ -6840,7 +7328,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "door.close": {
             pitch: 1.0,
             sound: "close_door.copper"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     copper_bulb: {
         break: {
@@ -6854,7 +7344,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     copper_chain: {
         break: {
@@ -6876,7 +7368,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     copper_chest: {
         break: null,
@@ -6884,7 +7378,15 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "block.copper_chest.open"
+        },
+        "chest.close": null
     },
     copper_door: {
         break: {
@@ -6915,7 +7417,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "door.close": {
             pitch: 1.0,
             sound: "close_door.copper"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     copper_golem_statue: {
         break: "block.copper_golem_statue.break",
@@ -6923,7 +7427,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     copper_grate: {
         break: {
@@ -6939,7 +7445,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     copper_lantern: {
         break: {
@@ -6961,7 +7469,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     copper_ore: {
         break: {
@@ -6983,7 +7493,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     copper_torch: {
         break: {
@@ -7029,7 +7541,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     copper_trapdoor: {
         break: {
@@ -7060,7 +7574,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "door.close": {
             pitch: 1.0,
             sound: "close_door.copper"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     coral: {
         break: {
@@ -7082,7 +7598,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     coral_fan: {
         break: {
@@ -7104,7 +7622,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     coral_fan_dead: {
         break: {
@@ -7126,7 +7646,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     coral_fan_hang: {
         break: {
@@ -7148,7 +7670,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     coral_fan_hang2: {
         break: {
@@ -7170,7 +7694,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     coral_fan_hang3: {
         break: {
@@ -7192,7 +7718,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     cornflower: {
         break: {
@@ -7214,7 +7742,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     cracked_deepslate_bricks: {
         break: {
@@ -7236,7 +7766,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     cracked_deepslate_tiles: {
         break: {
@@ -7258,7 +7790,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     cracked_nether_bricks: {
         break: {
@@ -7280,7 +7814,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     cracked_polished_blackstone_bricks: {
         break: {
@@ -7302,7 +7838,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     cracked_stone_bricks: {
         break: {
@@ -7324,7 +7862,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     crafter: {
         break: {
@@ -7346,7 +7886,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     crafting_table: {
         break: {
@@ -7392,7 +7934,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     creaking_heart: {
         break: {
@@ -7408,7 +7952,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     creeper_head: {
         break: {
@@ -7430,7 +7976,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     crimson_button: {
         break: {
@@ -7476,7 +8024,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.nether_wood_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     crimson_door: {
         break: {
@@ -7522,7 +8072,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.nether_wood_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     crimson_double_slab: {
         break: {
@@ -7568,7 +8120,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.nether_wood_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     crimson_fence: {
         break: {
@@ -7614,7 +8168,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.nether_wood_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     crimson_fence_gate: {
         break: {
@@ -7660,7 +8216,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.nether_wood_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     crimson_fungus: {
         break: {
@@ -7682,7 +8240,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     crimson_hanging_sign: {
         break: {
@@ -7704,7 +8264,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     crimson_hyphae: {
         break: {
@@ -7726,7 +8288,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     crimson_nylium: {
         break: {
@@ -7748,7 +8312,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     crimson_planks: {
         break: {
@@ -7794,7 +8360,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.nether_wood_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     crimson_pressure_plate: {
         break: {
@@ -7840,7 +8408,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.nether_wood_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     crimson_roots: {
         break: {
@@ -7862,7 +8432,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     crimson_shelf: {
         break: "block.shelf.break",
@@ -7870,7 +8442,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     crimson_slab: {
         break: {
@@ -7916,7 +8490,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.nether_wood_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     crimson_stairs: {
         break: {
@@ -7962,7 +8538,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.nether_wood_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     crimson_standing_sign: {
         break: {
@@ -8008,7 +8586,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.nether_wood_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     crimson_stem: {
         break: {
@@ -8030,7 +8610,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     crimson_trapdoor: {
         break: {
@@ -8076,7 +8658,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.nether_wood_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     crimson_wall_sign: {
         break: {
@@ -8122,7 +8706,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.nether_wood_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     crying_obsidian: {
         break: {
@@ -8144,7 +8730,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     cut_copper: {
         break: {
@@ -8175,7 +8763,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "door.close": {
             pitch: 1.0,
             sound: "close_door.copper"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     cut_copper_slab: {
         break: {
@@ -8206,7 +8796,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "door.close": {
             pitch: 1.0,
             sound: "close_door.copper"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     cut_copper_stairs: {
         break: {
@@ -8237,7 +8829,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "door.close": {
             pitch: 1.0,
             sound: "close_door.copper"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     cut_red_sandstone: {
         break: {
@@ -8259,7 +8853,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     cut_red_sandstone_double_slab: {
         break: {
@@ -8281,7 +8877,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     cut_red_sandstone_slab: {
         break: {
@@ -8303,7 +8901,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     cut_sandstone: {
         break: {
@@ -8325,7 +8925,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     cut_sandstone_double_slab: {
         break: {
@@ -8347,7 +8949,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     cut_sandstone_slab: {
         break: {
@@ -8369,7 +8973,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     cyan_candle: {
         break: {
@@ -8385,7 +8991,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     cyan_candle_cake: {
         break: {
@@ -8407,7 +9015,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     cyan_carpet: {
         break: {
@@ -8429,7 +9039,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     cyan_concrete: {
         break: {
@@ -8451,7 +9063,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     cyan_concrete_double_slab: {
         break: {
@@ -8473,7 +9087,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     cyan_concrete_powder: {
         break: {
@@ -8495,7 +9111,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     cyan_concrete_slab: {
         break: {
@@ -8517,7 +9135,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     cyan_concrete_stairs: {
         break: {
@@ -8539,7 +9159,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     cyan_glazed_terracotta: {
         break: {
@@ -8561,7 +9183,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     cyan_shulker_box: {
         break: {
@@ -8583,7 +9207,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     cyan_stained_glass: {
         break: {
@@ -8605,7 +9231,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     cyan_stained_glass_pane: {
         break: {
@@ -8627,7 +9255,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     cyan_terracotta: {
         break: null,
@@ -8635,7 +9265,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     cyan_wool: {
         break: {
@@ -8657,7 +9289,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     cyan_wool_double_slab: {
         break: {
@@ -8679,7 +9313,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     cyan_wool_slab: {
         break: {
@@ -8701,7 +9337,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     cyan_wool_stairs: {
         break: {
@@ -8723,7 +9361,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     damaged_anvil: {
         break: {
@@ -8745,7 +9385,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     dandelion: {
         break: {
@@ -8767,7 +9409,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     dark_oak_button: {
         break: {
@@ -8813,7 +9457,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     dark_oak_door: {
         break: {
@@ -8859,7 +9505,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     dark_oak_double_slab: {
         break: {
@@ -8905,7 +9553,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     dark_oak_fence: {
         break: {
@@ -8951,7 +9601,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     dark_oak_fence_gate: {
         break: {
@@ -8997,7 +9649,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     dark_oak_hanging_sign: {
         break: {
@@ -9019,7 +9673,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     dark_oak_leaves: {
         break: {
@@ -9041,7 +9697,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     dark_oak_log: {
         break: {
@@ -9087,7 +9745,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     dark_oak_planks: {
         break: {
@@ -9133,7 +9793,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     dark_oak_pressure_plate: {
         break: {
@@ -9179,7 +9841,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     dark_oak_sapling: {
         break: {
@@ -9201,7 +9865,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     dark_oak_shelf: {
         break: "block.shelf.break",
@@ -9209,7 +9875,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     dark_oak_slab: {
         break: {
@@ -9255,7 +9923,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     dark_oak_stairs: {
         break: {
@@ -9301,7 +9971,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     dark_oak_trapdoor: {
         break: {
@@ -9347,7 +10019,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     dark_oak_wood: {
         break: {
@@ -9393,7 +10067,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     dark_prismarine: {
         break: {
@@ -9415,7 +10091,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     dark_prismarine_double_slab: {
         break: {
@@ -9437,7 +10115,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     dark_prismarine_slab: {
         break: {
@@ -9459,7 +10139,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     dark_prismarine_stairs: {
         break: {
@@ -9481,7 +10163,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     darkoak_standing_sign: {
         break: {
@@ -9527,7 +10211,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     darkoak_wall_sign: {
         break: {
@@ -9573,7 +10259,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     daylight_detector: {
         break: {
@@ -9619,7 +10307,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     daylight_detector_inverted: {
         break: {
@@ -9665,7 +10355,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     dead_brain_coral: {
         break: {
@@ -9687,7 +10379,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     dead_brain_coral_block: {
         break: {
@@ -9709,7 +10403,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     dead_brain_coral_fan: {
         break: {
@@ -9731,7 +10427,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     dead_brain_coral_wall_fan: {
         break: {
@@ -9753,7 +10451,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     dead_bubble_coral: {
         break: {
@@ -9775,7 +10475,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     dead_bubble_coral_block: {
         break: {
@@ -9797,7 +10499,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     dead_bubble_coral_fan: {
         break: {
@@ -9819,7 +10523,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     dead_bubble_coral_wall_fan: {
         break: {
@@ -9841,7 +10547,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     dead_fire_coral: {
         break: {
@@ -9863,7 +10571,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     dead_fire_coral_block: {
         break: {
@@ -9885,7 +10595,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     dead_fire_coral_fan: {
         break: {
@@ -9907,7 +10619,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     dead_fire_coral_wall_fan: {
         break: {
@@ -9929,7 +10643,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     dead_horn_coral: {
         break: {
@@ -9951,7 +10667,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     dead_horn_coral_block: {
         break: {
@@ -9973,7 +10691,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     dead_horn_coral_fan: {
         break: {
@@ -9995,7 +10715,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     dead_horn_coral_wall_fan: {
         break: {
@@ -10017,7 +10739,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     dead_tube_coral: {
         break: {
@@ -10039,7 +10763,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     dead_tube_coral_block: {
         break: {
@@ -10061,7 +10787,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     dead_tube_coral_fan: {
         break: {
@@ -10083,7 +10811,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     dead_tube_coral_wall_fan: {
         break: {
@@ -10105,7 +10835,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     deadbush: {
         break: null,
@@ -10113,7 +10845,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     decorated_pot: {
         break: null,
@@ -10125,7 +10859,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     deepslate: {
         break: {
@@ -10147,7 +10883,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     deepslate_brick_double_slab: {
         break: {
@@ -10169,7 +10907,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     deepslate_brick_slab: {
         break: {
@@ -10191,7 +10931,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     deepslate_brick_stairs: {
         break: {
@@ -10213,7 +10955,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     deepslate_brick_wall: {
         break: {
@@ -10235,7 +10979,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     deepslate_bricks: {
         break: {
@@ -10257,7 +11003,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     deepslate_coal_ore: {
         break: {
@@ -10279,7 +11027,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     deepslate_copper_ore: {
         break: {
@@ -10301,7 +11051,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     deepslate_diamond_ore: {
         break: {
@@ -10323,7 +11075,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     deepslate_emerald_ore: {
         break: {
@@ -10345,7 +11099,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     deepslate_gold_ore: {
         break: {
@@ -10367,7 +11123,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     deepslate_iron_ore: {
         break: {
@@ -10389,7 +11147,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     deepslate_lapis_ore: {
         break: {
@@ -10411,7 +11171,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     deepslate_redstone_ore: {
         break: {
@@ -10433,7 +11195,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     deepslate_tile_double_slab: {
         break: {
@@ -10455,7 +11219,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     deepslate_tile_slab: {
         break: {
@@ -10477,7 +11243,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     deepslate_tile_stairs: {
         break: {
@@ -10499,7 +11267,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     deepslate_tile_wall: {
         break: {
@@ -10521,7 +11291,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     deepslate_tiles: {
         break: {
@@ -10543,7 +11315,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     deny: {
         break: {
@@ -10565,7 +11339,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     deprecated_anvil: {
         break: {
@@ -10587,7 +11363,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     deprecated_purpur_block_1: {
         break: {
@@ -10609,7 +11387,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     deprecated_purpur_block_2: {
         break: {
@@ -10631,7 +11411,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     detector_rail: {
         break: {
@@ -10665,7 +11447,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.iron_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     diamond_block: {
         break: {
@@ -10699,7 +11483,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.iron_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     diamond_ore: {
         break: {
@@ -10721,7 +11507,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     diorite: {
         break: {
@@ -10743,7 +11531,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     diorite_double_slab: {
         break: {
@@ -10765,7 +11555,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     diorite_slab: {
         break: {
@@ -10787,7 +11579,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     diorite_stairs: {
         break: {
@@ -10809,7 +11603,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     diorite_wall: {
         break: {
@@ -10831,7 +11627,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     dirt: {
         break: {
@@ -10853,7 +11651,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     dirt_with_roots: {
         break: {
@@ -10875,7 +11675,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     dispenser: {
         break: {
@@ -10897,7 +11699,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     double_cut_copper_slab: {
         break: {
@@ -10928,7 +11732,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "door.close": {
             pitch: 1.0,
             sound: "close_door.copper"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     double_plant: {
         break: {
@@ -10950,7 +11756,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     double_stone_slab: {
         break: {
@@ -10972,7 +11780,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     double_stone_slab2: {
         break: {
@@ -10994,7 +11804,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     double_stone_slab3: {
         break: {
@@ -11016,7 +11828,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     double_stone_slab4: {
         break: {
@@ -11038,7 +11852,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     double_wooden_slab: {
         break: {
@@ -11084,7 +11900,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     dragon_egg: {
         break: {
@@ -11106,7 +11924,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     dragon_head: {
         break: {
@@ -11128,7 +11948,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     dried_ghast: {
         break: {
@@ -11144,7 +11966,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     dried_kelp_block: {
         break: {
@@ -11166,7 +11990,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     dripstone_block: {
         break: {
@@ -11178,7 +12004,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     dropper: {
         break: {
@@ -11200,7 +12028,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     emerald_block: {
         break: {
@@ -11234,7 +12064,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.iron_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     emerald_ore: {
         break: {
@@ -11256,7 +12088,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     end_brick_stairs: {
         break: {
@@ -11278,7 +12112,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     end_bricks: {
         break: {
@@ -11300,7 +12136,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     end_portal_frame: {
         break: {
@@ -11322,7 +12160,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     end_rod: {
         break: {
@@ -11368,7 +12208,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     end_stone: {
         break: {
@@ -11390,7 +12232,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     end_stone_brick_double_slab: {
         break: {
@@ -11412,7 +12256,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     end_stone_brick_slab: {
         break: {
@@ -11434,7 +12280,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     end_stone_brick_wall: {
         break: {
@@ -11456,7 +12304,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     exposed_chiseled_copper: {
         break: {
@@ -11487,7 +12337,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "door.close": {
             pitch: 1.0,
             sound: "close_door.copper"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     exposed_copper: {
         break: {
@@ -11518,7 +12370,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "door.close": {
             pitch: 1.0,
             sound: "close_door.copper"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     exposed_copper_bars: {
         break: {
@@ -11549,7 +12403,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "door.close": {
             pitch: 1.0,
             sound: "close_door.copper"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     exposed_copper_bulb: {
         break: {
@@ -11563,7 +12419,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     exposed_copper_chain: {
         break: {
@@ -11585,7 +12443,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     exposed_copper_chest: {
         break: null,
@@ -11593,7 +12453,15 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "block.copper_chest.open"
+        },
+        "chest.close": null
     },
     exposed_copper_door: {
         break: {
@@ -11624,7 +12492,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "door.close": {
             pitch: 1.0,
             sound: "close_door.copper"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     exposed_copper_golem_statue: {
         break: "block.copper_golem_statue.break",
@@ -11632,7 +12502,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     exposed_copper_grate: {
         break: {
@@ -11648,7 +12520,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     exposed_copper_lantern: {
         break: {
@@ -11670,7 +12544,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     exposed_copper_trapdoor: {
         break: {
@@ -11701,7 +12577,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "door.close": {
             pitch: 1.0,
             sound: "close_door.copper"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     exposed_cut_copper: {
         break: {
@@ -11732,7 +12610,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "door.close": {
             pitch: 1.0,
             sound: "close_door.copper"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     exposed_cut_copper_slab: {
         break: {
@@ -11763,7 +12643,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "door.close": {
             pitch: 1.0,
             sound: "close_door.copper"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     exposed_cut_copper_stairs: {
         break: {
@@ -11794,7 +12676,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "door.close": {
             pitch: 1.0,
             sound: "close_door.copper"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     exposed_double_cut_copper_slab: {
         break: {
@@ -11825,7 +12709,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "door.close": {
             pitch: 1.0,
             sound: "close_door.copper"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     exposed_lightning_rod: {
         break: {
@@ -11856,7 +12742,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "door.close": {
             pitch: 1.0,
             sound: "close_door.copper"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     farmland: {
         break: {
@@ -11878,7 +12766,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     fence: {
         break: {
@@ -11924,7 +12814,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     fence_gate: {
         break: {
@@ -11970,7 +12862,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     fern: {
         break: {
@@ -11992,7 +12886,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     fire: {
         break: {
@@ -12038,7 +12934,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     fire_coral: {
         break: {
@@ -12060,7 +12958,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     fire_coral_block: {
         break: {
@@ -12082,7 +12982,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     fire_coral_fan: {
         break: {
@@ -12104,7 +13006,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     fire_coral_wall_fan: {
         break: {
@@ -12126,7 +13030,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     firefly_bush: {
         break: null,
@@ -12134,7 +13040,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     fletching_table: {
         break: {
@@ -12180,7 +13088,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     flowering_azalea: {
         break: {
@@ -12202,7 +13112,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     frame: {
         break: {
@@ -12224,7 +13136,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     frog_spawn: {
         break: {
@@ -12240,7 +13154,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     frosted_ice: {
         break: {
@@ -12262,7 +13178,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     furnace: {
         break: {
@@ -12284,7 +13202,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     gilded_blackstone: {
         break: {
@@ -12306,7 +13226,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     glass: {
         break: {
@@ -12328,7 +13250,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     glass_pane: {
         break: {
@@ -12350,7 +13274,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     glow_frame: {
         break: {
@@ -12372,7 +13298,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     glow_lichen: {
         break: {
@@ -12394,7 +13322,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     glowingobsidian: {
         break: {
@@ -12416,7 +13346,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     glowstone: {
         break: {
@@ -12438,7 +13370,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     gold_block: {
         break: {
@@ -12472,7 +13406,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.iron_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     gold_ore: {
         break: {
@@ -12494,7 +13430,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     golden_dandelion: {
         break: {
@@ -12516,7 +13454,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     golden_rail: {
         break: {
@@ -12550,7 +13490,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.iron_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     granite: {
         break: {
@@ -12572,7 +13514,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     granite_double_slab: {
         break: {
@@ -12594,7 +13538,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     granite_slab: {
         break: {
@@ -12616,7 +13562,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     granite_stairs: {
         break: {
@@ -12638,7 +13586,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     granite_wall: {
         break: {
@@ -12660,7 +13610,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     grass: {
         break: {
@@ -12682,7 +13634,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     grass_path: {
         break: {
@@ -12704,7 +13658,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     gravel: {
         break: {
@@ -12726,7 +13682,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     gray_candle: {
         break: {
@@ -12742,7 +13700,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     gray_candle_cake: {
         break: {
@@ -12764,7 +13724,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     gray_carpet: {
         break: {
@@ -12786,7 +13748,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     gray_concrete: {
         break: {
@@ -12808,7 +13772,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     gray_concrete_double_slab: {
         break: {
@@ -12830,7 +13796,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     gray_concrete_powder: {
         break: {
@@ -12852,7 +13820,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     gray_concrete_slab: {
         break: {
@@ -12874,7 +13844,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     gray_concrete_stairs: {
         break: {
@@ -12896,7 +13868,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     gray_glazed_terracotta: {
         break: {
@@ -12918,7 +13892,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     gray_shulker_box: {
         break: {
@@ -12940,7 +13916,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     gray_stained_glass: {
         break: {
@@ -12962,7 +13940,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     gray_stained_glass_pane: {
         break: {
@@ -12984,7 +13964,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     gray_terracotta: {
         break: null,
@@ -12992,7 +13974,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     gray_wool: {
         break: {
@@ -13014,7 +13998,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     gray_wool_double_slab: {
         break: {
@@ -13036,7 +14022,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     gray_wool_slab: {
         break: {
@@ -13058,7 +14046,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     gray_wool_stairs: {
         break: {
@@ -13080,7 +14070,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     green_candle: {
         break: {
@@ -13096,7 +14088,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     green_candle_cake: {
         break: {
@@ -13118,7 +14112,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     green_carpet: {
         break: {
@@ -13140,7 +14136,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     green_concrete: {
         break: {
@@ -13162,7 +14160,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     green_concrete_double_slab: {
         break: {
@@ -13184,7 +14184,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     green_concrete_powder: {
         break: {
@@ -13206,7 +14208,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     green_concrete_slab: {
         break: {
@@ -13228,7 +14232,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     green_concrete_stairs: {
         break: {
@@ -13250,7 +14256,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     green_glazed_terracotta: {
         break: {
@@ -13272,7 +14280,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     green_shulker_box: {
         break: {
@@ -13294,7 +14304,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     green_stained_glass: {
         break: {
@@ -13316,7 +14328,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     green_stained_glass_pane: {
         break: {
@@ -13338,7 +14352,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     green_terracotta: {
         break: null,
@@ -13346,7 +14362,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     green_wool: {
         break: {
@@ -13368,7 +14386,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     green_wool_double_slab: {
         break: {
@@ -13390,7 +14410,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     green_wool_slab: {
         break: {
@@ -13412,7 +14434,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     green_wool_stairs: {
         break: {
@@ -13434,7 +14458,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     grindstone: {
         break: {
@@ -13456,7 +14482,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     hanging_roots: {
         break: {
@@ -13478,7 +14506,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     hardened_clay: {
         break: null,
@@ -13486,7 +14516,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     hay_block: {
         break: {
@@ -13508,7 +14540,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     heavy_core: {
         break: {
@@ -13524,7 +14558,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     heavy_weighted_pressure_plate: {
         break: {
@@ -13552,7 +14588,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.iron_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     honey_block: {
         break: {
@@ -13574,7 +14612,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     honeycomb_block: {
         break: {
@@ -13596,7 +14636,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     hopper: {
         break: {
@@ -13630,7 +14672,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.iron_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     horn_coral: {
         break: {
@@ -13652,7 +14696,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     horn_coral_block: {
         break: {
@@ -13674,7 +14720,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     horn_coral_fan: {
         break: {
@@ -13696,7 +14744,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     horn_coral_wall_fan: {
         break: {
@@ -13718,7 +14768,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     ice: {
         break: {
@@ -13740,7 +14792,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     infested_chiseled_stone_bricks: {
         break: {
@@ -13762,7 +14816,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     infested_cobblestone: {
         break: {
@@ -13784,7 +14840,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     infested_cracked_stone_bricks: {
         break: {
@@ -13806,7 +14864,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     infested_deepslate: {
         break: {
@@ -13828,7 +14888,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     infested_mossy_stone_bricks: {
         break: {
@@ -13850,7 +14912,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     infested_stone: {
         break: {
@@ -13872,7 +14936,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     infested_stone_bricks: {
         break: {
@@ -13894,7 +14960,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     info_update: {
         break: {
@@ -13916,7 +14984,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     info_update2: {
         break: {
@@ -13938,7 +15008,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     iron_bars: {
         break: {
@@ -13966,7 +15038,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.iron_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     iron_block: {
         break: {
@@ -13994,7 +15068,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.iron_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     iron_door: {
         break: {
@@ -14022,7 +15098,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.iron_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     iron_ore: {
         break: {
@@ -14044,7 +15122,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     iron_trapdoor: {
         break: {
@@ -14072,7 +15152,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.iron_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     jukebox: {
         break: {
@@ -14118,7 +15200,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     jungle_button: {
         break: {
@@ -14164,7 +15248,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     jungle_door: {
         break: {
@@ -14210,7 +15296,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     jungle_double_slab: {
         break: {
@@ -14256,7 +15344,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     jungle_fence: {
         break: {
@@ -14302,7 +15392,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     jungle_fence_gate: {
         break: {
@@ -14348,7 +15440,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     jungle_hanging_sign: {
         break: {
@@ -14370,7 +15464,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     jungle_leaves: {
         break: {
@@ -14392,7 +15488,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     jungle_log: {
         break: {
@@ -14438,7 +15536,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     jungle_planks: {
         break: {
@@ -14484,7 +15584,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     jungle_pressure_plate: {
         break: {
@@ -14530,7 +15632,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     jungle_sapling: {
         break: {
@@ -14552,7 +15656,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     jungle_shelf: {
         break: "block.shelf.break",
@@ -14560,7 +15666,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     jungle_slab: {
         break: {
@@ -14606,7 +15714,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     jungle_stairs: {
         break: {
@@ -14652,7 +15762,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     jungle_standing_sign: {
         break: {
@@ -14698,7 +15810,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     jungle_trapdoor: {
         break: {
@@ -14744,7 +15858,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     jungle_wall_sign: {
         break: {
@@ -14790,7 +15906,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     jungle_wood: {
         break: {
@@ -14836,7 +15954,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     kelp: {
         break: {
@@ -14858,7 +15978,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     ladder: {
         break: {
@@ -14880,7 +16002,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     lantern: {
         break: {
@@ -14902,7 +16026,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     lapis_block: {
         break: {
@@ -14924,7 +16050,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     lapis_ore: {
         break: {
@@ -14946,7 +16074,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     large_amethyst_bud: {
         break: {
@@ -14959,7 +16089,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     large_fern: {
         break: {
@@ -14981,7 +16113,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     leaf_litter: {
         break: {
@@ -14995,7 +16129,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     leaves: {
         break: {
@@ -15017,7 +16153,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     leaves2: {
         break: {
@@ -15039,7 +16177,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     lectern: {
         break: {
@@ -15085,7 +16225,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     lever: {
         break: {
@@ -15107,7 +16249,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     light_block_0: {
         break: {
@@ -15129,7 +16273,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     light_block_1: {
         break: {
@@ -15151,7 +16297,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     light_block_10: {
         break: {
@@ -15173,7 +16321,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     light_block_11: {
         break: {
@@ -15195,7 +16345,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     light_block_12: {
         break: {
@@ -15217,7 +16369,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     light_block_13: {
         break: {
@@ -15239,7 +16393,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     light_block_14: {
         break: {
@@ -15261,7 +16417,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     light_block_15: {
         break: {
@@ -15283,7 +16441,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     light_block_2: {
         break: {
@@ -15305,7 +16465,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     light_block_3: {
         break: {
@@ -15327,7 +16489,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     light_block_4: {
         break: {
@@ -15349,7 +16513,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     light_block_5: {
         break: {
@@ -15371,7 +16537,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     light_block_6: {
         break: {
@@ -15393,7 +16561,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     light_block_7: {
         break: {
@@ -15415,7 +16585,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     light_block_8: {
         break: {
@@ -15437,7 +16609,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     light_block_9: {
         break: {
@@ -15459,7 +16633,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     light_blue_candle: {
         break: {
@@ -15475,7 +16651,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     light_blue_candle_cake: {
         break: {
@@ -15497,7 +16675,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     light_blue_carpet: {
         break: {
@@ -15519,7 +16699,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     light_blue_concrete: {
         break: {
@@ -15541,7 +16723,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     light_blue_concrete_double_slab: {
         break: {
@@ -15563,7 +16747,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     light_blue_concrete_powder: {
         break: {
@@ -15585,7 +16771,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     light_blue_concrete_slab: {
         break: {
@@ -15607,7 +16795,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     light_blue_concrete_stairs: {
         break: {
@@ -15629,7 +16819,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     light_blue_glazed_terracotta: {
         break: {
@@ -15651,7 +16843,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     light_blue_shulker_box: {
         break: {
@@ -15673,7 +16867,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     light_blue_stained_glass: {
         break: {
@@ -15695,7 +16891,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     light_blue_stained_glass_pane: {
         break: {
@@ -15717,7 +16915,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     light_blue_terracotta: {
         break: null,
@@ -15725,7 +16925,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     light_blue_wool: {
         break: {
@@ -15747,7 +16949,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     light_blue_wool_double_slab: {
         break: {
@@ -15769,7 +16973,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     light_blue_wool_slab: {
         break: {
@@ -15791,7 +16997,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     light_blue_wool_stairs: {
         break: {
@@ -15813,7 +17021,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     light_gray_candle: {
         break: {
@@ -15829,7 +17039,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     light_gray_candle_cake: {
         break: {
@@ -15851,7 +17063,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     light_gray_carpet: {
         break: {
@@ -15873,7 +17087,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     light_gray_concrete: {
         break: {
@@ -15895,7 +17111,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     light_gray_concrete_double_slab: {
         break: {
@@ -15917,7 +17135,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     light_gray_concrete_powder: {
         break: {
@@ -15939,7 +17159,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     light_gray_concrete_slab: {
         break: {
@@ -15961,7 +17183,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     light_gray_concrete_stairs: {
         break: {
@@ -15983,7 +17207,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     light_gray_shulker_box: {
         break: {
@@ -16005,7 +17231,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     light_gray_stained_glass: {
         break: {
@@ -16027,7 +17255,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     light_gray_stained_glass_pane: {
         break: {
@@ -16049,7 +17279,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     light_gray_terracotta: {
         break: null,
@@ -16057,7 +17289,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     light_gray_wool: {
         break: {
@@ -16079,7 +17313,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     light_gray_wool_double_slab: {
         break: {
@@ -16101,7 +17337,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     light_gray_wool_slab: {
         break: {
@@ -16123,7 +17361,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     light_gray_wool_stairs: {
         break: {
@@ -16145,7 +17385,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     light_weighted_pressure_plate: {
         break: {
@@ -16179,7 +17421,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.iron_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     lightning_rod: {
         break: {
@@ -16210,7 +17454,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "door.close": {
             pitch: 1.0,
             sound: "close_door.copper"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     lilac: {
         break: {
@@ -16232,7 +17478,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     lily_of_the_valley: {
         break: {
@@ -16254,7 +17502,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     lime_candle: {
         break: {
@@ -16270,7 +17520,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     lime_candle_cake: {
         break: {
@@ -16292,7 +17544,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     lime_carpet: {
         break: {
@@ -16314,7 +17568,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     lime_concrete: {
         break: {
@@ -16336,7 +17592,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     lime_concrete_double_slab: {
         break: {
@@ -16358,7 +17616,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     lime_concrete_powder: {
         break: {
@@ -16380,7 +17640,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     lime_concrete_slab: {
         break: {
@@ -16402,7 +17664,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     lime_concrete_stairs: {
         break: {
@@ -16424,7 +17688,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     lime_glazed_terracotta: {
         break: {
@@ -16446,7 +17712,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     lime_shulker_box: {
         break: {
@@ -16468,7 +17736,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     lime_stained_glass: {
         break: {
@@ -16490,7 +17760,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     lime_stained_glass_pane: {
         break: {
@@ -16512,7 +17784,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     lime_terracotta: {
         break: null,
@@ -16520,7 +17794,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     lime_wool: {
         break: {
@@ -16542,7 +17818,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     lime_wool_double_slab: {
         break: {
@@ -16564,7 +17842,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     lime_wool_slab: {
         break: {
@@ -16586,7 +17866,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     lime_wool_stairs: {
         break: {
@@ -16608,7 +17890,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     lit_blast_furnace: {
         break: {
@@ -16630,7 +17914,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     lit_deepslate_redstone_ore: {
         break: {
@@ -16652,7 +17938,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     lit_furnace: {
         break: {
@@ -16674,7 +17962,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     lit_pumpkin: {
         break: {
@@ -16720,7 +18010,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     lit_redstone_lamp: {
         break: {
@@ -16742,7 +18034,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     lit_redstone_ore: {
         break: {
@@ -16764,7 +18058,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     lit_smoker: {
         break: {
@@ -16786,7 +18082,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     lodestone: {
         break: {
@@ -16808,7 +18106,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     log: {
         break: {
@@ -16854,7 +18154,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     log2: {
         break: {
@@ -16900,7 +18202,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     loom: {
         break: {
@@ -16946,7 +18250,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     magenta_candle: {
         break: {
@@ -16962,7 +18268,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     magenta_candle_cake: {
         break: {
@@ -16984,7 +18292,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     magenta_carpet: {
         break: {
@@ -17006,7 +18316,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     magenta_concrete: {
         break: {
@@ -17028,7 +18340,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     magenta_concrete_double_slab: {
         break: {
@@ -17050,7 +18364,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     magenta_concrete_powder: {
         break: {
@@ -17072,7 +18388,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     magenta_concrete_slab: {
         break: {
@@ -17094,7 +18412,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     magenta_concrete_stairs: {
         break: {
@@ -17116,7 +18436,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     magenta_glazed_terracotta: {
         break: {
@@ -17138,7 +18460,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     magenta_shulker_box: {
         break: {
@@ -17160,7 +18484,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     magenta_stained_glass: {
         break: {
@@ -17182,7 +18508,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     magenta_stained_glass_pane: {
         break: {
@@ -17204,7 +18532,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     magenta_terracotta: {
         break: null,
@@ -17212,7 +18542,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     magenta_wool: {
         break: {
@@ -17234,7 +18566,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     magenta_wool_double_slab: {
         break: {
@@ -17256,7 +18590,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     magenta_wool_slab: {
         break: {
@@ -17278,7 +18614,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     magenta_wool_stairs: {
         break: {
@@ -17300,7 +18638,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     magma: {
         break: {
@@ -17322,7 +18662,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     mangrove_button: {
         break: {
@@ -17368,7 +18710,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     mangrove_door: {
         break: {
@@ -17414,7 +18758,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     mangrove_double_slab: {
         break: {
@@ -17460,7 +18806,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     mangrove_fence: {
         break: {
@@ -17506,7 +18854,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     mangrove_fence_gate: {
         break: {
@@ -17552,7 +18902,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     mangrove_hanging_sign: {
         break: {
@@ -17574,7 +18926,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     mangrove_leaves: {
         break: {
@@ -17596,7 +18950,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     mangrove_log: {
         break: {
@@ -17642,7 +18998,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     mangrove_planks: {
         break: {
@@ -17688,7 +19046,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     mangrove_pressure_plate: {
         break: {
@@ -17734,7 +19094,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     mangrove_propagule: {
         break: {
@@ -17756,7 +19118,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     mangrove_roots: {
         break: {
@@ -17778,7 +19142,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     mangrove_shelf: {
         break: "block.shelf.break",
@@ -17786,7 +19152,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     mangrove_slab: {
         break: {
@@ -17832,7 +19200,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     mangrove_stairs: {
         break: {
@@ -17878,7 +19248,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     mangrove_standing_sign: {
         break: {
@@ -17924,7 +19296,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     mangrove_trapdoor: {
         break: {
@@ -17970,7 +19344,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     mangrove_wall_sign: {
         break: {
@@ -18016,7 +19392,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     mangrove_wood: {
         break: {
@@ -18062,7 +19440,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     medium_amethyst_bud: {
         break: {
@@ -18075,7 +19455,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     melon_block: {
         break: {
@@ -18121,7 +19503,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     melon_stem: {
         break: {
@@ -18167,7 +19551,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     mob_spawner: {
         break: {
@@ -18181,7 +19567,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     moss_block: {
         break: {
@@ -18195,7 +19583,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     moss_carpet: {
         break: {
@@ -18209,7 +19599,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     mossy_cobblestone: {
         break: {
@@ -18231,7 +19623,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     mossy_cobblestone_double_slab: {
         break: {
@@ -18253,7 +19647,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     mossy_cobblestone_slab: {
         break: {
@@ -18275,7 +19671,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     mossy_cobblestone_stairs: {
         break: {
@@ -18297,7 +19695,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     mossy_cobblestone_wall: {
         break: {
@@ -18319,7 +19719,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     mossy_stone_brick_double_slab: {
         break: {
@@ -18341,7 +19743,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     mossy_stone_brick_slab: {
         break: {
@@ -18363,7 +19767,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     mossy_stone_brick_stairs: {
         break: {
@@ -18385,7 +19791,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     mossy_stone_brick_wall: {
         break: {
@@ -18407,7 +19815,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     mossy_stone_bricks: {
         break: {
@@ -18429,7 +19839,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     mud: {
         break: {
@@ -18451,7 +19863,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     mud_brick_double_slab: {
         break: {
@@ -18473,7 +19887,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     mud_brick_slab: {
         break: {
@@ -18495,7 +19911,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     mud_brick_stairs: {
         break: {
@@ -18517,7 +19935,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     mud_brick_wall: {
         break: {
@@ -18539,7 +19959,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     mud_bricks: {
         break: {
@@ -18561,7 +19983,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     muddy_mangrove_roots: {
         break: {
@@ -18583,7 +20007,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     mushroom_stem: {
         break: {
@@ -18629,7 +20055,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     mycelium: {
         break: {
@@ -18651,7 +20079,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     nether_brick: {
         break: {
@@ -18673,7 +20103,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     nether_brick_double_slab: {
         break: {
@@ -18695,7 +20127,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     nether_brick_fence: {
         break: {
@@ -18717,7 +20151,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     nether_brick_slab: {
         break: {
@@ -18739,7 +20175,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     nether_brick_stairs: {
         break: {
@@ -18761,7 +20199,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     nether_brick_wall: {
         break: {
@@ -18783,7 +20223,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     nether_gold_ore: {
         break: {
@@ -18805,7 +20247,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     nether_sprouts: {
         break: {
@@ -18827,7 +20271,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     nether_wart: {
         break: {
@@ -18849,7 +20295,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     nether_wart_block: {
         break: {
@@ -18871,7 +20319,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     netherite_block: {
         break: {
@@ -18893,7 +20343,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     netherrack: {
         break: {
@@ -18915,7 +20367,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     netherreactor: {
         break: {
@@ -18949,7 +20403,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.iron_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     normal_stone_double_slab: {
         break: {
@@ -18971,7 +20427,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     normal_stone_slab: {
         break: {
@@ -18993,7 +20451,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     normal_stone_stairs: {
         break: {
@@ -19015,7 +20475,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     noteblock: {
         break: {
@@ -19061,7 +20523,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     oak_double_slab: {
         break: {
@@ -19107,7 +20571,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     oak_fence: {
         break: {
@@ -19153,7 +20619,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     oak_hanging_sign: {
         break: {
@@ -19175,7 +20643,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     oak_leaves: {
         break: {
@@ -19197,7 +20667,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     oak_log: {
         break: {
@@ -19243,7 +20715,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     oak_planks: {
         break: {
@@ -19289,7 +20763,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     oak_sapling: {
         break: {
@@ -19311,7 +20787,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     oak_shelf: {
         break: "block.shelf.break",
@@ -19319,7 +20797,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     oak_slab: {
         break: {
@@ -19365,7 +20845,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     oak_stairs: {
         break: {
@@ -19411,7 +20893,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     oak_wood: {
         break: {
@@ -19457,7 +20941,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     observer: {
         break: {
@@ -19491,7 +20977,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.iron_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     obsidian: {
         break: {
@@ -19513,7 +21001,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     ochre_froglight: {
         break: {
@@ -19527,7 +21017,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     open_eyeblossom: {
         break: null,
@@ -19535,7 +21027,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     orange_candle: {
         break: {
@@ -19551,7 +21045,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     orange_candle_cake: {
         break: {
@@ -19573,7 +21069,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     orange_carpet: {
         break: {
@@ -19595,7 +21093,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     orange_concrete: {
         break: {
@@ -19617,7 +21117,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     orange_concrete_double_slab: {
         break: {
@@ -19639,7 +21141,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     orange_concrete_powder: {
         break: {
@@ -19661,7 +21165,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     orange_concrete_slab: {
         break: {
@@ -19683,7 +21189,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     orange_concrete_stairs: {
         break: {
@@ -19705,7 +21213,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     orange_glazed_terracotta: {
         break: {
@@ -19727,7 +21237,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     orange_poplar_leaves: {
         break: {
@@ -19742,7 +21254,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     orange_shulker_box: {
         break: {
@@ -19764,7 +21278,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     orange_stained_glass: {
         break: {
@@ -19786,7 +21302,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     orange_stained_glass_pane: {
         break: {
@@ -19808,7 +21326,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     orange_terracotta: {
         break: null,
@@ -19816,7 +21336,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     orange_tulip: {
         break: {
@@ -19838,7 +21360,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     orange_wool: {
         break: {
@@ -19860,7 +21384,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     orange_wool_double_slab: {
         break: {
@@ -19882,7 +21408,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     orange_wool_slab: {
         break: {
@@ -19904,7 +21432,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     orange_wool_stairs: {
         break: {
@@ -19926,7 +21456,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     oxeye_daisy: {
         break: {
@@ -19948,7 +21480,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     oxidized_chiseled_copper: {
         break: {
@@ -19979,7 +21513,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "door.close": {
             pitch: 1.0,
             sound: "close_door.copper"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     oxidized_copper: {
         break: {
@@ -20010,7 +21546,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "door.close": {
             pitch: 1.0,
             sound: "close_door.copper"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     oxidized_copper_bars: {
         break: {
@@ -20041,7 +21579,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "door.close": {
             pitch: 1.0,
             sound: "close_door.copper"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     oxidized_copper_bulb: {
         break: {
@@ -20055,7 +21595,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     oxidized_copper_chain: {
         break: {
@@ -20077,7 +21619,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     oxidized_copper_chest: {
         break: null,
@@ -20085,7 +21629,15 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "block.copper_chest.oxidized.open"
+        },
+        "chest.close": null
     },
     oxidized_copper_door: {
         break: {
@@ -20116,7 +21668,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "door.close": {
             pitch: 1.0,
             sound: "close_door.copper"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     oxidized_copper_golem_statue: {
         break: "block.copper_golem_statue.break",
@@ -20124,7 +21678,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     oxidized_copper_grate: {
         break: {
@@ -20140,7 +21696,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     oxidized_copper_lantern: {
         break: {
@@ -20162,7 +21720,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     oxidized_copper_trapdoor: {
         break: {
@@ -20193,7 +21753,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "door.close": {
             pitch: 1.0,
             sound: "close_door.copper"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     oxidized_cut_copper: {
         break: {
@@ -20224,7 +21786,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "door.close": {
             pitch: 1.0,
             sound: "close_door.copper"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     oxidized_cut_copper_slab: {
         break: {
@@ -20255,7 +21819,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "door.close": {
             pitch: 1.0,
             sound: "close_door.copper"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     oxidized_cut_copper_stairs: {
         break: {
@@ -20286,7 +21852,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "door.close": {
             pitch: 1.0,
             sound: "close_door.copper"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     oxidized_double_cut_copper_slab: {
         break: {
@@ -20317,7 +21885,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "door.close": {
             pitch: 1.0,
             sound: "close_door.copper"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     oxidized_lightning_rod: {
         break: {
@@ -20348,7 +21918,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "door.close": {
             pitch: 1.0,
             sound: "close_door.copper"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     packed_ice: {
         break: {
@@ -20370,7 +21942,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     packed_mud: {
         break: {
@@ -20392,7 +21966,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     pale_hanging_moss: {
         break: null,
@@ -20400,7 +21976,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     pale_moss_block: {
         break: {
@@ -20414,7 +21992,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     pale_moss_carpet: {
         break: {
@@ -20428,7 +22008,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     pale_oak_button: {
         break: {
@@ -20474,7 +22056,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     pale_oak_door: {
         break: {
@@ -20520,7 +22104,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     pale_oak_double_slab: {
         break: {
@@ -20566,7 +22152,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     pale_oak_fence: {
         break: {
@@ -20612,7 +22200,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     pale_oak_fence_gate: {
         break: {
@@ -20658,7 +22248,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     pale_oak_hanging_sign: {
         break: {
@@ -20680,7 +22272,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     pale_oak_leaves: {
         break: {
@@ -20702,7 +22296,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     pale_oak_log: {
         break: {
@@ -20748,7 +22344,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     pale_oak_planks: {
         break: {
@@ -20794,7 +22392,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     pale_oak_pressure_plate: {
         break: {
@@ -20840,7 +22440,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     pale_oak_sapling: {
         break: {
@@ -20862,7 +22464,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     pale_oak_shelf: {
         break: "block.shelf.break",
@@ -20870,7 +22474,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     pale_oak_slab: {
         break: {
@@ -20916,7 +22522,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     pale_oak_stairs: {
         break: {
@@ -20962,7 +22570,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     pale_oak_standing_sign: {
         break: {
@@ -21008,7 +22618,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     pale_oak_trapdoor: {
         break: {
@@ -21054,7 +22666,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     pale_oak_wall_sign: {
         break: {
@@ -21100,7 +22714,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     pale_oak_wood: {
         break: {
@@ -21146,7 +22762,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     pearlescent_froglight: {
         break: {
@@ -21160,7 +22778,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     peony: {
         break: {
@@ -21182,7 +22802,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     petrified_oak_double_slab: {
         break: {
@@ -21204,7 +22826,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     petrified_oak_slab: {
         break: {
@@ -21226,7 +22850,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     piglin_head: {
         break: {
@@ -21248,7 +22874,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     pink_candle: {
         break: {
@@ -21264,7 +22892,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     pink_candle_cake: {
         break: {
@@ -21286,7 +22916,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     pink_carpet: {
         break: {
@@ -21308,7 +22940,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     pink_concrete: {
         break: {
@@ -21330,7 +22964,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     pink_concrete_double_slab: {
         break: {
@@ -21352,7 +22988,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     pink_concrete_powder: {
         break: {
@@ -21374,7 +23012,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     pink_concrete_slab: {
         break: {
@@ -21396,7 +23036,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     pink_concrete_stairs: {
         break: {
@@ -21418,7 +23060,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     pink_glazed_terracotta: {
         break: {
@@ -21440,7 +23084,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     pink_petals: {
         break: {
@@ -21454,7 +23100,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     pink_shulker_box: {
         break: {
@@ -21476,7 +23124,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     pink_stained_glass: {
         break: {
@@ -21498,7 +23148,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     pink_stained_glass_pane: {
         break: {
@@ -21520,7 +23172,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     pink_terracotta: {
         break: null,
@@ -21528,7 +23182,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     pink_tulip: {
         break: {
@@ -21550,7 +23206,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     pink_wool: {
         break: {
@@ -21572,7 +23230,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     pink_wool_double_slab: {
         break: {
@@ -21594,7 +23254,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     pink_wool_slab: {
         break: {
@@ -21616,7 +23278,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     pink_wool_stairs: {
         break: {
@@ -21638,7 +23302,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     piston: {
         break: {
@@ -21660,7 +23326,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     pitcher_crop: {
         break: {
@@ -21682,7 +23350,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     pitcher_plant: {
         break: {
@@ -21704,7 +23374,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     planks: {
         break: {
@@ -21750,7 +23422,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     player_head: {
         break: {
@@ -21772,7 +23446,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     podzol: {
         break: {
@@ -21794,7 +23470,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     pointed_dripstone: {
         break: {
@@ -21806,7 +23484,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     polished_andesite: {
         break: {
@@ -21828,7 +23508,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     polished_andesite_double_slab: {
         break: {
@@ -21850,7 +23532,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     polished_andesite_slab: {
         break: {
@@ -21872,7 +23556,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     polished_andesite_stairs: {
         break: {
@@ -21894,7 +23580,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     polished_basalt: {
         break: {
@@ -21916,7 +23604,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     polished_blackstone: {
         break: {
@@ -21938,7 +23628,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     polished_blackstone_brick_double_slab: {
         break: {
@@ -21960,7 +23652,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     polished_blackstone_brick_slab: {
         break: {
@@ -21982,7 +23676,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     polished_blackstone_brick_stairs: {
         break: {
@@ -22004,7 +23700,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     polished_blackstone_brick_wall: {
         break: {
@@ -22026,7 +23724,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     polished_blackstone_bricks: {
         break: {
@@ -22048,7 +23748,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     polished_blackstone_button: {
         break: {
@@ -22070,7 +23772,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     polished_blackstone_double_slab: {
         break: {
@@ -22092,7 +23796,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     polished_blackstone_pressure_plate: {
         break: {
@@ -22114,7 +23820,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     polished_blackstone_slab: {
         break: {
@@ -22136,7 +23844,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     polished_blackstone_stairs: {
         break: {
@@ -22158,7 +23868,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     polished_blackstone_wall: {
         break: {
@@ -22180,7 +23892,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     polished_cinnabar: {
         break: {
@@ -22194,7 +23908,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     polished_cinnabar_double_slab: {
         break: {
@@ -22208,7 +23924,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     polished_cinnabar_slab: {
         break: {
@@ -22222,7 +23940,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     polished_cinnabar_stairs: {
         break: {
@@ -22236,7 +23956,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     polished_cinnabar_wall: {
         break: {
@@ -22250,7 +23972,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     polished_deepslate: {
         break: {
@@ -22272,7 +23996,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     polished_deepslate_double_slab: {
         break: {
@@ -22294,7 +24020,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     polished_deepslate_slab: {
         break: {
@@ -22316,7 +24044,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     polished_deepslate_stairs: {
         break: {
@@ -22338,7 +24068,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     polished_deepslate_wall: {
         break: {
@@ -22360,7 +24092,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     polished_diorite: {
         break: {
@@ -22382,7 +24116,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     polished_diorite_double_slab: {
         break: {
@@ -22404,7 +24140,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     polished_diorite_slab: {
         break: {
@@ -22426,7 +24164,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     polished_diorite_stairs: {
         break: {
@@ -22448,7 +24188,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     polished_granite: {
         break: {
@@ -22470,7 +24212,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     polished_granite_double_slab: {
         break: {
@@ -22492,7 +24236,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     polished_granite_slab: {
         break: {
@@ -22514,7 +24260,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     polished_granite_stairs: {
         break: {
@@ -22536,7 +24284,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     polished_sulfur: {
         break: {
@@ -22550,7 +24300,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     polished_sulfur_double_slab: {
         break: {
@@ -22564,7 +24316,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     polished_sulfur_slab: {
         break: {
@@ -22578,7 +24332,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     polished_sulfur_stairs: {
         break: {
@@ -22592,7 +24348,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     polished_sulfur_wall: {
         break: {
@@ -22606,7 +24364,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     polished_tuff: {
         break: {
@@ -22622,7 +24382,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     polished_tuff_double_slab: {
         break: {
@@ -22638,7 +24400,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     polished_tuff_slab: {
         break: {
@@ -22654,7 +24418,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     polished_tuff_stairs: {
         break: {
@@ -22670,7 +24436,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     polished_tuff_wall: {
         break: {
@@ -22686,7 +24454,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     poplar_button: {
         break: {
@@ -22732,7 +24502,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     poplar_door: {
         break: {
@@ -22778,7 +24550,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     poplar_double_slab: {
         break: {
@@ -22824,7 +24598,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     poplar_fence: {
         break: {
@@ -22870,7 +24646,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     poplar_fence_gate: {
         break: {
@@ -22916,7 +24694,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     poplar_hanging_sign: {
         break: {
@@ -22938,7 +24718,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     poplar_log: {
         break: {
@@ -22984,7 +24766,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     poplar_planks: {
         break: {
@@ -23030,7 +24814,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     poplar_pressure_plate: {
         break: {
@@ -23076,7 +24862,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     poplar_sapling: {
         break: {
@@ -23098,7 +24886,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     poplar_shelf: {
         break: "block.shelf.break",
@@ -23106,7 +24896,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     poplar_slab: {
         break: {
@@ -23152,7 +24944,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     poplar_stairs: {
         break: {
@@ -23198,7 +24992,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     poplar_standing_sign: {
         break: {
@@ -23244,7 +25040,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     poplar_trapdoor: {
         break: {
@@ -23290,7 +25088,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     poplar_wall_sign: {
         break: {
@@ -23336,7 +25136,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     poplar_wood: {
         break: {
@@ -23382,7 +25184,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     poppy: {
         break: {
@@ -23404,7 +25208,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     portal: {
         break: {
@@ -23426,7 +25232,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     potatoes: {
         break: {
@@ -23448,7 +25256,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     potent_sulfur: {
         break: {
@@ -23462,7 +25272,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     powder_snow: {
         break: {
@@ -23484,7 +25296,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     powered_comparator: {
         break: {
@@ -23530,7 +25344,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     powered_repeater: {
         break: {
@@ -23576,7 +25392,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     prismarine: {
         break: {
@@ -23598,7 +25416,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     prismarine_brick_double_slab: {
         break: {
@@ -23620,7 +25440,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     prismarine_brick_slab: {
         break: {
@@ -23642,7 +25464,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     prismarine_bricks: {
         break: {
@@ -23664,7 +25488,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     prismarine_bricks_stairs: {
         break: {
@@ -23686,7 +25512,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     prismarine_double_slab: {
         break: {
@@ -23708,7 +25536,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     prismarine_slab: {
         break: {
@@ -23730,7 +25560,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     prismarine_stairs: {
         break: {
@@ -23752,7 +25584,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     prismarine_wall: {
         break: {
@@ -23774,7 +25608,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     pumpkin: {
         break: {
@@ -23820,7 +25656,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     pumpkin_stem: {
         break: {
@@ -23866,7 +25704,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     purple_candle: {
         break: {
@@ -23882,7 +25722,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     purple_candle_cake: {
         break: {
@@ -23904,7 +25746,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     purple_carpet: {
         break: {
@@ -23926,7 +25770,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     purple_concrete: {
         break: {
@@ -23948,7 +25794,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     purple_concrete_double_slab: {
         break: {
@@ -23970,7 +25818,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     purple_concrete_powder: {
         break: {
@@ -23992,7 +25842,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     purple_concrete_slab: {
         break: {
@@ -24014,7 +25866,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     purple_concrete_stairs: {
         break: {
@@ -24036,7 +25890,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     purple_glazed_terracotta: {
         break: {
@@ -24058,7 +25914,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     purple_shulker_box: {
         break: {
@@ -24080,7 +25938,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     purple_stained_glass: {
         break: {
@@ -24102,7 +25962,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     purple_stained_glass_pane: {
         break: {
@@ -24124,7 +25986,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     purple_terracotta: {
         break: null,
@@ -24132,7 +25996,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     purple_wool: {
         break: {
@@ -24154,7 +26020,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     purple_wool_double_slab: {
         break: {
@@ -24176,7 +26044,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     purple_wool_slab: {
         break: {
@@ -24198,7 +26068,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     purple_wool_stairs: {
         break: {
@@ -24220,7 +26092,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     purpur_block: {
         break: {
@@ -24242,7 +26116,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     purpur_double_slab: {
         break: {
@@ -24264,7 +26140,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     purpur_pillar: {
         break: {
@@ -24286,7 +26164,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     purpur_slab: {
         break: {
@@ -24308,7 +26188,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     quartz_block: {
         break: {
@@ -24330,7 +26212,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     quartz_bricks: {
         break: {
@@ -24352,7 +26236,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     quartz_double_slab: {
         break: {
@@ -24374,7 +26260,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     quartz_ore: {
         break: {
@@ -24396,7 +26284,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     quartz_pillar: {
         break: {
@@ -24418,7 +26308,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     quartz_slab: {
         break: {
@@ -24440,7 +26332,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     rail: {
         break: {
@@ -24474,7 +26368,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.iron_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     raw_copper_block: {
         break: {
@@ -24496,7 +26392,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     raw_gold_block: {
         break: {
@@ -24518,7 +26416,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     raw_iron_block: {
         break: {
@@ -24540,7 +26440,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     red_candle: {
         break: {
@@ -24556,7 +26458,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     red_candle_cake: {
         break: {
@@ -24578,7 +26482,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     red_carpet: {
         break: {
@@ -24600,7 +26506,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     red_concrete: {
         break: {
@@ -24622,7 +26530,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     red_concrete_double_slab: {
         break: {
@@ -24644,7 +26554,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     red_concrete_powder: {
         break: {
@@ -24666,7 +26578,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     red_concrete_slab: {
         break: {
@@ -24688,7 +26602,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     red_concrete_stairs: {
         break: {
@@ -24710,7 +26626,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     red_flower: {
         break: {
@@ -24732,7 +26650,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     red_glazed_terracotta: {
         break: {
@@ -24754,7 +26674,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     red_mushroom: {
         break: {
@@ -24776,7 +26698,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     red_mushroom_block: {
         break: {
@@ -24822,7 +26746,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     red_nether_brick: {
         break: {
@@ -24844,7 +26770,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     red_nether_brick_double_slab: {
         break: {
@@ -24866,7 +26794,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     red_nether_brick_slab: {
         break: {
@@ -24888,7 +26818,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     red_nether_brick_stairs: {
         break: {
@@ -24910,7 +26842,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     red_nether_brick_wall: {
         break: {
@@ -24932,7 +26866,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     red_poplar_leaves: {
         break: {
@@ -24947,7 +26883,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     red_sand: {
         break: {
@@ -24969,7 +26907,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     red_sandstone: {
         break: {
@@ -24991,7 +26931,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     red_sandstone_double_slab: {
         break: {
@@ -25013,7 +26955,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     red_sandstone_slab: {
         break: {
@@ -25035,7 +26979,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     red_sandstone_wall: {
         break: {
@@ -25057,7 +27003,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     red_shrub: {
         break: {
@@ -25072,7 +27020,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     red_shulker_box: {
         break: {
@@ -25094,7 +27044,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     red_stained_glass: {
         break: {
@@ -25116,7 +27068,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     red_stained_glass_pane: {
         break: {
@@ -25138,7 +27092,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     red_terracotta: {
         break: null,
@@ -25146,7 +27102,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     red_tulip: {
         break: {
@@ -25168,7 +27126,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     red_wool: {
         break: {
@@ -25190,7 +27150,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     red_wool_double_slab: {
         break: {
@@ -25212,7 +27174,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     red_wool_slab: {
         break: {
@@ -25234,7 +27198,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     red_wool_stairs: {
         break: {
@@ -25256,7 +27222,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     redstone_block: {
         break: {
@@ -25278,7 +27246,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     redstone_lamp: {
         break: {
@@ -25300,7 +27270,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     redstone_ore: {
         break: {
@@ -25322,7 +27294,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     redstone_torch: {
         break: {
@@ -25368,7 +27342,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     reeds: {
         break: {
@@ -25390,7 +27366,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     reinforced_deepslate: {
         break: {
@@ -25412,7 +27390,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     repeating_command_block: {
         break: {
@@ -25446,7 +27426,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.iron_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     resin_block: {
         break: {
@@ -25462,7 +27444,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     resin_brick_double_slab: {
         break: {
@@ -25478,7 +27462,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     resin_brick_slab: {
         break: {
@@ -25494,7 +27480,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     resin_brick_stairs: {
         break: {
@@ -25510,7 +27498,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     resin_brick_wall: {
         break: {
@@ -25526,7 +27516,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     resin_bricks: {
         break: {
@@ -25542,7 +27534,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     resin_clump: {
         break: {
@@ -25558,7 +27552,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     respawn_anchor: {
         break: {
@@ -25592,7 +27588,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.iron_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     rose_bush: {
         break: {
@@ -25614,7 +27612,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     sand: {
         break: {
@@ -25636,7 +27636,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     sandstone: {
         break: {
@@ -25658,7 +27660,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     sandstone_double_slab: {
         break: {
@@ -25680,7 +27684,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     sandstone_slab: {
         break: {
@@ -25702,7 +27708,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     sandstone_wall: {
         break: {
@@ -25724,7 +27732,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     sapling: {
         break: {
@@ -25746,7 +27756,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     scaffolding: {
         break: {
@@ -25768,7 +27780,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     sculk: {
         break: {
@@ -25790,7 +27804,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     sculk_catalyst: {
         break: {
@@ -25812,7 +27828,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     sculk_sensor: {
         break: {
@@ -25834,7 +27852,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     sculk_shrieker: {
         break: {
@@ -25856,7 +27876,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     sculk_vein: {
         break: {
@@ -25878,7 +27900,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     seaLantern: {
         break: {
@@ -25900,7 +27924,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     sea_pickle: {
         break: {
@@ -25922,7 +27948,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     seagrass: {
         break: {
@@ -25944,7 +27972,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     shelf_mushroom: {
         break: {
@@ -25959,7 +27989,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     short_dry_grass: {
         break: {
@@ -25981,7 +28013,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     short_grass: {
         break: {
@@ -26003,7 +28037,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     shroomlight: {
         break: {
@@ -26025,7 +28061,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     shulker_box: {
         break: {
@@ -26047,7 +28085,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     silver_glazed_terracotta: {
         break: {
@@ -26069,7 +28109,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     skeleton_skull: {
         break: {
@@ -26091,7 +28133,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     skull: {
         break: {
@@ -26113,7 +28157,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     slime: {
         break: {
@@ -26135,7 +28181,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     small_amethyst_bud: {
         break: {
@@ -26148,7 +28196,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     small_dripleaf_block: {
         break: {
@@ -26170,7 +28220,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     smithing_table: {
         break: {
@@ -26216,7 +28268,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     smoker: {
         break: {
@@ -26238,7 +28292,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     smooth_basalt: {
         break: {
@@ -26260,7 +28316,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     smooth_quartz: {
         break: {
@@ -26282,7 +28340,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     smooth_quartz_double_slab: {
         break: {
@@ -26304,7 +28364,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     smooth_quartz_slab: {
         break: {
@@ -26326,7 +28388,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     smooth_quartz_stairs: {
         break: {
@@ -26348,7 +28412,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     smooth_red_sandstone: {
         break: {
@@ -26370,7 +28436,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     smooth_red_sandstone_double_slab: {
         break: {
@@ -26392,7 +28460,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     smooth_red_sandstone_slab: {
         break: {
@@ -26414,7 +28484,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     smooth_red_sandstone_stairs: {
         break: {
@@ -26436,7 +28508,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     smooth_sandstone: {
         break: {
@@ -26458,7 +28532,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     smooth_sandstone_double_slab: {
         break: {
@@ -26480,7 +28556,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     smooth_sandstone_slab: {
         break: {
@@ -26502,7 +28580,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     smooth_sandstone_stairs: {
         break: {
@@ -26524,7 +28604,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     smooth_stone: {
         break: {
@@ -26546,7 +28628,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     smooth_stone_double_slab: {
         break: {
@@ -26568,7 +28652,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     smooth_stone_slab: {
         break: {
@@ -26590,7 +28676,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     sniffer_egg: {
         break: {
@@ -26624,7 +28712,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.iron_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     snow: {
         break: {
@@ -26646,7 +28736,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     snow_layer: {
         break: {
@@ -26668,7 +28760,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     soul_campfire: {
         break: {
@@ -26714,7 +28808,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     soul_fire: {
         break: {
@@ -26736,7 +28832,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     soul_lantern: {
         break: {
@@ -26758,7 +28856,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     soul_sand: {
         break: {
@@ -26780,7 +28880,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     soul_soil: {
         break: {
@@ -26802,7 +28904,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     soul_torch: {
         break: {
@@ -26848,7 +28952,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     sponge: {
         break: {
@@ -26864,7 +28970,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     spore_blossom: {
         break: {
@@ -26886,7 +28994,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     spruce_button: {
         break: {
@@ -26932,7 +29042,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     spruce_door: {
         break: {
@@ -26978,7 +29090,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     spruce_double_slab: {
         break: {
@@ -27024,7 +29138,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     spruce_fence: {
         break: {
@@ -27070,7 +29186,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     spruce_fence_gate: {
         break: {
@@ -27116,7 +29234,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     spruce_hanging_sign: {
         break: {
@@ -27138,7 +29258,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     spruce_leaves: {
         break: {
@@ -27160,7 +29282,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     spruce_log: {
         break: {
@@ -27206,7 +29330,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     spruce_planks: {
         break: {
@@ -27252,7 +29378,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     spruce_pressure_plate: {
         break: {
@@ -27298,7 +29426,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     spruce_sapling: {
         break: {
@@ -27320,7 +29450,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     spruce_shelf: {
         break: "block.shelf.break",
@@ -27328,7 +29460,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     spruce_slab: {
         break: {
@@ -27374,7 +29508,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     spruce_stairs: {
         break: {
@@ -27420,7 +29556,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     spruce_standing_sign: {
         break: {
@@ -27466,7 +29604,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     spruce_trapdoor: {
         break: {
@@ -27512,7 +29652,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     spruce_wall_sign: {
         break: {
@@ -27558,7 +29700,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     spruce_wood: {
         break: {
@@ -27604,7 +29748,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     stained_glass: {
         break: {
@@ -27626,7 +29772,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     stained_glass_pane: {
         break: {
@@ -27648,7 +29796,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     stained_hardened_clay: {
         break: {
@@ -27670,7 +29820,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     standing_banner: {
         break: {
@@ -27716,7 +29868,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     standing_sign: {
         break: {
@@ -27762,7 +29916,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     sticky_piston: {
         break: {
@@ -27784,7 +29940,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     stone: {
         break: {
@@ -27806,7 +29964,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     stone_brick_double_slab: {
         break: {
@@ -27828,7 +29988,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     stone_brick_slab: {
         break: {
@@ -27850,7 +30012,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     stone_brick_wall: {
         break: {
@@ -27872,7 +30036,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     stone_bricks: {
         break: {
@@ -27894,7 +30060,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     stone_button: {
         break: {
@@ -27916,7 +30084,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     stone_pressure_plate: {
         break: {
@@ -27938,7 +30108,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     stone_slab: {
         break: {
@@ -27960,7 +30132,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     stone_slab2: {
         break: {
@@ -27982,7 +30156,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     stone_slab3: {
         break: {
@@ -28004,7 +30180,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     stone_slab4: {
         break: {
@@ -28026,7 +30204,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     stonebrick: {
         break: {
@@ -28048,7 +30228,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     stonecutter: {
         break: {
@@ -28070,7 +30252,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     stonecutter_block: {
         break: {
@@ -28092,7 +30276,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     straw_bed: {
         break: {
@@ -28107,7 +30293,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     stripped_acacia_log: {
         break: {
@@ -28153,7 +30341,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     stripped_acacia_wood: {
         break: {
@@ -28199,7 +30389,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     stripped_bamboo_block: {
         break: {
@@ -28245,7 +30437,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.bamboo_wood_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     stripped_birch_log: {
         break: {
@@ -28291,7 +30485,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     stripped_birch_wood: {
         break: {
@@ -28337,7 +30533,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     stripped_cherry_log: {
         break: {
@@ -28383,7 +30581,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.cherry_wood_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     stripped_cherry_wood: {
         break: {
@@ -28429,7 +30629,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.cherry_wood_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     stripped_crimson_hyphae: {
         break: {
@@ -28451,7 +30653,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     stripped_crimson_stem: {
         break: {
@@ -28473,7 +30677,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     stripped_dark_oak_log: {
         break: {
@@ -28519,7 +30725,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     stripped_dark_oak_wood: {
         break: {
@@ -28565,7 +30773,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     stripped_jungle_log: {
         break: {
@@ -28611,7 +30821,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     stripped_jungle_wood: {
         break: {
@@ -28657,7 +30869,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     stripped_mangrove_log: {
         break: {
@@ -28703,7 +30917,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     stripped_mangrove_wood: {
         break: {
@@ -28749,7 +30965,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     stripped_oak_log: {
         break: {
@@ -28795,7 +31013,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     stripped_oak_wood: {
         break: {
@@ -28841,7 +31061,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     stripped_pale_oak_log: {
         break: {
@@ -28887,7 +31109,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     stripped_pale_oak_wood: {
         break: {
@@ -28933,7 +31157,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     stripped_poplar_log: {
         break: {
@@ -28979,7 +31205,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     stripped_poplar_wood: {
         break: {
@@ -29025,7 +31253,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     stripped_spruce_log: {
         break: {
@@ -29071,7 +31301,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     stripped_spruce_wood: {
         break: {
@@ -29117,7 +31349,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     stripped_warped_hyphae: {
         break: {
@@ -29139,7 +31373,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     stripped_warped_stem: {
         break: {
@@ -29161,7 +31397,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     sulfur: {
         break: {
@@ -29175,7 +31413,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     sulfur_brick_double_slab: {
         break: {
@@ -29189,7 +31429,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     sulfur_brick_slab: {
         break: {
@@ -29203,7 +31445,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     sulfur_brick_stairs: {
         break: {
@@ -29217,7 +31461,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     sulfur_brick_wall: {
         break: {
@@ -29231,7 +31477,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     sulfur_bricks: {
         break: {
@@ -29245,7 +31493,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     sulfur_double_slab: {
         break: {
@@ -29259,7 +31509,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     sulfur_slab: {
         break: {
@@ -29273,7 +31525,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     sulfur_spike: {
         break: {
@@ -29289,7 +31543,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     sulfur_stairs: {
         break: {
@@ -29303,7 +31559,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     sulfur_wall: {
         break: {
@@ -29317,7 +31575,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     sunflower: {
         break: {
@@ -29339,7 +31599,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     suspicious_gravel: {
         break: {
@@ -29361,7 +31623,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     suspicious_sand: {
         break: {
@@ -29383,7 +31647,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     sweet_berry_bush: {
         break: {
@@ -29405,7 +31671,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     tall_dry_grass: {
         break: {
@@ -29427,7 +31695,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     tall_grass: {
         break: {
@@ -29449,7 +31719,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     tallgrass: {
         break: {
@@ -29471,7 +31743,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     target: {
         break: {
@@ -29493,7 +31767,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     tinted_glass: {
         break: {
@@ -29515,7 +31791,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     tnt: {
         break: {
@@ -29537,7 +31815,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     torch: {
         break: {
@@ -29583,7 +31863,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     torchflower: {
         break: {
@@ -29605,7 +31887,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     torchflower_crop: {
         break: {
@@ -29627,7 +31911,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     trapdoor: {
         break: {
@@ -29673,7 +31959,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     trapped_chest: {
         break: {
@@ -29719,7 +32007,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     trial_spawner: {
         break: {
@@ -29735,7 +32025,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     tube_coral: {
         break: {
@@ -29757,7 +32049,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     tube_coral_block: {
         break: {
@@ -29779,7 +32073,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     tube_coral_fan: {
         break: {
@@ -29801,7 +32097,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     tube_coral_wall_fan: {
         break: {
@@ -29823,7 +32121,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     tuff: {
         break: {
@@ -29839,7 +32139,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     tuff_brick_double_slab: {
         break: {
@@ -29855,7 +32157,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     tuff_brick_slab: {
         break: {
@@ -29871,7 +32175,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     tuff_brick_stairs: {
         break: {
@@ -29887,7 +32193,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     tuff_brick_wall: {
         break: {
@@ -29903,7 +32211,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     tuff_bricks: {
         break: {
@@ -29919,7 +32229,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     tuff_double_slab: {
         break: {
@@ -29935,7 +32247,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     tuff_slab: {
         break: {
@@ -29951,7 +32265,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     tuff_stairs: {
         break: {
@@ -29967,7 +32283,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     tuff_wall: {
         break: {
@@ -29983,7 +32301,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     turtle_egg: {
         break: {
@@ -30005,7 +32325,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     twisting_vines: {
         break: {
@@ -30027,7 +32349,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     undyed_shulker_box: {
         break: {
@@ -30049,7 +32373,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     unlit_redstone_torch: {
         break: {
@@ -30095,7 +32421,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     unpowered_comparator: {
         break: {
@@ -30117,7 +32445,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     unpowered_repeater: {
         break: {
@@ -30163,7 +32493,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     vault: {
         break: {
@@ -30179,7 +32511,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     verdant_froglight: {
         break: {
@@ -30193,7 +32527,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     vine: {
         break: {
@@ -30215,7 +32551,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     wall_banner: {
         break: {
@@ -30261,7 +32599,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     wall_sign: {
         break: {
@@ -30307,7 +32647,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     warped_button: {
         break: {
@@ -30353,7 +32695,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.nether_wood_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     warped_door: {
         break: {
@@ -30399,7 +32743,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.nether_wood_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     warped_double_slab: {
         break: {
@@ -30445,7 +32791,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.nether_wood_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     warped_fence: {
         break: {
@@ -30491,7 +32839,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.nether_wood_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     warped_fence_gate: {
         break: {
@@ -30537,7 +32887,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.nether_wood_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     warped_fungus: {
         break: {
@@ -30559,7 +32911,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     warped_hanging_sign: {
         break: {
@@ -30581,7 +32935,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     warped_hyphae: {
         break: {
@@ -30603,7 +32959,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     warped_nylium: {
         break: {
@@ -30625,7 +32983,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     warped_planks: {
         break: {
@@ -30671,7 +33031,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.nether_wood_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     warped_pressure_plate: {
         break: {
@@ -30717,7 +33079,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.nether_wood_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     warped_roots: {
         break: {
@@ -30739,7 +33103,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     warped_shelf: {
         break: "block.shelf.break",
@@ -30747,7 +33113,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     warped_slab: {
         break: {
@@ -30793,7 +33161,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.nether_wood_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     warped_stairs: {
         break: {
@@ -30839,7 +33209,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.nether_wood_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     warped_standing_sign: {
         break: {
@@ -30885,7 +33257,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.nether_wood_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     warped_stem: {
         break: {
@@ -30907,7 +33281,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     warped_trapdoor: {
         break: {
@@ -30953,7 +33329,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.nether_wood_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     warped_wall_sign: {
         break: {
@@ -30999,7 +33377,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.nether_wood_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     warped_wart_block: {
         break: {
@@ -31021,7 +33401,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     waterlily: {
         break: {
@@ -31043,7 +33425,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     waxed_chiseled_copper: {
         break: {
@@ -31074,7 +33458,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "door.close": {
             pitch: 1.0,
             sound: "close_door.copper"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     waxed_copper: {
         break: {
@@ -31105,7 +33491,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "door.close": {
             pitch: 1.0,
             sound: "close_door.copper"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     waxed_copper_bars: {
         break: {
@@ -31136,7 +33524,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "door.close": {
             pitch: 1.0,
             sound: "close_door.copper"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     waxed_copper_bulb: {
         break: {
@@ -31150,7 +33540,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     waxed_copper_chain: {
         break: {
@@ -31172,7 +33564,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     waxed_copper_chest: {
         break: null,
@@ -31180,7 +33574,15 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "block.copper_chest.open"
+        },
+        "chest.close": null
     },
     waxed_copper_door: {
         break: {
@@ -31211,7 +33613,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "door.close": {
             pitch: 1.0,
             sound: "close_door.copper"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     waxed_copper_golem_statue: {
         break: "block.copper_golem_statue.break",
@@ -31219,7 +33623,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     waxed_copper_grate: {
         break: {
@@ -31235,7 +33641,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     waxed_copper_lantern: {
         break: {
@@ -31257,7 +33665,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     waxed_copper_trapdoor: {
         break: {
@@ -31288,7 +33698,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "door.close": {
             pitch: 1.0,
             sound: "close_door.copper"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     waxed_cut_copper: {
         break: {
@@ -31319,7 +33731,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "door.close": {
             pitch: 1.0,
             sound: "close_door.copper"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     waxed_cut_copper_slab: {
         break: {
@@ -31350,7 +33764,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "door.close": {
             pitch: 1.0,
             sound: "close_door.copper"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     waxed_cut_copper_stairs: {
         break: {
@@ -31381,7 +33797,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "door.close": {
             pitch: 1.0,
             sound: "close_door.copper"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     waxed_double_cut_copper_slab: {
         break: {
@@ -31412,7 +33830,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "door.close": {
             pitch: 1.0,
             sound: "close_door.copper"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     waxed_exposed_chiseled_copper: {
         break: {
@@ -31443,7 +33863,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "door.close": {
             pitch: 1.0,
             sound: "close_door.copper"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     waxed_exposed_copper: {
         break: {
@@ -31474,7 +33896,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "door.close": {
             pitch: 1.0,
             sound: "close_door.copper"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     waxed_exposed_copper_bars: {
         break: {
@@ -31505,7 +33929,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "door.close": {
             pitch: 1.0,
             sound: "close_door.copper"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     waxed_exposed_copper_bulb: {
         break: {
@@ -31519,7 +33945,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     waxed_exposed_copper_chain: {
         break: {
@@ -31541,7 +33969,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     waxed_exposed_copper_chest: {
         break: null,
@@ -31549,7 +33979,15 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "block.copper_chest.open"
+        },
+        "chest.close": null
     },
     waxed_exposed_copper_door: {
         break: {
@@ -31580,7 +34018,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "door.close": {
             pitch: 1.0,
             sound: "close_door.copper"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     waxed_exposed_copper_golem_statue: {
         break: "block.copper_golem_statue.break",
@@ -31588,7 +34028,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     waxed_exposed_copper_grate: {
         break: {
@@ -31604,7 +34046,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     waxed_exposed_copper_lantern: {
         break: {
@@ -31626,7 +34070,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     waxed_exposed_copper_trapdoor: {
         break: {
@@ -31657,7 +34103,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "door.close": {
             pitch: 1.0,
             sound: "close_door.copper"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     waxed_exposed_cut_copper: {
         break: {
@@ -31688,7 +34136,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "door.close": {
             pitch: 1.0,
             sound: "close_door.copper"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     waxed_exposed_cut_copper_slab: {
         break: {
@@ -31719,7 +34169,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "door.close": {
             pitch: 1.0,
             sound: "close_door.copper"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     waxed_exposed_cut_copper_stairs: {
         break: {
@@ -31750,7 +34202,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "door.close": {
             pitch: 1.0,
             sound: "close_door.copper"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     waxed_exposed_double_cut_copper_slab: {
         break: {
@@ -31781,7 +34235,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "door.close": {
             pitch: 1.0,
             sound: "close_door.copper"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     waxed_exposed_lightning_rod: {
         break: {
@@ -31812,7 +34268,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "door.close": {
             pitch: 1.0,
             sound: "close_door.copper"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     waxed_lightning_rod: {
         break: {
@@ -31843,7 +34301,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "door.close": {
             pitch: 1.0,
             sound: "close_door.copper"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     waxed_oxidized_chiseled_copper: {
         break: {
@@ -31874,7 +34334,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "door.close": {
             pitch: 1.0,
             sound: "close_door.copper"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     waxed_oxidized_copper: {
         break: {
@@ -31905,7 +34367,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "door.close": {
             pitch: 1.0,
             sound: "close_door.copper"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     waxed_oxidized_copper_bars: {
         break: {
@@ -31936,7 +34400,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "door.close": {
             pitch: 1.0,
             sound: "close_door.copper"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     waxed_oxidized_copper_bulb: {
         break: {
@@ -31950,7 +34416,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     waxed_oxidized_copper_chain: {
         break: {
@@ -31972,7 +34440,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     waxed_oxidized_copper_chest: {
         break: null,
@@ -31980,7 +34450,15 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "block.copper_chest.oxidized.open"
+        },
+        "chest.close": null
     },
     waxed_oxidized_copper_door: {
         break: {
@@ -32011,7 +34489,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "door.close": {
             pitch: 1.0,
             sound: "close_door.copper"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     waxed_oxidized_copper_golem_statue: {
         break: "block.copper_golem_statue.break",
@@ -32019,7 +34499,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     waxed_oxidized_copper_grate: {
         break: {
@@ -32035,7 +34517,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     waxed_oxidized_copper_lantern: {
         break: {
@@ -32057,7 +34541,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     waxed_oxidized_copper_trapdoor: {
         break: {
@@ -32088,7 +34574,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "door.close": {
             pitch: 1.0,
             sound: "close_door.copper"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     waxed_oxidized_cut_copper: {
         break: {
@@ -32119,7 +34607,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "door.close": {
             pitch: 1.0,
             sound: "close_door.copper"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     waxed_oxidized_cut_copper_slab: {
         break: {
@@ -32150,7 +34640,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "door.close": {
             pitch: 1.0,
             sound: "close_door.copper"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     waxed_oxidized_cut_copper_stairs: {
         break: {
@@ -32181,7 +34673,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "door.close": {
             pitch: 1.0,
             sound: "close_door.copper"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     waxed_oxidized_double_cut_copper_slab: {
         break: {
@@ -32212,7 +34706,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "door.close": {
             pitch: 1.0,
             sound: "close_door.copper"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     waxed_oxidized_lightning_rod: {
         break: {
@@ -32243,7 +34739,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "door.close": {
             pitch: 1.0,
             sound: "close_door.copper"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     waxed_weathered_chiseled_copper: {
         break: {
@@ -32274,7 +34772,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "door.close": {
             pitch: 1.0,
             sound: "close_door.copper"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     waxed_weathered_copper: {
         break: {
@@ -32305,7 +34805,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "door.close": {
             pitch: 1.0,
             sound: "close_door.copper"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     waxed_weathered_copper_bars: {
         break: {
@@ -32336,7 +34838,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "door.close": {
             pitch: 1.0,
             sound: "close_door.copper"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     waxed_weathered_copper_bulb: {
         break: {
@@ -32350,7 +34854,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     waxed_weathered_copper_chain: {
         break: {
@@ -32372,7 +34878,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     waxed_weathered_copper_chest: {
         break: null,
@@ -32380,7 +34888,15 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "block.copper_chest.weathered.open"
+        },
+        "chest.close": null
     },
     waxed_weathered_copper_door: {
         break: {
@@ -32411,7 +34927,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "door.close": {
             pitch: 1.0,
             sound: "close_door.copper"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     waxed_weathered_copper_golem_statue: {
         break: "block.copper_golem_statue.break",
@@ -32419,7 +34937,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     waxed_weathered_copper_grate: {
         break: {
@@ -32435,7 +34955,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     waxed_weathered_copper_lantern: {
         break: {
@@ -32457,7 +34979,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     waxed_weathered_copper_trapdoor: {
         break: {
@@ -32488,7 +35012,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "door.close": {
             pitch: 1.0,
             sound: "close_door.copper"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     waxed_weathered_cut_copper: {
         break: {
@@ -32519,7 +35045,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "door.close": {
             pitch: 1.0,
             sound: "close_door.copper"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     waxed_weathered_cut_copper_slab: {
         break: {
@@ -32550,7 +35078,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "door.close": {
             pitch: 1.0,
             sound: "close_door.copper"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     waxed_weathered_cut_copper_stairs: {
         break: {
@@ -32581,7 +35111,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "door.close": {
             pitch: 1.0,
             sound: "close_door.copper"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     waxed_weathered_double_cut_copper_slab: {
         break: {
@@ -32612,7 +35144,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "door.close": {
             pitch: 1.0,
             sound: "close_door.copper"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     waxed_weathered_lightning_rod: {
         break: {
@@ -32643,7 +35177,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "door.close": {
             pitch: 1.0,
             sound: "close_door.copper"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     weathered_chiseled_copper: {
         break: {
@@ -32674,7 +35210,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "door.close": {
             pitch: 1.0,
             sound: "close_door.copper"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     weathered_copper: {
         break: {
@@ -32705,7 +35243,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "door.close": {
             pitch: 1.0,
             sound: "close_door.copper"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     weathered_copper_bars: {
         break: {
@@ -32736,7 +35276,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "door.close": {
             pitch: 1.0,
             sound: "close_door.copper"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     weathered_copper_bulb: {
         break: {
@@ -32750,7 +35292,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     weathered_copper_chain: {
         break: {
@@ -32772,7 +35316,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     weathered_copper_chest: {
         break: null,
@@ -32780,7 +35326,15 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "block.copper_chest.weathered.open"
+        },
+        "chest.close": null
     },
     weathered_copper_door: {
         break: {
@@ -32811,7 +35365,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "door.close": {
             pitch: 1.0,
             sound: "close_door.copper"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     weathered_copper_golem_statue: {
         break: "block.copper_golem_statue.break",
@@ -32819,7 +35375,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     weathered_copper_grate: {
         break: {
@@ -32835,7 +35393,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     weathered_copper_lantern: {
         break: {
@@ -32857,7 +35417,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     weathered_copper_trapdoor: {
         break: {
@@ -32888,7 +35450,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "door.close": {
             pitch: 1.0,
             sound: "close_door.copper"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     weathered_cut_copper: {
         break: {
@@ -32919,7 +35483,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "door.close": {
             pitch: 1.0,
             sound: "close_door.copper"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     weathered_cut_copper_slab: {
         break: {
@@ -32950,7 +35516,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "door.close": {
             pitch: 1.0,
             sound: "close_door.copper"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     weathered_cut_copper_stairs: {
         break: {
@@ -32981,7 +35549,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "door.close": {
             pitch: 1.0,
             sound: "close_door.copper"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     weathered_double_cut_copper_slab: {
         break: {
@@ -33012,7 +35582,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "door.close": {
             pitch: 1.0,
             sound: "close_door.copper"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     weathered_lightning_rod: {
         break: {
@@ -33043,7 +35615,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "door.close": {
             pitch: 1.0,
             sound: "close_door.copper"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     web: {
         break: {
@@ -33055,7 +35629,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     weeping_vines: {
         break: {
@@ -33077,7 +35653,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     wet_sponge: {
         break: {
@@ -33093,7 +35671,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     wheat: {
         break: {
@@ -33115,7 +35695,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     white_candle: {
         break: {
@@ -33131,7 +35713,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     white_candle_cake: {
         break: {
@@ -33153,7 +35737,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     white_carpet: {
         break: {
@@ -33175,7 +35761,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     white_concrete: {
         break: {
@@ -33197,7 +35785,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     white_concrete_double_slab: {
         break: {
@@ -33219,7 +35809,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     white_concrete_powder: {
         break: {
@@ -33241,7 +35833,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     white_concrete_slab: {
         break: {
@@ -33263,7 +35857,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     white_concrete_stairs: {
         break: {
@@ -33285,7 +35881,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     white_glazed_terracotta: {
         break: {
@@ -33307,7 +35905,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     white_shulker_box: {
         break: {
@@ -33329,7 +35929,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     white_stained_glass: {
         break: {
@@ -33351,7 +35953,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     white_stained_glass_pane: {
         break: {
@@ -33373,7 +35977,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     white_terracotta: {
         break: null,
@@ -33381,7 +35987,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     white_tulip: {
         break: {
@@ -33403,7 +36011,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     white_wool: {
         break: {
@@ -33425,7 +36035,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     white_wool_double_slab: {
         break: {
@@ -33447,7 +36059,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     white_wool_slab: {
         break: {
@@ -33469,7 +36083,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     white_wool_stairs: {
         break: {
@@ -33491,7 +36107,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     wildflowers: {
         break: {
@@ -33505,7 +36123,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     wither_rose: {
         break: {
@@ -33527,7 +36147,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     wither_skeleton_skull: {
         break: {
@@ -33549,7 +36171,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     wood: {
         break: {
@@ -33595,7 +36219,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     wooden_button: {
         break: {
@@ -33641,7 +36267,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     wooden_door: {
         break: {
@@ -33687,7 +36315,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     wooden_pressure_plate: {
         break: {
@@ -33733,7 +36363,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     wooden_slab: {
         break: {
@@ -33779,7 +36411,9 @@ export const blockSounds: Record<string, BlockSounds> = {
                 1.0
             ],
             sound: "close.wooden_door"
-        }
+        },
+        "chest.open": null,
+        "chest.close": null
     },
     wool: {
         break: {
@@ -33801,7 +36435,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     yellow_candle: {
         break: {
@@ -33817,7 +36453,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     yellow_candle_cake: {
         break: {
@@ -33839,7 +36477,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     yellow_carpet: {
         break: {
@@ -33861,7 +36501,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     yellow_concrete: {
         break: {
@@ -33883,7 +36525,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     yellow_concrete_double_slab: {
         break: {
@@ -33905,7 +36549,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     yellow_concrete_powder: {
         break: {
@@ -33927,7 +36573,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     yellow_concrete_slab: {
         break: {
@@ -33949,7 +36597,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     yellow_concrete_stairs: {
         break: {
@@ -33971,7 +36621,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     yellow_flower: {
         break: {
@@ -33993,7 +36645,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     yellow_glazed_terracotta: {
         break: {
@@ -34015,7 +36669,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     yellow_poplar_leaves: {
         break: {
@@ -34030,7 +36686,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     yellow_shulker_box: {
         break: {
@@ -34052,7 +36710,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     yellow_stained_glass: {
         break: {
@@ -34074,7 +36734,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     yellow_stained_glass_pane: {
         break: {
@@ -34096,7 +36758,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     yellow_terracotta: {
         break: null,
@@ -34104,7 +36768,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     yellow_wool: {
         break: {
@@ -34126,7 +36792,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     yellow_wool_double_slab: {
         break: {
@@ -34148,7 +36816,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     yellow_wool_slab: {
         break: {
@@ -34170,7 +36840,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     yellow_wool_stairs: {
         break: {
@@ -34192,7 +36864,9 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     },
     zombie_head: {
         break: {
@@ -34214,6 +36888,8 @@ export const blockSounds: Record<string, BlockSounds> = {
         "fence_gate.close": null,
         "fence_gate.open": null,
         "door.open": null,
-        "door.close": null
+        "door.close": null,
+        "chest.open": null,
+        "chest.close": null
     }
 }
