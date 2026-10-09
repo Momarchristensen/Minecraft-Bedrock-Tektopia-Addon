@@ -48,11 +48,20 @@ export const worldSaveDataList = [
 
                 return compressed
             },
-            decompress: (value: CompressedVillage[]) => {
+            decompress: (value: unknown) => {
                 const villages: VillageSaveData[] = []
+                if (!Array.isArray(value)) {
+                    console.warn("Skipping village save data with an invalid list format.")
+                    return villages
+                }
                 for (const compressed of value) {
                     try {
-                        villages.push(Village.decompress(compressed))
+                        const village = Village.decompress(compressed)
+                        if (village === undefined) {
+                            console.warn("Skipping village save with missing or invalid required data.")
+                            continue
+                        }
+                        villages.push(village)
                     }
                     catch (error) {
                         console.error("Skipping unreadable village:", error)

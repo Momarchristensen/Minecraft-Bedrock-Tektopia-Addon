@@ -102,6 +102,7 @@ declare module "@minecraft/server" {
         getVillage(): Village | undefined
         getPathCost(): number
         readonly isTree: boolean
+        readonly isOre: boolean
         readonly isFarm: boolean
         readonly isHarvestable: boolean
         readonly isHarvestableSugarCane: boolean

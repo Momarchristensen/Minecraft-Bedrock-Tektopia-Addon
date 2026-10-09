@@ -39,7 +39,8 @@ import {
     entityStructures,
     type StationPost,
     type Mineshaft,
-    type Structure
+    type Structure,
+    getMineshaftMineBlock
 } from "./structure"
 
 import { destroyTree } from "./tree"
@@ -65,7 +66,7 @@ import {
     randomItem,
     stringToLocation,
     type CardinalDirection,
-    subtractVectors
+    randomWeighedItem
 } from "./utils"
 
 import {
@@ -177,8 +178,9 @@ export class Villager {
     private waiting?: boolean | number
     private foundItem?: Entity
     private foundTree?: Vector3
-    private foundHarvest?: Vector3
-    private foundTill?: Vector3
+    private foundHarvestLocation?: Vector3
+    private foundTillLocation?: Vector3
+    private foundGrowableCrop?: Vector3
     private foundPlant?: {
         location: Vector3
         type: string
@@ -202,6 +204,11 @@ export class Villager {
     private foundMine?: {
         location: Vector3
         rotation: CardinalDirection
+    }
+
+    private foundOre?: {
+        start: Vector3
+        ores: LocationString[]
     }
 
     private foundGuardPost?: Vector3
@@ -445,8 +452,6 @@ export class Villager {
         return best
     }
 
-    // Chests that recently failed (unreachable, trip took too long, or nothing could be put in) are left alone for a while,
-    // otherwise the deposit task is picked again right away and the villager never gets back to its real work
     private isDepositChestSkipped(chest: StorageChest) {
         const key = locationToString(chest.location)
         const skipUntil = this.skippedDepositChests.get(key)
@@ -515,6 +520,61 @@ export class Villager {
         return chest
     }
 
+    findOre(village: Village, preferredOres?: readonly LocationString[]) {
+        const takenOres = new Set<string>()
+        for (const villager of world.getVillagers()) {
+            if (villager.id === this.id) {
+                continue
+            }
+            const ore = villager.foundOre
+            if (ore !== undefined) {
+                for (const key of ore.ores) {
+                    takenOres.add(key)
+                }
+            }
+        }
+
+        const origin = this.location
+        let closestOre: typeof this.foundOre
+        let closestDistance = Infinity
+        const preferredKeys = preferredOres === undefined ? undefined : new Set(preferredOres)
+        const checkedOres = new Set<LocationString>()
+
+        for (const key of village.oreLocations) {
+            if (checkedOres.has(key)) {
+                continue
+            }
+
+            const ores = village.getOreVein(key)
+            for (const oreKey of ores) {
+                checkedOres.add(oreKey)
+            }
+            if (ores.length === 0 || (preferredKeys !== undefined && !ores.some(oreKey => preferredKeys.has(oreKey)))) {
+                continue
+            }
+            if (ores.some(oreKey => takenOres.has(oreKey))) {
+                continue
+            }
+
+            for (const oreKey of ores) {
+                const location = stringToLocation(oreKey)
+                // Ores that can't be reached from the tunnels yet stay saved for later.
+                const stand = village.findOreStandLocation(location)
+                if (stand === undefined) {
+                    continue
+                }
+                const distance = calculateDistance(origin, centerVector(stand, true))
+                if (distance < closestDistance) {
+                    closestOre = { start: stand, ores }
+                    closestDistance = distance
+                }
+            }
+        }
+
+        this.foundOre = closestOre
+        return closestOre
+    }
+
     findTree(village: Village): Vector3 | undefined {
         const takenTrees = new Set<string>()
         for (const villager of world.getVillagers()) {
@@ -530,6 +590,23 @@ export class Villager {
         const closestTree = village.treeLocations.nearestTo(this.location, key => takenTrees.has(key))
         this.foundTree = closestTree
         return closestTree
+    }
+
+    findGrowableCrop(village: Village) {
+        const takenGrowableCropLocations = new Set<string>()
+        for (const villager of world.getVillagers()) {
+            if (villager.id === this.id) {
+                continue
+            }
+            const growableCropLocation = villager.foundGrowableCrop
+            if (growableCropLocation !== undefined) {
+                takenGrowableCropLocations.add(locationToString(growableCropLocation))
+            }
+        }
+
+        const closestGrowableCropLocation = village.growLocations.nearestTo(this.location, key => takenGrowableCropLocations.has(key))
+        this.foundGrowableCrop = closestGrowableCropLocation
+        return closestGrowableCropLocation
     }
 
     findMine(village: Village, includeInactiveMines = false) {
@@ -587,7 +664,7 @@ export class Villager {
                     continue
                 }
 
-                const rotation = getItemFrameRotation(block.permutation.getState("facing_direction"))
+                const rotation = getItemFrameRotation(block.permutation.getState("facing_direction") as CardinalDirection | undefined)
                 if (rotation === undefined) {
                     continue
                 }
@@ -657,14 +734,14 @@ export class Villager {
             if (villager.id === this.id) {
                 continue
             }
-            const harvestLocation = villager.foundHarvest
+            const harvestLocation = villager.foundHarvestLocation
             if (harvestLocation !== undefined) {
                 takenHarvestLocations.add(locationToString(harvestLocation))
             }
         }
 
         const closestHarvestLocation = village.harvestLocations.nearestTo(this.location, key => takenHarvestLocations.has(key))
-        this.foundHarvest = closestHarvestLocation
+        this.foundHarvestLocation = closestHarvestLocation
         return closestHarvestLocation
     }
 
@@ -901,14 +978,14 @@ export class Villager {
             if (villager.id === this.id) {
                 continue
             }
-            const tillLocation = villager.foundTill
+            const tillLocation = villager.foundTillLocation
             if (tillLocation !== undefined) {
                 takenTillLocations.add(locationToString(tillLocation))
             }
         }
 
         const closestTillLocation = village.tillLocations.nearestTo(this.location, key => takenTillLocations.has(key))
-        this.foundTill = closestTillLocation
+        this.foundTillLocation = closestTillLocation
         return closestTillLocation
     }
 
@@ -1197,7 +1274,7 @@ export class Villager {
                 }
                 break
             case "harvest":
-                targetLocation = this.foundHarvest
+                targetLocation = this.foundHarvestLocation
                 if (targetLocation !== undefined) {
                     target = "Harvest"
                 }
@@ -1215,7 +1292,7 @@ export class Villager {
                 }
                 break
             case "till":
-                targetLocation = this.foundTill
+                targetLocation = this.foundTillLocation
                 if (targetLocation !== undefined) {
                     target = "Till"
                 }
@@ -1225,6 +1302,12 @@ export class Villager {
                 targetLocation = this.foundMine?.location
                 if (targetLocation !== undefined) {
                     target = this.currentTask === "refill_mine" ? "Mine to refill" : "Mine"
+                }
+                break
+            case "mine_ore":
+                targetLocation = this.foundOre?.start
+                if (targetLocation !== undefined) {
+                    target = "Ore"
                 }
                 break
             case "herd":
@@ -1330,7 +1413,7 @@ export class Villager {
         if (newTask !== undefined) {
             villager.foundTree = undefined
             villager.foundItem = undefined
-            villager.foundHarvest = undefined
+            villager.foundHarvestLocation = undefined
             newTask.condition(villager, village)
 
             villager.currentTask = newTask.id
@@ -1345,7 +1428,7 @@ export class Villager {
         else if (villager.currentTask === undefined) {
             villager.foundTree = undefined
             villager.foundItem = undefined
-            villager.foundHarvest = undefined
+            villager.foundHarvestLocation = undefined
         }
     }
 
@@ -1375,7 +1458,7 @@ export class Villager {
                 // Idle wait before the first wander after a task; the next task resets this to 0 when it starts
                 villager.taskProgress = randomInt(IDLE_WAIT_MIN_TICKS, IDLE_WAIT_MAX_TICKS)
                 villager.foundTree = undefined
-                villager.foundHarvest = undefined
+                villager.foundHarvestLocation = undefined
             }
         }
         else if (!villager.isPathing) {
@@ -2225,12 +2308,26 @@ export class Villager {
                 return
             }
 
+            // Must be checked before the block is destroyed
+            const minedOre = mineBlock.isOre
+            const minedLocation = mineBlock.location
+
             mineBlock.destroy()
+
+            let oreKeys: LocationString[] = []
+            if (minedOre) {
+                oreKeys = village.scanOreVein(villager.dimension, minedLocation)
+            }
+
             villager.waiting = 15
             villager.setAnimation(undefined)
-            villager.currentTask = undefined
-
             updatePathNodes([mineBlock, mineBlock.aboveSafe(), mineBlock.belowSafe()].filter(checkBlock => checkBlock !== undefined))
+            if (oreKeys.length > 0 && villager.findOre(village, oreKeys) !== undefined) {
+                villager.currentTask = "mine_ore"
+                villager.taskProgress = 0
+                return
+            }
+            villager.currentTask = undefined
         }
         else if (mineTask.type === "light") {
             const torchBlock = mineTask.block
@@ -2263,7 +2360,74 @@ export class Villager {
         }
     }
 
-    tickRefillMine(village: Village) {
+    tickMineOre(village: Village) {
+        const villager = this
+        const foundOre = villager.foundOre
+
+        if (foundOre === undefined) {
+            villager.currentTask = undefined
+            return
+        }
+
+        const standDistance = calculateDistance(centerVector(foundOre.start, true), villager.location)
+
+        if (standDistance >= 1 || (villager.isPathing && standDistance >= 2)) {
+            villager.pathFindTo(foundOre.start)
+            return
+        }
+
+        let oreKey: LocationString | undefined
+        let oreBlock: Block | undefined
+        for (const key of foundOre.ores.slice()) {
+            const block = villager.dimension.getBlockSafe(stringToLocation(key))
+            if (block?.isOre) {
+                oreKey = key
+                oreBlock = block
+                break
+            }
+            if (block !== undefined) {
+                village.oreLocations.remove(key)
+                foundOre.ores.splice(foundOre.ores.indexOf(key), 1)
+            }
+        }
+        if (oreBlock === undefined || oreKey === undefined) {
+            villager.foundOre = undefined
+            villager.currentTask = undefined
+            return
+        }
+
+        villager.lookAt(oreBlock.center(), false)
+
+        villager.setAnimation("mining")
+        villager.holdingItem = "wooden_pickaxe"
+        villager.stopPath()
+
+        villager.taskProgress++
+
+        if (villager.taskProgress <= 100 || villager.isWaiting) {
+            return
+        }
+
+        const oreLocation = oreBlock.location
+        village.oreLocations.remove(oreKey)
+        foundOre.ores.splice(foundOre.ores.indexOf(oreKey), 1)
+        oreBlock.destroy()
+
+        const newlyFoundOres = village.scanOreVein(villager.dimension, oreLocation)
+        for (const key of newlyFoundOres) {
+            if (!foundOre.ores.includes(key)) {
+                foundOre.ores.push(key)
+            }
+        }
+
+        villager.waiting = 15
+        villager.setAnimation(undefined)
+        villager.taskProgress = 0
+
+        updatePathNodes([oreBlock, oreBlock.aboveSafe(), oreBlock.belowSafe()].filter(checkBlock => checkBlock !== undefined))
+    }
+
+    tickRefillMine() {
         const villager = this
 
         if (villager.foundMine === undefined) {
@@ -2286,6 +2450,57 @@ export class Villager {
         villager.lookAt(addVectors(villager.location, direction))
 
         villager.setAnimation("refilling")
+
+        const dimension = villager.dimension
+        const block = getMineshaftMineBlock(dimension, villager.foundMine.location, villager.foundMine.rotation, false)
+
+        if (block === undefined) {
+            villager.currentTask = undefined
+            return
+        }
+
+        let currentLocation = { x: block.x, y: villager.foundMine.location.y, z: block.z }
+
+        const columnAmount = randomInt(1, 4)
+
+        for (let i = 0; i < columnAmount; i++) {
+            currentLocation = addVectors(currentLocation, reversedDirection)
+
+            const currentBlock = dimension.getBlockSafe(currentLocation)
+            const fillBlockList = [
+                currentBlock,
+                currentBlock?.aboveSafe()
+            ]
+
+            for (const fillBlock of fillBlockList) {
+                if (fillBlock === undefined) {
+                    villager.currentTask = undefined
+                    return
+                }
+
+                const possibleBlockWeights = {
+                    "minecraft:stone": 30,
+                    "minecraft:granite": 12,
+                    "minecraft:diorite": 12,
+                    "minecraft:andesite": 12,
+                    "minecraft:coal_ore": 16,
+                    "minecraft:copper_ore": 10,
+                    "minecraft:gold_ore": 4,
+                    "minecraft:iron_ore": 8,
+                    "minecraft:redstone_ore": 3,
+                    "minecraft:lapis_ore": 2,
+                    "minecraft:diamond_ore": 1
+                } as const
+
+                const blockType = randomWeighedItem(possibleBlockWeights)
+                if (blockType === undefined) {
+                    villager.currentTask = undefined
+                    return
+                }
+
+                fillBlock.setType(blockType)
+            }
+        }
     }
 
     tickChop(village: Village) {
@@ -2345,61 +2560,97 @@ export class Villager {
         }
     }
 
+    tickGrowCrop(village: Village) {
+        const villager = this
+
+        const foundGrowableCrop = villager.foundGrowableCrop
+        if (foundGrowableCrop === undefined) {
+            villager.currentTask = undefined
+            return
+        }
+
+        const cropBlock = this.dimension.getBlockSafe(foundGrowableCrop)
+        if (cropBlock === undefined) {
+            villager.currentTask = undefined
+            return
+        }
+
+        if (!cropBlock.isCrop || cropBlock.isHarvestableCrop) {
+            const cropBlockLocationString = locationToString(cropBlock)
+            village.harvestLocations.remove(cropBlockLocationString)
+            villager.currentTask = undefined
+            return
+        }
+
+        const cropBlockDistance = calculateDistance(centerVector(foundGrowableCrop, true), villager.location)
+        if (cropBlockDistance >= 10 && (villager.isPathing || cropBlockDistance >= 15)) {
+            villager.pathFindTo(foundGrowableCrop)
+            return
+        }
+
+        
+    }
+
     tickHarvest(village: Village) {
         const villager = this
 
-        const foundHarvest = villager.foundHarvest
+        const foundHarvest = villager.foundHarvestLocation
         const dimension = villager.dimension
 
-        if (foundHarvest !== undefined) {
-            const harvestBlock = dimension.getBlockSafe(foundHarvest)
-            const harvestLocationString = locationToString(foundHarvest)
+        if (foundHarvest === undefined) {
+            villager.currentTask = undefined
+            return
+        }
 
-            if (harvestBlock?.isHarvestable) {
-                const harvestLocationDist = calculateDistance(centerVector(foundHarvest, true), villager.location)
-                if (harvestLocationDist < 1 || (!villager.isPathing && harvestLocationDist < 2)) {
-                    villager.setAnimation("harvesting")
-                    villager.lookAt(centerVector(foundHarvest))
-                    villager.taskProgress++
-                    villager.stopPath()
+        const harvestBlock = dimension.getBlockSafe(foundHarvest)
+        if (harvestBlock === undefined) {
+            villager.currentTask = undefined
+            return
+        }
 
-                    if (villager.taskProgress > 100 && !villager.isWaiting) {
-                        if (harvestBlock.isHarvestableCrop) {
-                            village.plantLocations[harvestLocationString] = harvestBlock.typeId
-                            harvestBlock.destroy()
-                        }
-                        else if (harvestBlock.isHarvestableGourd) {
-                            harvestBlock.destroy()
-                        }
-                        else if (harvestBlock.isHarvestableSugarCane) {
-                            const blockList = [harvestBlock.aboveSafe(2), harvestBlock.aboveSafe()]
-                            for (const block of blockList) {
-                                block?.destroy()
-                            }
-                        }
-                        else if (harvestBlock.isHarvestableSweetBerryBush) {
-                            const savedPermutation = harvestBlock.permutation.withState("growth", 1)
-                            harvestBlock.destroy()
-                            harvestBlock.setPermutation(savedPermutation)
-                        }
+        const harvestLocationString = locationToString(foundHarvest)
 
-                        updatePathNodes([harvestBlock, harvestBlock.aboveSafe(), harvestBlock.belowSafe()].filter(checkBlock => checkBlock !== undefined))
+        if (harvestBlock.isHarvestable) {
+            const harvestLocationDist = calculateDistance(centerVector(foundHarvest, true), villager.location)
+            if (harvestLocationDist < 1 || (!villager.isPathing && harvestLocationDist < 2)) {
+                villager.setAnimation("harvesting")
+                villager.lookAt(centerVector(foundHarvest))
+                villager.taskProgress++
+                villager.stopPath()
 
-                        villager.waiting = 20
-                        villager.setAnimation(undefined)
-                        villager.currentTask = undefined
+                if (villager.taskProgress > 100 && !villager.isWaiting) {
+                    if (harvestBlock.isHarvestableCrop) {
+                        village.plantLocations[harvestLocationString] = harvestBlock.typeId
+                        harvestBlock.destroy()
                     }
-                }
-                else {
-                    villager.pathFindTo(foundHarvest)
+                    else if (harvestBlock.isHarvestableGourd) {
+                        harvestBlock.destroy()
+                    }
+                    else if (harvestBlock.isHarvestableSugarCane) {
+                        const blockList = [harvestBlock.aboveSafe(2), harvestBlock.aboveSafe()]
+                        for (const block of blockList) {
+                            block?.destroy()
+                        }
+                    }
+                    else if (harvestBlock.isHarvestableSweetBerryBush) {
+                        const savedPermutation = harvestBlock.permutation.withState("growth", 1)
+                        harvestBlock.destroy()
+                        harvestBlock.setPermutation(savedPermutation)
+                    }
+
+                    updatePathNodes([harvestBlock, harvestBlock.aboveSafe(), harvestBlock.belowSafe()].filter(checkBlock => checkBlock !== undefined))
+
+                    villager.waiting = 20
+                    villager.setAnimation(undefined)
+                    villager.currentTask = undefined
                 }
             }
             else {
-                village.harvestLocations.remove(harvestLocationString)
-                villager.currentTask = undefined
+                villager.pathFindTo(foundHarvest)
             }
         }
         else {
+            village.harvestLocations.remove(harvestLocationString)
             villager.currentTask = undefined
         }
     }
@@ -2447,7 +2698,7 @@ export class Villager {
     tickTill(village: Village) {
         const villager = this
 
-        const foundTill = villager.foundTill
+        const foundTill = villager.foundTillLocation
         const dimension = villager.dimension
 
         if (foundTill !== undefined) {

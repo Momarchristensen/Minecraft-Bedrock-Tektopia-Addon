@@ -266,12 +266,6 @@ export function shortcutStream(stream: PathStream, graph: PathGraph, reached: Ve
     }
 }
 
-/**
- * Replaces the not yet walked part of the stream with `chain` (search root ... end, as graph node ids).
- * Whatever the follower still has queued that lies on the new chain is kept untouched, so the route only changes
- * where it really differs, and the new route is always joined at the node the entity last reached, so it is never sent back.
- * `mark`/`link` are scratch arrays indexed by node id; `stamp` must be unique per call.
- */
 export function reconcileStreamTail(
     stream: PathStream,
     graph: Pick<PathGraph, "idOf" | "x" | "y" | "z" | "hasOpenEdge">,
@@ -680,8 +674,6 @@ export function generatePath(
                         }
                     }
                     if (candidate === -1 && pending <= 1 && heap.size > 0) {
-                        // No route gets closer to the goal and the entity is about to run out of nodes (a large obstacle is in the way):
-                        // let it walk towards the most promising node of the frontier while the search looks for the way around.
                         const top = heap.values[0] ?? -1
                         if (top !== -1 && closed[top] === 0 && (g[top] ?? Infinity) !== Infinity) {
                             candidate = top
@@ -694,9 +686,9 @@ export function generatePath(
                     publishChain(false)
                 }
 
-                const retarget = (key: LocationString, id: number) => {
+                const retarget = (key: LocationString, targetId: number) => {
                     goalKey = key
-                    goalId = id
+                    goalId = targetId
                     ex = X[goalId] ?? 0
                     ey = Y[goalId] ?? 0
                     ez = Z[goalId] ?? 0
@@ -705,14 +697,12 @@ export function generatePath(
                     rebuildHeap()
                 }
 
-                // The goal has been settled: deliver the complete route. A fixed goal ends the search here; an entity keeps the same
-                // search alive (frontier, costs and parents intact) and only re-aims it when the entity moves.
                 const settleGoal = function* (settledId: number): Generator<number | void, "restart" | "done" | "continue", void> {
-                    let target = settledId
+                    let currentTarget = settledId
                     while (true) {
-                        fillChain(target)
+                        fillChain(currentTarget)
                         if (chain.length === 1 && out.nodes.length <= (out.head ?? 0)) {
-                            out.nodes.push({ x: X[target] ?? 0, y: Y[target] ?? 0, z: Z[target] ?? 0 })
+                            out.nodes.push({ x: X[currentTarget] ?? 0, y: Y[currentTarget] ?? 0, z: Z[currentTarget] ?? 0 })
                         }
                         else if (publishChain(true) === "disconnected") {
                             return "restart"
@@ -742,7 +732,7 @@ export function generatePath(
                             }
                             retarget(nextKey, nextId)
                             if (closed[goalId] === 1) {
-                                target = goalId
+                                currentTarget = goalId
                                 break
                             }
                             return "continue"

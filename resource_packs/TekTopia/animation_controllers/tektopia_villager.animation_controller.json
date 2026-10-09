@@ -23,6 +23,9 @@
 						},
 						{
 							"refill": "query.property('property:animation') == 'refilling'"
+						},
+						{
+							"grow": "query.property('property:animation') == 'growing'"
 						}
 					],
 					"transitions": [

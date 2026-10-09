@@ -34,6 +34,7 @@ import {
 } from "./structure"
 
 import {
+    calculateDistance,
     centerVector,
     floorVector,
     isVectorBetween,
@@ -111,6 +112,24 @@ export interface StructureFilter<K extends StructureType = StructureType> {
     excludedTypes?: readonly StructureType[]
 }
 
+// Ores within one block of each other in any direction (faces, edges and corners) belong to the same vein
+const ORE_NEIGHBOR_OFFSETS: Vector3[] = []
+for (let x = -1; x <= 1; x++) {
+    for (let y = -1; y <= 1; y++) {
+        for (let z = -1; z <= 1; z++) {
+            if (x !== 0 || y !== 0 || z !== 0) {
+                ORE_NEIGHBOR_OFFSETS.push({ x, y, z })
+            }
+        }
+    }
+}
+
+// Safety cap so one scan can never flood an entire ore-filled area in a single tick
+const MAX_ORE_VEIN_SCAN = 2048
+
+// How far (in blocks) from a path node a villager can mine an ore
+const ORE_REACH = 2
+
 export class Village {
     private static cache = new WeakMap<VillageSaveData, Village>()
     private pathGraph?: PathGraph
@@ -127,9 +146,11 @@ export class Village {
     readonly saplingLocations: LocationList
     readonly farmLocations: LocationList
     readonly harvestLocations: LocationList
+    readonly growLocations: LocationList
     readonly tillLocations: LocationList
     readonly sweetBerryLocations: LocationList
     readonly treeLocations: LocationList
+    readonly oreLocations: LocationList
     readonly storage: VillageStorage
 
     searchingBlocks = false
@@ -147,9 +168,11 @@ export class Village {
         this.saplingLocations = new LocationList(data.saplingLocations)
         this.farmLocations = new LocationList(data.farmLocations)
         this.harvestLocations = new LocationList(data.harvestLocations)
+        this.growLocations = new LocationList(data.growLocations)
         this.tillLocations = new LocationList(data.tillLocations)
         this.sweetBerryLocations = new LocationList(data.sweetBerryLocations)
         this.treeLocations = new LocationList(data.treeLocations)
+        this.oreLocations = new LocationList(data.oreLocations)
         this.storage = new VillageStorage(this)
     }
 
@@ -172,10 +195,12 @@ export class Village {
             saplingLocations: [],
             farmLocations: [],
             harvestLocations: [],
+            growLocations: [],
             plantLocations: {},
             tillLocations: [],
             sweetBerryLocations: [],
             treeLocations: [],
+            oreLocations: [],
             structures: {}
         }
     }
@@ -184,7 +209,7 @@ export class Village {
         return compressVillage(data)
     }
 
-    static decompress(compressed: CompressedVillage): VillageSaveData {
+    static decompress(compressed: unknown): VillageSaveData | undefined {
         return decompressVillage(compressed)
     }
 
@@ -477,6 +502,109 @@ export class Village {
         }
     }
 
+    /**
+     * Flood-fills outwards from a freshly mined block and records every connected ore
+     * (including diagonal neighbours, like a real vein) in oreLocations, which is saved with the village.
+     */
+    scanOreVein(dimension: Dimension, origin: Vector3) {
+        const start = floorVector(origin)
+        const visited = new Set<LocationString>([locationToString(start)])
+        const queue: Vector3[] = [start]
+        const ores: LocationString[] = []
+
+        for (let head = 0; head < queue.length && visited.size < MAX_ORE_VEIN_SCAN; head++) {
+            const current = queue[head]
+            if (current === undefined) {
+                continue
+            }
+
+            for (const offset of ORE_NEIGHBOR_OFFSETS) {
+                const neighborLocation = {
+                    x: current.x + offset.x,
+                    y: current.y + offset.y,
+                    z: current.z + offset.z
+                }
+                const neighborKey = locationToString(neighborLocation)
+                if (visited.has(neighborKey) || !this.isInBounds(neighborLocation)) {
+                    continue
+                }
+                visited.add(neighborKey)
+
+                const neighborBlock = dimension.getBlockSafe(neighborLocation)
+                if (!neighborBlock?.isOre) {
+                    continue
+                }
+
+                this.oreLocations.add(neighborKey)
+                ores.push(neighborKey)
+                queue.push(neighborLocation)
+            }
+        }
+
+        return ores
+    }
+
+    getOreVein(start: LocationString) {
+        if (!this.oreLocations.has(start)) {
+            return []
+        }
+
+        const ores = [start]
+        const found = new Set<LocationString>(ores)
+        for (const currentKey of ores) {
+            const current = stringToLocation(currentKey)
+            for (const offset of ORE_NEIGHBOR_OFFSETS) {
+                const neighborKey = locationToString({
+                    x: current.x + offset.x,
+                    y: current.y + offset.y,
+                    z: current.z + offset.z
+                })
+                if (!found.has(neighborKey) && this.oreLocations.has(neighborKey)) {
+                    found.add(neighborKey)
+                    ores.push(neighborKey)
+                }
+            }
+        }
+        return ores
+    }
+
+    /**
+     * Finds the path node a villager can stand on to mine the ore at the given location.
+     * The villager can reach ORE_REACH blocks, so ores deeper in a vein can be mined from the tunnel.
+     */
+    findOreStandLocation(oreLocation: Vector3): Vector3 | undefined {
+        const oreCenter = { x: oreLocation.x + 0.5, y: oreLocation.y + 0.5, z: oreLocation.z + 0.5 }
+        let best: Vector3 | undefined
+        let bestDistance = Infinity
+
+        for (let dx = -ORE_REACH; dx <= ORE_REACH; dx++) {
+            for (let dz = -ORE_REACH; dz <= ORE_REACH; dz++) {
+                for (let dy = -ORE_REACH - 1; dy <= 1; dy++) {
+                    // Never stand on top of the ore being mined
+                    if (dx === 0 && dz === 0 && dy === 1) {
+                        continue
+                    }
+
+                    const stand = { x: oreLocation.x + dx, y: oreLocation.y + dy, z: oreLocation.z + dz }
+                    // Compare against the villager's eye position, not their feet
+                    const distance = calculateDistance({ x: stand.x + 0.5, y: stand.y + 1.5, z: stand.z + 0.5 }, oreCenter)
+                    if (distance > ORE_REACH + 0.5 || distance >= bestDistance) {
+                        continue
+                    }
+
+                    if (this.pathNodes[locationToString(stand)] === undefined) {
+                        continue
+                    }
+
+                    best = stand
+                    bestDistance = distance
+                }
+            }
+        }
+
+        return best
+    }
+
     *scanLocation(location: Vector3, flood = true) {
         const flooredLocation = floorVector(location)
         const village = this
@@ -698,6 +826,12 @@ Object.defineProperty(Block.prototype, "isTillable", {
     get(this: Block) {
         const blockAbove = this.aboveSafe()
         return this.tillResult !== undefined && blockAbove?.canPathThrough()
+    }
+})
+
+Object.defineProperty(Block.prototype, "isOre", {
+    get(this: Block) {
+        return Registry.oreTypes.includesFast(this.typeId)
     }
 })
 
@@ -932,12 +1066,19 @@ function* updateVillageBlocks(callback?: () => void) {
 
             yield* pruneLocations(dimension, village.farmLocations, block => {
                 const aboveBlock = block.aboveSafe()
-                if (aboveBlock?.isHarvestableCrop) {
-                    const aboveLocationString = locationToString(aboveBlock.location)
-                    village.harvestLocations.add(aboveLocationString)
-                }
+
+
 
                 if (aboveBlock !== undefined) {
+                const aboveBlockIsHarvestableCrop = aboveBlock.isHarvestableCrop
+                        const aboveLocationString = locationToString(aboveBlock.location)
+
+
+                    if (aboveBlockIsHarvestableCrop) {
+                        village.harvestLocations.add(aboveLocationString)
+                    }
+
+
                     const gourdBlocks = [
                         aboveBlock.northSafe(),
                         aboveBlock.eastSafe(),
@@ -951,34 +1092,40 @@ function* updateVillageBlocks(callback?: () => void) {
                             village.harvestLocations.add(gourdLocationString)
                         }
                     }
-                }
 
-                if (aboveBlock?.isCrop) {
-                    const neighboringFarms = [
-                        block.northSafe(),
-                        block.eastSafe(),
-                        block.southSafe(),
-                        block.westSafe()
-                    ]
+                    if (aboveBlock.isCrop) {
+                        const neighboringFarms = [
+                            block.northSafe(),
+                            block.eastSafe(),
+                            block.southSafe(),
+                            block.westSafe()
+                        ]
 
-                    for (const neighborBlock of neighboringFarms) {
-                        if (neighborBlock === undefined) {
-                            continue
+                        for (const neighborBlock of neighboringFarms) {
+                            if (neighborBlock === undefined) {
+                                continue
+                            }
+
+                            if (!neighborBlock.isFarm) {
+                                continue
+                            }
+
+                            const plantBlock = neighborBlock.aboveSafe()
+                            if (!plantBlock?.isAir) {
+                                continue
+                            }
+                            const plantLocationString = locationToString(plantBlock.location)
+
+                            village.plantLocations[plantLocationString] ??= aboveBlock.typeId
                         }
 
-                        if (!neighborBlock.isFarm) {
-                            continue
+                        if (!aboveBlockIsHarvestableCrop) {
+                            village.growLocations.add(aboveLocationString)
                         }
-
-                        const plantBlock = neighborBlock.aboveSafe()
-                        if (!plantBlock?.isAir) {
-                            continue
-                        }
-                        const plantLocationString = locationToString(plantBlock.location)
-
-                        village.plantLocations[plantLocationString] ??= aboveBlock.typeId
                     }
                 }
+
+
 
                 for (let x = -1; x <= 1; x += 2) {
                     for (let z = -1; z <= 1; z += 2) {
@@ -1038,6 +1185,8 @@ function* updateVillageBlocks(callback?: () => void) {
             yield* pruneLocationRecord(dimension, village.plantLocations, block => !block.isAir)
 
             yield* pruneLocations(dimension, village.treeLocations, block => !block.isTree)
+
+            yield* pruneLocations(dimension, village.oreLocations, block => !block.isOre)
 
             yield
         }

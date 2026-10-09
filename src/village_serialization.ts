@@ -22,10 +22,12 @@ export interface VillageSaveData {
     saplingLocations: LocationString[]
     farmLocations: LocationString[]
     harvestLocations: LocationString[]
+    growLocations: LocationString[]
     plantLocations: Record<LocationString, string>
     tillLocations: LocationString[]
     sweetBerryLocations: LocationString[]
     treeLocations: LocationString[]
+    oreLocations: LocationString[]
     structures: Record<LocationString, StructureData>
 }
 
@@ -59,27 +61,35 @@ export type PackedStructures = [
 export type CompressedStructures = PackedStructures | Record<LocationString, StructureData> | undefined
 
 export type CompressedVillage = [
+    dimensionId?: string,
+    center?: Triple,
+    doorLocation?: Triple,
+    sugarCaneLocations?: string,
+    saplingLocations?: string,
+    farmLocations?: string,
+    treeLocations?: string,
+    harvestLocations?: string,
+    sweetBerryLocations?: string,
+    tillLocations?: string,
+    plantLocations?: string,
+    nodeLocations?: string,
+    neighborMaskPalette?: string,
+    neighborMaskIndices?: string,
+    nodeRequirements?: CompressedRequirement[],
+    plantTypes?: string[] | undefined,
+    plantTypeIndices?: string | undefined,
+    structures?: CompressedStructures,
+    nodeCosts?: CompressedCost[] | undefined,
+    connectionRequirements?: CompressedRequirement[] | undefined,
+    edgeMode?: 1 | undefined,
+    oreLocations?: string,
+    growLocations?: string
+]
+
+type DecompressibleVillage = CompressedVillage & [
     dimensionId: string,
     center: Triple,
-    doorLocation: Triple,
-    sugarCaneLocations: string,
-    saplingLocations: string,
-    farmLocations: string,
-    treeLocations: string,
-    harvestLocations: string,
-    sweetBerryLocations: string,
-    tillLocations: string,
-    plantLocations: string,
-    nodeLocations: string,
-    neighborMaskPalette: string,
-    neighborMaskIndices: string,
-    nodeRequirements: CompressedRequirement[],
-    plantTypes: string[] | undefined,
-    plantTypeIndices: string | undefined,
-    structures: CompressedStructures,
-    nodeCosts: CompressedCost[] | undefined,
-    connectionRequirements: CompressedRequirement[] | undefined,
-    edgeMode: 1 | undefined
+    doorLocation: Triple
 ]
 
 const DIGITS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
@@ -100,6 +110,24 @@ function arrayItem<T>(items: T[], index: number): T {
         throw new Error(`Missing array item at index ${index}`)
     }
     return item
+}
+
+function isTriple(value: unknown): value is Triple {
+    return Array.isArray(value)
+        && value.length === 3
+        && value.every(component => typeof component === "number" && Number.isFinite(component))
+}
+
+function isDecompressibleVillage(value: unknown): value is DecompressibleVillage {
+    if (!Array.isArray(value)) {
+        return false
+    }
+
+    const dimensionId: unknown = value[0]
+    return typeof dimensionId === "string"
+        && dimensionId.trim().length > 0
+        && isTriple(value[1])
+        && isTriple(value[2])
 }
 
 function* sortInTicks<T>(items: T[], compare: (left: T, right: T) => number): Generator<void, void, void> {
@@ -705,8 +733,10 @@ export function* compressVillage(data: VillageSaveData): Generator<void, Compres
     const packedFarmLocations = SAVE_RESOURCE_LOCATIONS ? yield* packLocations(data.farmLocations, origin) : ""
     const packedTreeLocations = SAVE_RESOURCE_LOCATIONS ? yield* packLocations(data.treeLocations, origin) : ""
     const packedHarvestLocations = SAVE_RESOURCE_LOCATIONS && SAVE_DERIVED_LOCATIONS ? yield* packLocations(data.harvestLocations, origin) : ""
+    const packedGrowLocations = SAVE_RESOURCE_LOCATIONS && SAVE_DERIVED_LOCATIONS ? yield* packLocations(data.growLocations, origin) : ""
     const packedSweetBerryLocations = SAVE_RESOURCE_LOCATIONS ? yield* packLocations(data.sweetBerryLocations, origin) : ""
     const packedTillLocations = SAVE_RESOURCE_LOCATIONS && SAVE_DERIVED_LOCATIONS ? yield* packLocations(data.tillLocations, origin) : ""
+    const packedOreLocations = SAVE_RESOURCE_LOCATIONS ? yield* packLocations(data.oreLocations, origin) : ""
     const packedNodeLocations = yield* packPoints(nodeLocations, origin)
 
     const packedMaskPalette = yield* packUnsigned(maskStreams.palette)
@@ -736,33 +766,41 @@ export function* compressVillage(data: VillageSaveData): Generator<void, Compres
         packedStructures,
         nodeCosts,
         connectionRequirements,
-        useExceptions ? 1 : undefined
+        useExceptions ? 1 : undefined,
+        packedOreLocations,
+        packedGrowLocations
     ]
 }
 
-export function decompressVillage(compressed: CompressedVillage): VillageSaveData {
+export function decompressVillage(compressed: unknown): VillageSaveData | undefined {
+    if (!isDecompressibleVillage(compressed)) {
+        return undefined
+    }
+
     const [
         dimensionId,
         centerCoords,
         doorOffset,
-        packedSugarCaneLocations,
-        packedSaplingLocations,
-        packedFarmLocations,
-        packedTreeLocations,
-        packedHarvestLocations,
-        packedSweetBerryLocations,
-        packedTillLocations,
-        packedPlantLocations,
-        packedNodeLocations,
-        packedMaskPalette,
-        packedMaskIndices,
-        compressedRequirements,
+        packedSugarCaneLocations = "",
+        packedSaplingLocations = "",
+        packedFarmLocations = "",
+        packedTreeLocations = "",
+        packedHarvestLocations = "",
+        packedSweetBerryLocations = "",
+        packedTillLocations = "",
+        packedPlantLocations = "",
+        packedNodeLocations = "",
+        packedMaskPalette = "",
+        packedMaskIndices = "",
+        compressedRequirements = [],
         plantTypes,
         plantTypeIndices,
         structures,
         compressedNodeCosts,
         compressedConnectionRequirements,
-        edgeMode
+        edgeMode,
+        packedOreLocations,
+        packedGrowLocations = ""
     ] = compressed
 
     const center: Vector3 = { x: centerCoords[0], y: centerCoords[1], z: centerCoords[2] }
@@ -895,7 +933,9 @@ export function decompressVillage(compressed: CompressedVillage): VillageSaveDat
         saplingLocations: unpackLocations(packedSaplingLocations, origin),
         farmLocations: unpackLocations(packedFarmLocations, origin),
         treeLocations: unpackLocations(packedTreeLocations, origin),
+        oreLocations: unpackLocations(packedOreLocations ?? "", origin),
         harvestLocations: unpackLocations(packedHarvestLocations, origin),
+        growLocations: unpackLocations(packedGrowLocations, origin),
         sweetBerryLocations: unpackLocations(packedSweetBerryLocations, origin),
         plantLocations: unpackTypedLocations(packedPlantLocations, plantTypes, plantTypeIndices, origin),
         tillLocations: unpackLocations(packedTillLocations, origin),

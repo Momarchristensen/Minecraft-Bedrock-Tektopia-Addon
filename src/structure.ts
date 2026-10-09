@@ -832,7 +832,7 @@ function marchToObstruction(
     return undefined
 }
 
-function getMineshaftMineBlock(
+export function getMineshaftMineBlock(
     dimension: Dimension,
     location: Vector3,
     rotation: CardinalDirection,

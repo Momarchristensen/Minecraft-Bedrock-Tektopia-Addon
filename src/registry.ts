@@ -73,6 +73,7 @@ export const Registry = defineRegistry({
     saplingTypes: blocks(id => id.includes("_sapling")),
     logTypes: blocks(id => id.includes("_log") && !id.includes("stripped_")),
     leafTypes: blocks(id => id.includes("_leaves")),
+    oreTypes: blocks(id => id.endsWith("_ore")),
 
     villagerTypes: entities(id => id.startsWith("tektopia:")),
 

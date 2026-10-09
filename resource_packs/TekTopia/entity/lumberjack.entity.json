@@ -12,7 +12,8 @@
                 "planting": "animation.tektopia_villager.take",
                 "tilling": "animation.tektopia_villager.hoe",
                 "mining": "animation.tektopia_villager.mine",
-                "refill": "animation.tektopia_villager.cast_forward"
+                "refill": "animation.tektopia_villager.cast_forward",
+                "grow": "animation.tektopia_villager.cast_grow"
             },
             "scripts": {
                 "animate": [

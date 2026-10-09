@@ -100,6 +100,7 @@ const VILLAGE_LOCATION_PROPERTIES = [
     "harvestLocations",
     "sweetBerryLocations",
     "treeLocations",
+    "oreLocations",
     "plantLocations",
     "tillLocations"
 ] as const

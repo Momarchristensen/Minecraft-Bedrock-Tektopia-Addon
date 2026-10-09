@@ -14,7 +14,7 @@ const itemFrameRotations: Record<string, CardinalDirection> = {
     5: "west"
 }
 
-export function getItemFrameRotation(facingDirection: string | number | boolean | undefined) {
+export function getItemFrameRotation(facingDirection: CardinalDirection | undefined) {
     return facingDirection === undefined
         ? undefined
         : itemFrameRotations[facingDirection]
@@ -114,6 +114,32 @@ export function randomInt(min: number, max: number): number {
 
 export function randomItem<T>(list: T[]): T | undefined {
     return list[randomInt(0, list.length - 1)]
+}
+
+export function randomWeighedItem<T extends string>(weights: Record<T, number>): T | undefined {
+    let total = 0
+    for (const w of Object.values<number>(weights)) {
+        if (w > 0) {
+            total += w
+        }
+    }
+    if (total <= 0) {
+        return undefined
+    }
+
+    let roll = Math.random() * total
+    let last: T | undefined
+    for (const [key, w] of Object.entries<number>(weights)) {
+        if (!(w > 0)) {
+            continue
+        }
+        last = key as T
+        roll -= w
+        if (roll < 0) {
+            return key as T
+        }
+    }
+    return last
 }
 
 export function locationToString(vector: Vector3): LocationString {

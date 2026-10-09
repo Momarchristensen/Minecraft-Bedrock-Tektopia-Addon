@@ -144,6 +144,16 @@ export const tektopiaVillagers: Record<string, VillagerConfig> = {
                     villager.findMine(village) !== undefined,
                 tick: (villager: Villager, village: Village) =>
                     villager.tickMine(village)
+            },
+            {
+                id: "mine_ore",
+                name: "Mine Ore",
+                required: false,
+                priority: 11,
+                condition: (villager: Villager, village: Village) =>
+                    villager.findOre(village) !== undefined,
+                tick: (villager: Villager, village: Village) =>
+                    villager.tickMineOre(village)
             }
         ],
         pickupItems: () => [
@@ -305,7 +315,15 @@ export const tektopiaVillagers: Record<string, VillagerConfig> = {
                 required: false,
                 priority: 10,
                 condition: (villager: Villager, village: Village) => villager.findMine(village, true) !== undefined,
-                tick: (villager: Villager, village: Village) => villager.tickRefillMine(village)
+                tick: (villager: Villager) => villager.tickRefillMine()
+            },
+             {
+                id: "grow_crop",
+                name: "Grow Crop",
+                required: false,
+                priority: 10,
+                condition: (villager: Villager, village: Village) => villager.findGrowableCrop(village) !== undefined,
+                tick: (villager: Villager) => villager.tickGrowCrop()
             }
         ],
         pickupItems: () => [],
