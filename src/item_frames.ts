@@ -9,21 +9,14 @@ import {
 import {
     areVectorsEqual,
     centerVector,
+    getItemFrameRotation,
     rotationToStructureRotation,
-    locationToString,
-    type CardinalDirection
+    locationToString
 } from "./utils"
 
 import { Village } from "./village"
 
 import type { StructureType } from "./structure"
-
-const itemFrameRotations: Record<string, CardinalDirection> = {
-    2: "south",
-    3: "north",
-    4: "east",
-    5: "west"
-}
 
 function tickScanItemFrames() {
     system.runJob(scanItemFrames(() => system.runTimeout(tickScanItemFrames, 100)))
@@ -59,8 +52,9 @@ function* scanItemFrames(callback?: () => void) {
 
             const isTownhall = item.typeId === "tektopia:structure_townhall"
             const facingDirection = block.permutation.getState("facing_direction")
+            const rotation = getItemFrameRotation(facingDirection)
 
-            if (facingDirection === undefined || !(facingDirection in itemFrameRotations)) {
+            if (rotation === undefined) {
                 if (isTownhall) {
                     villageItemFrameLocations.push(blockCenterString)
                 }
@@ -68,7 +62,6 @@ function* scanItemFrames(callback?: () => void) {
                 continue
             }
 
-            const rotation = itemFrameRotations[facingDirection] as CardinalDirection
             const structureId = item.typeId.replace("tektopia:structure_", "") as StructureType
             itemFrame.structureId = structureId
 

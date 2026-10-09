@@ -60,7 +60,12 @@ export const entityStructures: Record<string, "cow_pen" | "sheep_pen" | "chicken
     "minecraft:pig": "pig_pen"
 }
 
-Dimension.prototype.validateStructure = function* (block: Block, rotation: CardinalDirection, structureId: StructureType) {
+Dimension.prototype.validateStructure = function* (
+    block: Block,
+    rotation: CardinalDirection,
+    structureId: StructureType,
+    allowInactiveMineshaft = false
+) {
     const dimension = this
 
     if (debugFlags.structureScanParticles) {
@@ -114,7 +119,8 @@ Dimension.prototype.validateStructure = function* (block: Block, rotation: Cardi
             dimension,
             block,
             rotation,
-            village
+            village,
+            allowInactiveMineshaft
         )
     }
     else if (structureId === "guard_post" || structureId === "merchant_stall") {
@@ -465,7 +471,8 @@ function* validateMineshaftStructure(
     dimension: Dimension,
     block: Block,
     rotation: CardinalDirection,
-    village: StructureVillage
+    village: StructureVillage,
+    allowInactiveMineshaft = false
 ): Generator<void, StructureValidationResult, void> {
     const parseResult = (
         result: boolean | undefined,
@@ -501,11 +508,11 @@ function* validateMineshaftStructure(
         return parseResult(undefined)
     }
 
-    if (!village.isInBounds(mineBlock.center())) {
+    if (!allowInactiveMineshaft && !village.isInBounds(mineBlock.center())) {
         return parseResult(false)
     }
 
-    if (mineBlock.isLiquid) {
+    if (!allowInactiveMineshaft && mineBlock.isLiquid) {
         return parseResult(false)
     }
 
@@ -633,10 +640,13 @@ function* validateDefaultRoom(
                 alreadyCheckedLocations.add(floorLocationString)
 
                 if (debugFlags.structureScanParticles) {
-                    dimension.spawnParticle(
-                        "minecraft:basic_flame_particle",
-                        centerVector(addVector(currentLocation.floor, "y", 1))
-                    )
+                    try {
+                        dimension.spawnParticle(
+                            "minecraft:basic_flame_particle",
+                            centerVector(addVector(currentLocation.floor, "y", 1))
+                        )
+                    }
+                    catch { }
                 }
 
                 floorLocations.push(addVector(currentLocation.floor, "y", 1))

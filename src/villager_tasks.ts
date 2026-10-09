@@ -1,5 +1,7 @@
 import { Registry } from "./registry"
 
+import { randomInt } from "./utils"
+
 import type { DepositPlan } from "./minecraft_extensions"
 
 import type { Village } from "./village"
@@ -18,6 +20,8 @@ interface Task {
     id: string
     name: string
     required: boolean
+    // Higher priority tasks are checked first; tasks sharing a priority are picked in random order
+    priority: number
     condition: (villager: Villager, village: Village) => boolean
     interruptible?: boolean
     tick?: (villager: Villager, village: Village) => void
@@ -52,6 +56,7 @@ export const tektopiaVillagers: Record<string, VillagerConfig> = {
                 id: "till",
                 name: "Till",
                 required: false,
+                priority: 10,
                 condition: (villager: Villager, village: Village) =>
                     villager.findTillLocation(village) !== undefined,
                 tick: (villager: Villager, village: Village) =>
@@ -61,6 +66,7 @@ export const tektopiaVillagers: Record<string, VillagerConfig> = {
                 id: "plant",
                 name: "Plant",
                 required: false,
+                priority: 10,
                 condition: (villager: Villager, village: Village) =>
                     villager.findPlantLocation(village) !== undefined,
                 tick: (villager: Villager, village: Village) =>
@@ -70,6 +76,7 @@ export const tektopiaVillagers: Record<string, VillagerConfig> = {
                 id: "harvest",
                 name: "Harvest",
                 required: false,
+                priority: 10,
                 condition: (villager: Villager, village: Village) =>
                     villager.findHarvestLocation(village) !== undefined,
                 tick: (villager: Villager, village: Village) =>
@@ -105,6 +112,7 @@ export const tektopiaVillagers: Record<string, VillagerConfig> = {
                 id: "chop",
                 name: "Chop Trees",
                 required: false,
+                priority: 10,
                 condition: (villager: Villager, village: Village) =>
                     villager.findTree(village) !== undefined,
                 tick: (villager: Villager, village: Village) =>
@@ -131,6 +139,7 @@ export const tektopiaVillagers: Record<string, VillagerConfig> = {
                 id: "mine",
                 name: "Mine",
                 required: false,
+                priority: 10,
                 condition: (villager: Villager, village: Village) =>
                     villager.findMine(village) !== undefined,
                 tick: (villager: Villager, village: Village) =>
@@ -178,6 +187,7 @@ export const tektopiaVillagers: Record<string, VillagerConfig> = {
                 id: "herd",
                 name: "Herd",
                 required: false,
+                priority: 40,
                 condition: (villager: Villager, village: Village) =>
                     villager.findHerdEntity(village) !== undefined
                     || villager.isHoldingLeash,
@@ -188,6 +198,7 @@ export const tektopiaVillagers: Record<string, VillagerConfig> = {
                 id: "close_gate",
                 name: "Close Gate",
                 required: false,
+                priority: 50,
                 condition: (villager: Villager, village: Village) =>
                     villager.findOpenGate(village) !== undefined,
                 tick: (villager: Villager) =>
@@ -197,6 +208,7 @@ export const tektopiaVillagers: Record<string, VillagerConfig> = {
                 id: "breed",
                 name: "Breed",
                 required: false,
+                priority: 20,
                 condition: (villager: Villager, village: Village) =>
                     villager.findBreedableEntity(village) !== undefined,
                 tick: (villager: Villager) =>
@@ -206,6 +218,7 @@ export const tektopiaVillagers: Record<string, VillagerConfig> = {
                 id: "shear",
                 name: "Shear",
                 required: false,
+                priority: 20,
                 condition: (villager: Villager, village: Village) =>
                     villager.findShearableEntity(village) !== undefined,
                 tick: (villager: Villager) =>
@@ -231,6 +244,7 @@ export const tektopiaVillagers: Record<string, VillagerConfig> = {
                 id: "guard_post",
                 name: "Guard Post",
                 required: false,
+                priority: 20,
                 condition: (villager: Villager, village: Village) =>
                     villager.findGuardPost(village) !== undefined,
                 tick: (villager: Villager, village: Village) =>
@@ -240,6 +254,7 @@ export const tektopiaVillagers: Record<string, VillagerConfig> = {
                 id: "guard_village",
                 name: "Guard Village",
                 required: false,
+                priority: 0,
                 interruptible: true,
                 condition: () => true,
                 tick: (villager: Villager, village: Village) =>
@@ -256,6 +271,7 @@ export const tektopiaVillagers: Record<string, VillagerConfig> = {
                 id: "butcher_animal",
                 name: "Butcher Animal",
                 required: false,
+                priority: 10,
                 condition: (villager: Villager, village: Village) =>
                     villager.findFullPen(village) !== undefined
                     && villager.findButcherStructure(village) !== undefined,
@@ -279,6 +295,21 @@ export const tektopiaVillagers: Record<string, VillagerConfig> = {
                 counts => Object.values(counts).some(count => count > 6)
             )
         }
+    },
+
+    "tektopia:druid": {
+        customTasks: [
+            {
+                id: "refill_mine",
+                name: "Refill Mine",
+                required: false,
+                priority: 10,
+                condition: (villager: Villager, village: Village) => villager.findMine(village, true) !== undefined,
+                tick: (villager: Villager, village: Village) => villager.tickRefillMine(village)
+            }
+        ],
+        pickupItems: () => [],
+        depositItems: () => undefined
     }
 }
 
@@ -287,6 +318,7 @@ export const globalTasks: Task[] = [
         id: "eat",
         name: "Eat",
         required: true,
+        priority: 100,
         condition: () => false,
         interruptible: true
     },
@@ -294,12 +326,14 @@ export const globalTasks: Task[] = [
         id: "sleep",
         name: "Sleep",
         required: true,
+        priority: 90,
         condition: () => false
     },
     {
         id: "item",
         name: "Pickup Items",
         required: true,
+        priority: 80,
         condition: (villager: Villager, village: Village) => villager.findItem(village) !== undefined,
         tick: (villager: Villager) => villager.tickPickupItem()
     },
@@ -307,6 +341,7 @@ export const globalTasks: Task[] = [
         id: "deposit",
         name: "Deposit Items",
         required: false,
+        priority: 70,
         condition: (villager, village) => villager.findDepositTarget(village) !== undefined,
         tick: (villager, village) => villager.tickDeposit(village)
     },
@@ -314,12 +349,14 @@ export const globalTasks: Task[] = [
         id: "tool",
         name: "Get Tool",
         required: true,
+        priority: 60,
         condition: () => false
     },
     {
         id: "craft",
         name: "Craft Tools",
         required: false,
+        priority: 50,
         condition: () => false
     }
 ]
@@ -330,4 +367,66 @@ export function resolvePickupItems(pickupItems: VillagerConfig["pickupItems"]) {
         : pickupItems
 
     return resolvedPickupItems
+}
+
+const tieScratch: Task[] = []
+
+// Sorts tasks so higher priority tasks come first
+export function sortTasksByPriority(tasks: Task[]): Task[] {
+    return tasks.slice().sort((a, b) => b.priority - a.priority)
+}
+
+// Walks a priority-sorted task list from the highest priority down and returns the first task accepted by isAvailable.
+// Tasks sharing a priority are tried in random order. Tasks with a priority <= minPriority are ignored.
+export function pickTask(
+    sortedTasks: Task[],
+    isAvailable: (task: Task) => boolean,
+    minPriority = Number.NEGATIVE_INFINITY
+): Task | undefined {
+    const length = sortedTasks.length
+    let start = 0
+
+    while (start < length) {
+        const first = sortedTasks[start]
+        if (first === undefined || first.priority <= minPriority) {
+            return undefined
+        }
+
+        let end = start + 1
+        while (end < length && sortedTasks[end]?.priority === first.priority) {
+            end++
+        }
+
+        if (end - start === 1) {
+            if (isAvailable(first)) {
+                return first
+            }
+        }
+        else {
+            tieScratch.length = 0
+            for (let index = start; index < end; index++) {
+                const task = sortedTasks[index]
+                if (task !== undefined) {
+                    tieScratch.push(task)
+                }
+            }
+
+            // Lazy Fisher-Yates: draw a random remaining task, only evaluating conditions as needed
+            let remaining = tieScratch.length
+            while (remaining > 0) {
+                const pick = randomInt(0, remaining - 1)
+                const task = tieScratch[pick]
+                tieScratch[pick] = tieScratch[remaining - 1] as Task
+                remaining--
+
+                if (task !== undefined && isAvailable(task)) {
+                    return task
+                }
+            }
+        }
+
+        start = end
+    }
+
+    return undefined
 }

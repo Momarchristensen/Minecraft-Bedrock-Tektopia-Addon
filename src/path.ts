@@ -86,14 +86,20 @@ export type PathTarget = Vector3 | Entity
 export interface PathStream {
     readonly nodes: Vector3[]
     head?: number
+    /** The last node the follower reached. A new route is always connected through it, so the entity is never sent back. */
+    reached?: Vector3
     status: "searching" | "complete" | PathFailure
 }
 
 const RETARGET_DISTANCE = 2
 const TARGET_POLL_TICKS = 4
 const TRACK_INTERVAL_TICKS = 2
-const TRACK_MIN_IMPROVEMENT = 1
+const SLEEP = -1
 const MAX_RESTARTS = 8
+// A new partial path is only published while the follower has fewer than this many nodes left to walk,
+// and only when it gets at least PARTIAL_MIN_PROGRESS closer to the goal than the queued route already does.
+const PARTIAL_LOOKAHEAD = 16
+const PARTIAL_MIN_PROGRESS = 1
 
 interface Scratch {
     capacity: number
@@ -260,6 +266,116 @@ export function shortcutStream(stream: PathStream, graph: PathGraph, reached: Ve
     }
 }
 
+/**
+ * Replaces the not yet walked part of the stream with `chain` (search root ... end, as graph node ids).
+ * Whatever the follower still has queued that lies on the new chain is kept untouched, so the route only changes
+ * where it really differs, and the new route is always joined at the node the entity last reached, so it is never sent back.
+ * `mark`/`link` are scratch arrays indexed by node id; `stamp` must be unique per call.
+ */
+export function reconcileStreamTail(
+    stream: PathStream,
+    graph: Pick<PathGraph, "idOf" | "x" | "y" | "z" | "hasOpenEdge">,
+    chain: readonly number[],
+    mark: Int32Array,
+    link: Int32Array,
+    stamp: number,
+    final: boolean,
+    parentOf?: (nodeId: number) => number
+): "published" | "covered" | "disconnected" {
+    const nodes = stream.nodes
+    const head = stream.head ?? 0
+    for (let i = 0; i < chain.length; i++) {
+        const nodeId = chain[i] ?? -1
+        mark[nodeId] = stamp
+        link[nodeId] = i
+    }
+    const chainIndexOf = (node: Vector3) => {
+        const nodeId = graph.idOf(locationToString(node))
+        return nodeId !== -1 && mark[nodeId] === stamp ? link[nodeId] ?? -1 : -1
+    }
+
+    // The search root may already be queued (continued searches start at the end of the queue): keep what leads up to it.
+    let k = head
+    for (let i = head; i < nodes.length; i++) {
+        const node = nodes[i]
+        if (node !== undefined && chainIndexOf(node) === 0) {
+            k = i
+            break
+        }
+    }
+    let matched = -1
+    while (k < nodes.length) {
+        const node = nodes[k]
+        const index = node === undefined ? -1 : chainIndexOf(node)
+        if (index <= matched) {
+            break
+        }
+        matched = index
+        k++
+    }
+
+    let keep = k
+    if (matched === -1) {
+        // Nothing queued is on the new route: join it where the entity stands.
+        const anchor = stream.reached === undefined ? 0 : chainIndexOf(stream.reached)
+        if (anchor !== -1) {
+            matched = anchor
+            keep = head
+        }
+        else {
+            // The entity is on a branch the final route does not use (a dead end): lead it back up the same search tree to where
+            // the branches part, then along the final route. Nothing is searched again; only walkable steps are used.
+            const back = parentOf === undefined || stream.reached === undefined ? undefined : walkBack(graph, stream.reached, mark, stamp, parentOf)
+            if (back === undefined) {
+                return "disconnected"
+            }
+            const join = back[back.length - 1] ?? -1
+            nodes.length = head
+            for (const nodeId of back) {
+                nodes.push({ x: graph.x[nodeId] ?? 0, y: graph.y[nodeId] ?? 0, z: graph.z[nodeId] ?? 0 })
+            }
+            for (let i = (link[join] ?? 0) + 1; i < chain.length; i++) {
+                const nodeId = chain[i] ?? -1
+                nodes.push({ x: graph.x[nodeId] ?? 0, y: graph.y[nodeId] ?? 0, z: graph.z[nodeId] ?? 0 })
+            }
+            return "published"
+        }
+    }
+
+    if (matched >= chain.length - 1 && !final) {
+        return "covered"
+    }
+    nodes.length = keep
+    for (let i = matched + 1; i < chain.length; i++) {
+        const nodeId = chain[i] ?? -1
+        nodes.push({ x: graph.x[nodeId] ?? 0, y: graph.y[nodeId] ?? 0, z: graph.z[nodeId] ?? 0 })
+    }
+    return "published"
+}
+
+function walkBack(
+    graph: Pick<PathGraph, "idOf" | "hasOpenEdge">,
+    from: Vector3,
+    mark: Int32Array,
+    stamp: number,
+    parentOf: (nodeId: number) => number
+): number[] | undefined {
+    let nodeId = graph.idOf(locationToString(from))
+    const back: number[] = []
+    for (let steps = 0; nodeId !== -1 && steps < 4096; steps++) {
+        if (mark[nodeId] === stamp) {
+            return back.length === 0 ? undefined : back
+        }
+        const parent = parentOf(nodeId)
+        if (parent < 0 || !graph.hasOpenEdge(nodeId, parent)) {
+            return undefined
+        }
+        back.push(parent)
+        nodeId = parent
+    }
+    return undefined
+}
+
 function estimateCost(dx: number, dy: number, dz: number) {
     const absX = Math.abs(dx)
     const absZ = Math.abs(dz)
@@ -276,12 +392,11 @@ export function generatePath(
     stream?: PathStream
 ) {
     return new Promise<PathResult>(resolve => {
-        const emitted: Vector3[] = []
+        const out = stream ?? createPathStream()
+        const tracking = stream !== undefined
         let settled = false
         let runId = 0
         let restarts = 0
-        let commitCount = 0
-        let tipKey: LocationString | undefined
         let goalKey = "0,0,0" as LocationString
         let lastPollTick = Number.NEGATIVE_INFINITY
 
@@ -290,10 +405,12 @@ export function generatePath(
                 return
             }
             settled = true
-            if (stream !== undefined) {
-                stream.status = status
+            if (status !== "complete" && status !== "cancelled") {
+                // The search failed: drop the queued partial route so the follower reports the failure right away instead of walking a dead end.
+                out.nodes.length = Math.min(out.nodes.length, out.head ?? 0)
             }
-            resolve(status === "complete" ? emitted : status)
+            out.status = status
+            resolve(status === "complete" ? out.nodes : status)
         }
 
         const village = entity.getVillage()
@@ -354,101 +471,27 @@ export function generatePath(
             return location === undefined ? undefined : evaluateTarget(location)
         }
 
-        const emitLocation = (node: Vector3) => {
-            emitted.push(node)
-            if (stream !== undefined) {
-                stream.nodes.push(node)
-            }
-        }
+        const anchorKey = (): LocationString | undefined => out.reached === undefined ? undefined : locationToString(out.reached)
 
-        const trackTick = () => {
-            try {
-                if (settled) {
-                    return
-                }
-                if (token.cancelled) {
-                    finish("cancelled")
-                    return
-                }
-                if (stream === undefined || targetEntity === undefined || (stream.head ?? 0) >= stream.nodes.length) {
-                    finish("complete")
-                    return
-                }
-                const location = readTargetLocation(targetEntity, dimensionId)
-                if (location === undefined) {
-                    finish("complete")
-                    return
-                }
-                const key = evaluateTarget(location)
-                if (key === undefined) {
-                    system.runTimeout(trackTick, TRACK_INTERVAL_TICKS)
-                    return
-                }
-
-                const head = stream.head ?? 0
-                const goalLocation = stringToLocation(key)
-
-                const first = stream.nodes[head]
-                if (first === undefined) {
-                    finish("complete")
-                    return
-                }
-
-                let keepIndex = head
-                let bestCost = estimateCost(first.x - goalLocation.x, first.y - goalLocation.y, first.z - goalLocation.z)
-
-                for (let i = head + 1; i < stream.nodes.length; i++) {
-                    const node = stream.nodes[i]
-                    if (node === undefined) {
-                        continue
+        // Drives a search generator as a job. When it yields SLEEP the job ends and is resumed a few ticks later, so an idle
+        // search that is only waiting for its target to move costs nothing in between (and no system.runInterval is needed).
+        function pump(gen: Generator<number | void, void, void>) {
+            system.runJob((function* () {
+                while (true) {
+                    const step = gen.next()
+                    if (step.done) {
+                        return
                     }
-
-                    const cost = estimateCost(node.x - goalLocation.x, node.y - goalLocation.y, node.z - goalLocation.z)
-                    if (cost < bestCost - TRACK_MIN_IMPROVEMENT) {
-                        bestCost = cost
-                        keepIndex = i
+                    if (step.value === SLEEP) {
+                        system.runTimeout(() => pump(gen), TRACK_INTERVAL_TICKS)
+                        return
                     }
+                    yield
                 }
-
-                const tip = stream.nodes[keepIndex]
-                if (tip === undefined) {
-                    finish("complete")
-                    return
-                }
-
-                const dropped = stream.nodes.length - (keepIndex + 1)
-                if (dropped > 0) {
-                    stream.nodes.length = keepIndex + 1
-                    emitted.length -= dropped
-                }
-
-                tipKey = locationToString(tip)
-                goalKey = key
-
-                if (tipKey === key) {
-                    afterGoal()
-                    return
-                }
-
-                system.runJob(guarded(run(++runId, tipKey)))
-            }
-            catch (error) {
-                if (debugFlags.pathfindingWarnings) {
-                    console.warn("Pathfinding failed: ", error)
-                }
-                finish("error")
-            }
+            })())
         }
 
-        function afterGoal() {
-            if (stream !== undefined && targetEntity !== undefined) {
-                system.runTimeout(trackTick, TRACK_INTERVAL_TICKS)
-                return
-            }
-            finish("complete")
-        }
-
-        function* guarded(inner: Generator<void, void, void>): Generator<void, void, void> {
+        function* guarded(inner: Generator<number | void, void, void>): Generator<number | void, void, void> {
             try {
                 yield* inner
             }
@@ -460,7 +503,7 @@ export function generatePath(
             }
         }
 
-        function* begin(): Generator<void, void, void> {
+        function* begin(): Generator<number | void, void, void> {
             if (token.cancelled) {
                 finish("cancelled")
                 return
@@ -490,18 +533,10 @@ export function generatePath(
             }
             goalKey = initialGoalKey
 
-            if (startKey === goalKey) {
-                emitLocation(stringToLocation(startKey))
-                commitCount = 1
-                tipKey = startKey
-                afterGoal()
-                return
-            }
-
             yield* run(++runId, startKey)
         }
 
-        function* run(id: number, initialRootKey: LocationString): Generator<void, void, void> {
+        function* run(id: number, initialRootKey: LocationString): Generator<number | void, void, void> {
             let rootKey = initialRootKey
             while (true) {
                 const outcome = yield* search(id, rootKey)
@@ -509,16 +544,18 @@ export function generatePath(
                     return
                 }
                 restarts++
-                if (tipKey === undefined || restarts > MAX_RESTARTS) {
+                // The finished route could not be joined to the one being followed: search again from the node the entity is at.
+                const anchor = anchorKey()
+                if (anchor === undefined || restarts > MAX_RESTARTS) {
                     finish("no_path")
                     return
                 }
-                rootKey = tipKey
+                rootKey = anchor
                 yield
             }
         }
 
-        function* search(id: number, rootKey: LocationString): Generator<void, "done" | "restart", void> {
+        function* search(id: number, rootKey: LocationString): Generator<number | void, "done" | "restart", void> {
             const halted = () => {
                 if (id !== runId || settled) {
                     return true
@@ -589,104 +626,15 @@ export function generatePath(
                     chain.reverse()
                 }
 
-                const emitNode = (nodeId: number) => {
-                    emitLocation({ x: X[nodeId] ?? 0, y: Y[nodeId] ?? 0, z: Z[nodeId] ?? 0 })
-                }
-
-                let tipId = tipKey === undefined ? -1 : rootId
-                commitCount = tipKey === undefined ? 0 : 1
-
-                const frontier: number[] = []
-                const walk: number[] = []
                 let cycle = 0
+                const frontier: number[] = []
 
-                const commitStable = () => {
-                    if (stream === undefined || settled || token.cancelled) {
-                        return
-                    }
-                    frontier.length = 0
-                    for (let i = 0; i < heap.size; i++) {
-                        const nodeId = heap.values[i] ?? -1
-                        if (nodeId !== -1 && closed[nodeId] === 0 && (g[nodeId] ?? Infinity) !== Infinity) {
-                            frontier.push(nodeId)
-                        }
-                    }
-                    const first = frontier[0]
-                    if (first === undefined) {
-                        return
-                    }
-                    const firstParent = came[first] ?? -1
-                    if (firstParent === -1) {
-                        return
-                    }
-                    fillChain(firstParent)
+                const parentOf = (nodeId: number) => (g[nodeId] ?? Infinity) === Infinity ? -1 : came[nodeId] ?? -1
+
+                const publishChain = (final: boolean) => {
                     cycle++
-                    for (let i = 0; i < chain.length; i++) {
-                        const nodeId = chain[i] ?? -1
-                        mark[nodeId] = cycle
-                        link[nodeId] = i
-                    }
-                    let limit = chain.length - 1
-                    for (let i = 1; i < frontier.length && limit >= commitCount; i++) {
-                        let nodeId = came[frontier[i] ?? -1] ?? -1
-                        walk.length = 0
-                        while (nodeId !== -1 && mark[nodeId] !== cycle) {
-                            walk.push(nodeId)
-                            nodeId = came[nodeId] ?? -1
-                        }
-                        if (nodeId === -1) {
-                            return
-                        }
-                        const shared = link[nodeId] ?? 0
-                        for (const walked of walk) {
-                            mark[walked] = cycle
-                            link[walked] = shared
-                        }
-                        if (shared < limit) {
-                            limit = shared
-                        }
-                    }
-                    if (limit < commitCount) {
-                        return
-                    }
-                    for (let i = commitCount; i <= limit; i++) {
-                        emitNode(chain[i] ?? -1)
-                    }
-                    commitCount = limit + 1
-                    tipId = chain[limit] ?? -1
-                    tipKey = locationToString({ x: X[tipId] ?? 0, y: Y[tipId] ?? 0, z: Z[tipId] ?? 0 })
-                }
-
-                const reachGoal = (targetId: number): "done" | "restart" => {
-                    fillChain(targetId)
-                    if (commitCount > 0 && chain[commitCount - 1] !== tipId) {
-                        return "restart"
-                    }
-                    for (let i = commitCount; i < chain.length; i++) {
-                        emitNode(chain[i] ?? -1)
-                    }
-                    commitCount = Math.max(commitCount, chain.length)
-                    tipId = targetId
-                    tipKey = locationToString({ x: X[targetId] ?? 0, y: Y[targetId] ?? 0, z: Z[targetId] ?? 0 })
-                    afterGoal()
-                    return "done"
-                }
-
-                const bestOpenNode = () => {
-                    let bestOpen = -1
-                    let bestOpenEstimate = Infinity
-                    for (let i = 0; i < heap.size; i++) {
-                        const nodeId = heap.values[i] ?? -1
-                        if (nodeId === -1 || closed[nodeId] === 1 || (g[nodeId] ?? Infinity) === Infinity) {
-                            continue
-                        }
-                        const value = estimate(nodeId)
-                        if (value < bestOpenEstimate) {
-                            bestOpenEstimate = value
-                            bestOpen = nodeId
-                        }
-                    }
-                    return bestOpen
+                    // Only the final route may lead the entity back along the search tree; partial routes are simply skipped when they do not connect.
+                    return reconcileStreamTail(out, graph, chain, mark, link, cycle, final, final ? parentOf : undefined)
                 }
 
                 const rebuildHeap = () => {
@@ -715,6 +663,93 @@ export function generatePath(
                 let bestHeuristic = estimate(rootId)
                 let bestG = 0
 
+                // Early delivery: hand the follower a route through the search tree, without touching the search itself.
+                // Settled nodes never change their parent, so the route stays valid however the search continues.
+                const publishPartial = () => {
+                    const head = out.head ?? 0
+                    const pending = out.nodes.length - head
+                    if (pending >= PARTIAL_LOOKAHEAD) {
+                        return
+                    }
+                    let candidate = -1
+                    if (bestId !== rootId && bestHeuristic !== Infinity) {
+                        const end = out.nodes[out.nodes.length - 1]
+                        const endId = end === undefined ? -1 : graph.idOf(locationToString(end))
+                        if (endId === -1 || estimate(endId) - bestHeuristic >= PARTIAL_MIN_PROGRESS) {
+                            candidate = bestId
+                        }
+                    }
+                    if (candidate === -1 && pending <= 1 && heap.size > 0) {
+                        // No route gets closer to the goal and the entity is about to run out of nodes (a large obstacle is in the way):
+                        // let it walk towards the most promising node of the frontier while the search looks for the way around.
+                        const top = heap.values[0] ?? -1
+                        if (top !== -1 && closed[top] === 0 && (g[top] ?? Infinity) !== Infinity) {
+                            candidate = top
+                        }
+                    }
+                    if (candidate === -1) {
+                        return
+                    }
+                    fillChain(candidate)
+                    publishChain(false)
+                }
+
+                const retarget = (key: LocationString, id: number) => {
+                    goalKey = key
+                    goalId = id
+                    ex = X[goalId] ?? 0
+                    ey = Y[goalId] ?? 0
+                    ez = Z[goalId] ?? 0
+                    bestHeuristic = Infinity
+                    bestG = Infinity
+                    rebuildHeap()
+                }
+
+                // The goal has been settled: deliver the complete route. A fixed goal ends the search here; an entity keeps the same
+                // search alive (frontier, costs and parents intact) and only re-aims it when the entity moves.
+                const settleGoal = function* (settledId: number): Generator<number | void, "restart" | "done" | "continue", void> {
+                    let target = settledId
+                    while (true) {
+                        fillChain(target)
+                        if (chain.length === 1 && out.nodes.length <= (out.head ?? 0)) {
+                            out.nodes.push({ x: X[target] ?? 0, y: Y[target] ?? 0, z: Z[target] ?? 0 })
+                        }
+                        else if (publishChain(true) === "disconnected") {
+                            return "restart"
+                        }
+                        if (targetEntity === undefined || !tracking) {
+                            finish("complete")
+                            return "done"
+                        }
+                        while (true) {
+                            yield SLEEP
+                            if (halted()) {
+                                return "done"
+                            }
+                            if ((out.head ?? 0) >= out.nodes.length) {
+                                finish("complete")
+                                return "done"
+                            }
+                            const location = readTargetLocation(targetEntity, dimensionId)
+                            if (location === undefined) {
+                                finish("complete")
+                                return "done"
+                            }
+                            const nextKey = evaluateTarget(location)
+                            const nextId = nextKey === undefined ? -1 : graph.idOf(nextKey)
+                            if (nextKey === undefined || nextId === -1) {
+                                continue
+                            }
+                            retarget(nextKey, nextId)
+                            if (closed[goalId] === 1) {
+                                target = goalId
+                                break
+                            }
+                            return "continue"
+                        }
+                    }
+                }
+
                 while (heap.size > 0) {
                     const current = heap.pop()
                     if (closed[current] === 1) {
@@ -737,7 +772,10 @@ export function generatePath(
                         return "done"
                     }
                     if (current === goalId) {
-                        return reachGoal(current)
+                        const outcome = yield* settleGoal(current)
+                        if (outcome !== "continue") {
+                            return outcome
+                        }
                     }
 
                     const currentG = g[current] ?? Infinity
@@ -749,22 +787,13 @@ export function generatePath(
                     }
 
                     if (++expansions > MAX_EXPANSIONS) {
-                        let candidate = bestId
-                        if (stream !== undefined && commitCount > 0) {
-                            fillChain(candidate)
-                            if (chain[commitCount - 1] !== tipId) {
-                                candidate = bestOpenNode()
-                            }
-                        }
-                        if (candidate === -1 || candidate === rootId) {
-                            finish("timeout")
+                        // Too expensive to keep searching: settle for the best partial route.
+                        if (bestId === rootId) {
+                            finish((out.head ?? 0) < out.nodes.length ? "complete" : "timeout")
                             return "done"
                         }
-                        fillChain(candidate)
-                        for (let i = commitCount; i < chain.length; i++) {
-                            emitNode(chain[i] ?? -1)
-                        }
-                        commitCount = Math.max(commitCount, chain.length)
+                        fillChain(bestId)
+                        publishChain(false)
                         finish("complete")
                         return "done"
                     }
@@ -835,7 +864,7 @@ export function generatePath(
                     }
 
                     if (expansions % YIELD_EVERY === 0) {
-                        commitStable()
+                        publishPartial()
                         yield
                         if (halted()) {
                             return "done"
@@ -844,16 +873,12 @@ export function generatePath(
                         if (nextGoalKey !== undefined) {
                             const nextGoalId = graph.idOf(nextGoalKey)
                             if (nextGoalId !== -1) {
-                                goalKey = nextGoalKey
-                                goalId = nextGoalId
-                                ex = X[goalId] ?? 0
-                                ey = Y[goalId] ?? 0
-                                ez = Z[goalId] ?? 0
-                                bestHeuristic = Infinity
-                                bestG = Infinity
-                                rebuildHeap()
+                                retarget(nextGoalKey, nextGoalId)
                                 if (closed[goalId] === 1) {
-                                    return reachGoal(goalId)
+                                    const outcome = yield* settleGoal(goalId)
+                                    if (outcome !== "continue") {
+                                        return outcome
+                                    }
                                 }
                             }
                         }
@@ -869,7 +894,7 @@ export function generatePath(
             }
         }
 
-        system.runJob(guarded(begin()))
+        pump(guarded(begin()))
     })
 }
 

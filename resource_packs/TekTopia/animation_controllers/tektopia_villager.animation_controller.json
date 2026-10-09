@@ -20,6 +20,9 @@
 						},
 						{
 							"mining": "query.property('property:animation') == 'mining'"
+						},
+						{
+							"refill": "query.property('property:animation') == 'refilling'"
 						}
 					],
 					"transitions": [

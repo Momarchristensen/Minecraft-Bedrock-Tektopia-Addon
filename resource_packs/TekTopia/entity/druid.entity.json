@@ -2,7 +2,7 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "tektopia:lumberjack",
+            "identifier": "tektopia:druid",
             "enable_attachables": true,
             "animations": {
                 "main": "controller.animation.tektopia_villager",
@@ -20,17 +20,21 @@
                 ]
             },
             "geometry": {
-                "default": "geometry.tektopia_lumberjack"
+                "default": "geometry.tektopia_druid_male"
             },
             "sound_effects": {
                 "hit.wood": "hit.wood",
                 "hit.stone": "hit.stone"
             },
+            "particle_effects": {
+                "cast_forward_ground": "tektopia:cast_forward_ground",
+                "cast_forward_beam": "tektopia:cast_forward_beam"
+            },
             "textures": {
-                "default": "textures/entity/lumberjack_male"
+                "default": "textures/entity/druid_male"
             },
             "materials": {
-                "default": "entity"
+                "default": "entity_alphatest"
             },
             "render_controllers": [
                 "controller.render.tektopia_villager"

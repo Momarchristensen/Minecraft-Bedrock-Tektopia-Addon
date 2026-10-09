@@ -11,7 +11,8 @@
                 "harvest": "animation.tektopia_villager.pickup",
                 "planting": "animation.tektopia_villager.take",
                 "tilling": "animation.tektopia_villager.hoe",
-                "mining": "animation.tektopia_villager.mine"
+                "mining": "animation.tektopia_villager.mine",
+                "refill": "animation.tektopia_villager.cast_forward"
             },
             "scripts": {
                 "animate": [

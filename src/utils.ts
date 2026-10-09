@@ -7,6 +7,19 @@ import type { LocationString } from "./types"
 
 export type CardinalDirection = "north" | "south" | "east" | "west" | "up" | "down"
 
+const itemFrameRotations: Record<string, CardinalDirection> = {
+    2: "south",
+    3: "north",
+    4: "east",
+    5: "west"
+}
+
+export function getItemFrameRotation(facingDirection: string | number | boolean | undefined) {
+    return facingDirection === undefined
+        ? undefined
+        : itemFrameRotations[facingDirection]
+}
+
 export function isVectorBetween(vector: Vector3, vector1: Vector3, vector2: Vector3, ignoreY = false): boolean {
     const centeredVector = centerVector(vector)
     const startingVector = floorVector(minVectors(vector1, vector2))

@@ -15,7 +15,8 @@
                         "planting",
                         "tilling",
                         "chopping",
-                        "mining"
+                        "mining",
+                        "refilling"
                     ],
                     "default": "none"
                 }

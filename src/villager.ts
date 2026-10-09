@@ -57,17 +57,22 @@ import {
     removeIdentifier,
     locationToString,
     fixVector,
+    getItemFrameRotation,
     addVector,
     getOppositeDirection,
     directionToVector,
     stringToLocationCached,
     randomItem,
-    stringToLocation
+    stringToLocation,
+    type CardinalDirection,
+    subtractVectors
 } from "./utils"
 
 import {
     globalTasks,
+    pickTask,
     resolvePickupItems,
+    sortTasksByPriority,
     tektopiaVillagers
 } from "./villager_tasks"
 
@@ -194,7 +199,11 @@ export class Villager {
 
     private index: number
 
-    private foundMine?: Vector3
+    private foundMine?: {
+        location: Vector3
+        rotation: CardinalDirection
+    }
+
     private foundGuardPost?: Vector3
     private foundFullAnimalPen?: Vector3
     private foundButcherStructure?: Vector3
@@ -523,7 +532,7 @@ export class Villager {
         return closestTree
     }
 
-    findMine(village: Village) {
+    findMine(village: Village, includeInactiveMines = false) {
         const takenMines = new Set<string>()
         const villagers = world.getVillagers()
         for (const villager of villagers) {
@@ -532,23 +541,76 @@ export class Villager {
             }
             const mine = villager.foundMine
             if (mine !== undefined) {
-                takenMines.add(locationToString(mine))
+                takenMines.add(locationToString(mine.location))
             }
         }
 
         const villagerLocation = this.location
-        let closestMine: Vector3 | undefined
+        let closestMine: typeof this.foundMine
         let minDist = Infinity
+        const consideredMines = new Set<string>()
+
+        const considerMine = (location: Vector3, rotation: CardinalDirection) => {
+            const locationString = locationToString(location)
+            if (takenMines.has(locationString) || consideredMines.has(locationString)) {
+                return
+            }
+
+            consideredMines.add(locationString)
+            const dist = calculateDistance(villagerLocation, location)
+            if (dist < minDist) {
+                minDist = dist
+                closestMine = { location, rotation }
+            }
+        }
 
         const mineshaftStructures = village.findStructures({ includedTypes: ["mineshaft"] })
         for (const mineshaft of mineshaftStructures) {
-            if (takenMines.has(mineshaft.locationString)) {
-                continue
-            }
-            const dist = calculateDistance(villagerLocation, mineshaft.location)
-            if (dist < minDist) {
-                minDist = dist
-                closestMine = mineshaft.location
+            considerMine(mineshaft.location, mineshaft.rotation)
+        }
+
+        if (includeInactiveMines) {
+            for (const itemFrame of world.itemFrameList) {
+                if (
+                    itemFrame.dimensionId !== village.dimensionId
+                    || (itemFrame.structureId !== undefined && itemFrame.structureId !== "mineshaft")
+                ) {
+                    continue
+                }
+
+                const block = village.dimension.getBlockSafe(itemFrame.location)
+                if (
+                    block === undefined
+                    || !block.isValid
+                    || block.getFrameItem()?.typeId !== "tektopia:structure_mineshaft"
+                ) {
+                    continue
+                }
+
+                const rotation = getItemFrameRotation(block.permutation.getState("facing_direction"))
+                if (rotation === undefined) {
+                    continue
+                }
+
+                const validation = village.dimension.validateStructure(
+                    block,
+                    rotation,
+                    "mineshaft",
+                    true
+                )
+                let step = validation.next()
+                while (!step.done) {
+                    step = validation.next()
+                }
+
+                const result = step.value
+                if (
+                    result.result === true
+                    && result.village === village
+                    && result.doorLocation !== undefined
+                ) {
+                    considerMine(result.doorLocation, rotation)
+                }
             }
         }
 
@@ -1159,9 +1221,10 @@ export class Villager {
                 }
                 break
             case "mine":
-                targetLocation = this.foundMine
+            case "refill_mine":
+                targetLocation = this.foundMine?.location
                 if (targetLocation !== undefined) {
-                    target = "Mine"
+                    target = this.currentTask === "refill_mine" ? "Mine to refill" : "Mine"
                 }
                 break
             case "herd":
@@ -1234,7 +1297,7 @@ export class Villager {
 
         let allTaskList = taskListsByType.get(this.typeId)
         if (allTaskList === undefined) {
-            allTaskList = globalTasks.concat(villagerProps.customTasks)
+            allTaskList = sortTasksByPriority(globalTasks.concat(villagerProps.customTasks))
             taskListsByType.set(this.typeId, allTaskList)
         }
         return allTaskList
@@ -1245,8 +1308,7 @@ export class Villager {
     private trySelectTask(village: Village, allTaskList: typeof globalTasks) {
         const villager = this
 
-        const currentTaskIndex = allTaskList.findIndex(task => task.id === villager.currentTask)
-        const currentTask = currentTaskIndex === -1 ? undefined : allTaskList[currentTaskIndex]
+        const currentTask = allTaskList.find(task => task.id === villager.currentTask)
         const canPickTask = villager.currentTask === undefined || currentTask?.interruptible === true
 
         if (!canPickTask || (system.currentTick + villager.index) % 20 !== 0) {
@@ -1258,8 +1320,12 @@ export class Villager {
             leashedEntity.getComponent(EntityComponentTypes.Leashable)?.unleash()
         }
 
-        const candidates = villager.currentTask === undefined ? allTaskList : allTaskList.slice(0, currentTaskIndex)
-        const newTask = candidates.find(task => task.condition(villager, village))
+        // An idle villager considers every task; an interruptible one is only interrupted by strictly higher priorities
+        const newTask = pickTask(
+            allTaskList,
+            task => task.condition(villager, village),
+            currentTask?.priority
+        )
 
         if (newTask !== undefined) {
             villager.foundTree = undefined
@@ -1334,8 +1400,13 @@ export class Villager {
                         block = block.aboveSafe()
                     }
                     if (block !== undefined) {
-                        if (village.pathNodes[locationToString(block)] !== undefined) {
-                            villager.pathFindTo(block.location)
+                        const pathNode = findNearestNodeLocation(
+                            village.pathNodes,
+                            block.location,
+                            3
+                        )
+                        if (pathNode !== undefined) {
+                            villager.pathFindTo(pathNode)
                         }
                     }
                 }
@@ -2098,7 +2169,7 @@ export class Villager {
             return
         }
 
-        const structure = village.getStructure(villager.foundMine) as Mineshaft | undefined
+        const structure = village.getStructure(villager.foundMine.location) as Mineshaft | undefined
 
         if (structure === undefined) {
             villager.currentTask = undefined
@@ -2190,6 +2261,31 @@ export class Villager {
 
             updatePathNodes([fillBlock, fillBlock.aboveSafe(), fillBlock.belowSafe()].filter(checkBlock => checkBlock !== undefined))
         }
+    }
+
+    tickRefillMine(village: Village) {
+        const villager = this
+
+        if (villager.foundMine === undefined) {
+            villager.currentTask = undefined
+            return
+        }
+
+        const direction = directionToVector(villager.foundMine.rotation)
+        const reversedDirection = multiplyVector(direction, "xyz", -1)
+
+        const pathLocation = addVectors(villager.foundMine.location, multiplyVector(reversedDirection, "xyz", 2))
+
+        const pathLocationDistance = calculateDistance(centerVector(pathLocation, true), villager.location)
+
+        if (pathLocationDistance > 0.5) {
+            villager.pathFindTo(pathLocation)
+            return
+        }
+
+        villager.lookAt(addVectors(villager.location, direction))
+
+        villager.setAnimation("refilling")
     }
 
     tickChop(village: Village) {
@@ -2744,6 +2840,7 @@ export class Villager {
 
                 if (Math.abs(currentPathNode.y - villager.location.y) <= 0.25 ? calculateChebyshevDistance(currentPathNode, villager.location) <= 0.25 : calculateChebyshevDistance(currentPathNode, villager.location) <= 0.5) {
                     stream.head = pathNodeIndex + 1
+                    stream.reached = pathNode
                     // const before = stream.nodes.length
                     shortcutStream(stream, village.graph, pathNode)
                     // if (stream.nodes.length < before) {
