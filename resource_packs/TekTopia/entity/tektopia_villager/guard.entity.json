@@ -1,0 +1,55 @@
+{
+    "format_version": "1.10.0",
+    "minecraft:client_entity": {
+        "description": {
+            "identifier": "tektopia:villager_guard",
+            "enable_attachables": true,
+            "animations": {
+                "main": "controller.animation.tektopia_villager",
+                "walk": "animation.tektopia_villager.walk",
+                "chop": "animation.tektopia_villager.chop",
+                "harvest": "animation.tektopia_villager.pickup",
+                "planting": "animation.tektopia_villager.take",
+                "tilling": "animation.tektopia_villager.hoe",
+                "mining": "animation.tektopia_villager.mine",
+                "refill": "animation.tektopia_villager.cast_forward",
+                "sleep": "animation.tektopia_villager.sleep",
+                "sitting": "animation.tektopia_villager.sit",
+                "forging": "animation.tektopia_villager.forge",
+                "crafting": "animation.tektopia_villager.craft"
+            },
+            "scripts": {
+                "animate": [
+                    "main"
+                ]
+            },
+            "geometry": {
+                "default": "geometry.tektopia_guard"
+            },
+            "sound_effects": {
+                "hit.wood": "hit.wood",
+                "hit.stone": "hit.stone",
+                "entity.tektopia_villager.harvest": "entity.tektopia_villager.harvest",
+                "random.anvil_land": "random.anvil_land"
+            },
+            "particle_effects": {
+                "cast_forward_ground": "tektopia:cast_forward_ground",
+                "cast_forward_beam": "tektopia:cast_forward_beam",
+                "cast_grow_charge": "tektopia:cast_grow_charge"
+            },
+            "textures": {
+                "default": "textures/entity/tektopia_villager/guard_male"
+            },
+            "materials": {
+                "default": "entity"
+            },
+            "render_controllers": [
+                "controller.render.tektopia_villager_guard"
+            ],
+            "spawn_egg": {
+                "base_color": "#446600",
+                "overlay_color": "#00FF44"
+            }
+        }
+    }
+}

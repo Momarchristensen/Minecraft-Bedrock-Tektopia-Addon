@@ -1,0 +1,60 @@
+{
+  "materials": {
+    "version": "1.0.0",
+    "entity_wireframe_mask:entity": {
+      "+defines": [
+        "ALPHA_TEST",
+        "ALWAYS_LIT"
+      ],
+      "+states": [
+        "DisableColorWrite",
+        "DisableDepthWrite",
+        "EnableStencilTest",
+        "StencilWrite"
+      ],
+      "depthFunc": "LessEqual",
+      "stencilRef": 1,
+      "stencilReadMask": 255,
+      "stencilWriteMask": 255,
+      "frontFace": {
+        "stencilFunc": "Always",
+        "stencilFailOp": "Keep",
+        "stencilDepthFailOp": "Replace",
+        "stencilPassOp": "Replace"
+      },
+      "backFace": {
+        "stencilFunc": "Always",
+        "stencilFailOp": "Keep",
+        "stencilDepthFailOp": "Replace",
+        "stencilPassOp": "Replace"
+      }
+    },
+    "entity_wireframe_outline:entity": {
+      "+defines": [
+        "ALPHA_TEST",
+        "ALWAYS_LIT"
+      ],
+      "+states": [
+        "DisableDepthWrite",
+        "EnableStencilTest"
+      ],
+      "depthFunc": "Always",
+      "stencilRef": 1,
+      "stencilReadMask": 255,
+      "stencilWriteMask": 0,
+      "frontFace": {
+        "stencilFunc": "NotEqual",
+        "stencilFailOp": "Keep",
+        "stencilDepthFailOp": "Keep",
+        "stencilPassOp": "Keep"
+      },
+      "backFace": {
+        "stencilFunc": "NotEqual",
+        "stencilFailOp": "Keep",
+        "stencilDepthFailOp": "Keep",
+        "stencilPassOp": "Keep"
+      }
+    },
+    "chest:entity_alphatest": {}
+  }
+}

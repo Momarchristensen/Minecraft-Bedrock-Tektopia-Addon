@@ -1,0 +1,66 @@
+{
+  "format_version": "1.10.0",
+  "minecraft:client_entity": {
+    "description": {
+      "identifier": "minecraft:sheep",
+      "min_engine_version": "1.8.0",
+      "materials": {
+        "default": "sheep",
+        "wireframe_mask": "entity_wireframe_mask",
+        "wireframe_outline": "entity_wireframe_outline"
+      },
+      "textures": {
+        "default": "textures/entity/sheep/sheep",
+        "baby": "textures/entity/sheep/sheep_baby",
+        "wireframe_default": "textures/wireframe/entity/sheep/sheep",
+        "wireframe_baby": "textures/wireframe/entity/sheep/sheep_baby"
+      },
+      "geometry": {
+        "default": "geometry.sheep.v1.8",
+        "sheared": "geometry.sheep.sheared.v1.8",
+        "baby": "geometry.sheep.baby",
+        "default_mask": "geometry.sheep.v1.8.mask",
+        "default_shell": "geometry.sheep.v1.8.shell",
+        "sheared_mask": "geometry.sheep.sheared.v1.8.mask",
+        "sheared_shell": "geometry.sheep.sheared.v1.8.shell",
+        "baby_mask": "geometry.sheep.baby.mask",
+        "baby_shell": "geometry.sheep.baby.shell"
+      },
+      "animations": {
+        "setup": "animation.sheep.setup.v2",
+        "grazing": "animation.sheep.grazing.v2",
+        "walk": "animation.quadruped.walk",
+        "look_at_target": "animation.common.look_at_target",
+        "baby_transform": "animation.sheep.baby_transform",
+        "move": "controller.animation.sheep.move",
+        "wireframe_scale": "animation.sheep.wireframe_scale"
+      },
+      "scripts": {
+        "animate": [
+          "setup",
+          "look_at_target",
+          "move",
+          {
+            "wireframe_scale": "query.property('tektopia:show_wireframe')"
+          }
+        ],
+        "scale": "query.is_baby ? 2.0 : 1.0",
+        "pre_animation": [
+          "v.wireframe_t = math.min(query.distance_from_camera * 0.03, 1.5);"
+        ]
+      },
+      "render_controllers": [
+        "controller.render.sheep.v2",
+        {
+          "controller.render.sheep.v2.wireframe_mask": "query.property('tektopia:show_wireframe')"
+        },
+        {
+          "controller.render.sheep.v2.wireframe_outline": "query.property('tektopia:show_wireframe')"
+        }
+      ],
+      "spawn_egg": {
+        "texture": "spawn_egg_sheep"
+      }
+    }
+  }
+}

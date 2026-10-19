@@ -1,0 +1,82 @@
+{
+  "format_version": "1.10.0",
+  "minecraft:client_entity": {
+    "description": {
+      "identifier": "minecraft:chicken",
+      "min_engine_version": "1.12.0",
+      "materials": {
+        "default": "chicken",
+        "legs": "chicken_legs",
+        "cold": "chicken_cold",
+        "wireframe_mask": "entity_wireframe_mask",
+        "wireframe_outline": "entity_wireframe_outline"
+      },
+      "textures": {
+        "default": "textures/entity/chicken/chicken",
+        "warm": "textures/entity/chicken/chicken_warm",
+        "cold": "textures/entity/chicken/chicken_cold",
+        "baby_default": "textures/entity/chicken/chicken_temperate_baby",
+        "baby_warm": "textures/entity/chicken/chicken_warm_baby",
+        "baby_cold": "textures/entity/chicken/chicken_cold_baby",
+        "wireframe_default": "textures/wireframe/entity/chicken/chicken",
+        "wireframe_warm": "textures/wireframe/entity/chicken/chicken_warm",
+        "wireframe_cold": "textures/wireframe/entity/chicken/chicken_cold",
+        "wireframe_baby_default": "textures/wireframe/entity/chicken/chicken_temperate_baby",
+        "wireframe_baby_warm": "textures/wireframe/entity/chicken/chicken_warm_baby",
+        "wireframe_baby_cold": "textures/wireframe/entity/chicken/chicken_cold_baby"
+      },
+      "geometry": {
+        "default": "geometry.chicken.v1.12",
+        "warm": "geometry.chicken.v1.12",
+        "cold": "geometry.chicken.cold",
+        "baby": "geometry.chicken.baby",
+        "default_mask": "geometry.chicken.v1.12.mask",
+        "default_shell": "geometry.chicken.v1.12.shell",
+        "warm_mask": "geometry.chicken.v1.12.mask",
+        "warm_shell": "geometry.chicken.v1.12.shell",
+        "cold_mask": "geometry.chicken.cold.mask",
+        "cold_shell": "geometry.chicken.cold.shell",
+        "baby_mask": "geometry.chicken.baby.mask",
+        "baby_shell": "geometry.chicken.baby.shell"
+      },
+      "animations": {
+        "move": "animation.chicken.move",
+        "general": "animation.chicken.general",
+        "look_at_target": "animation.common.look_at_target",
+        "baby_transform": "animation.chicken.baby_transform",
+        "wireframe_scale": "animation.chicken.wireframe_scale"
+      },
+      "scripts": {
+        "animate": [
+          "general",
+          {
+            "move": "query.modified_move_speed"
+          },
+          "look_at_target",
+          {
+            "wireframe_scale": "query.property('tektopia:show_wireframe')"
+          }
+        ],
+        "pre_animation": [
+          "t.variant = query.property('minecraft:climate_variant');",
+          "v.index = (t.variant == 'temperate') ? 0 : ((t.variant == 'warm') ? 1 : 2);",
+          "v.is_cold = t.variant == 'cold';",
+          "v.wireframe_t = math.min(query.distance_from_camera * 0.03, 1.5);"
+        ],
+        "scale": "query.is_baby ? 2.0 : 1.0"
+      },
+      "render_controllers": [
+        "controller.render.chicken.v3",
+        {
+          "controller.render.chicken.v3.wireframe_mask": "query.property('tektopia:show_wireframe')"
+        },
+        {
+          "controller.render.chicken.v3.wireframe_outline": "query.property('tektopia:show_wireframe')"
+        }
+      ],
+      "spawn_egg": {
+        "texture": "spawn_egg_chicken"
+      }
+    }
+  }
+}

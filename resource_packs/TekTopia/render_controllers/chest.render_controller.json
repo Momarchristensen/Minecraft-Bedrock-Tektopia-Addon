@@ -1,0 +1,38 @@
+{
+    "format_version": "1.8.0",
+    "render_controllers": {
+        "controller.render.chest": {
+            "arrays": {
+                "textures": {
+                    "Array.single_textures": [
+                        "Texture.trapped",
+                        "Texture.copper_default",
+                        "Texture.copper_exposed",
+                        "Texture.copper_oxidized",
+                        "Texture.copper_weathered",
+                        "Texture.ender",
+                        "Texture.normal"
+                    ],
+                    "Array.double_textures": [
+                        "Texture.double_trapped",
+                        "Texture.double_copper_default",
+                        "Texture.double_copper_exposed",
+                        "Texture.double_copper_oxidized",
+                        "Texture.double_copper_weathered",
+                        "Texture.ender",
+                        "Texture.double_normal"
+                    ]
+                }
+            },
+            "geometry": "query.property('tektopia:double') ? Geometry.double : Geometry.single",
+            "materials": [
+                {
+                    "*": "Material.default"
+                }
+            ],
+            "textures": [
+                "query.property('tektopia:double') ? Array.double_textures[query.property('tektopia:variant')] : Array.single_textures[query.property('tektopia:variant')]"
+            ]
+        }
+    }
+}

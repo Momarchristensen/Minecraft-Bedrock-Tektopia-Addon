@@ -1,0 +1,16 @@
+{
+	"format_version": "1.8.0",
+	"animations": {
+		"animation.chest.main": {
+			"loop": true,
+			"bones": {
+				"lid": {
+					"rotation": ["-90 * (1 - math.pow(1 - variable.openness, 3))", 0, 0]
+				},
+				"chest": {
+					"position": ["-query.property('tektopia:is_base') ? -0 : -16", 0, 0]
+				}
+			}
+		}
+	}
+}

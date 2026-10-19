@@ -5,27 +5,32 @@ import {
 
 import type { LocationString } from "./types"
 
-export type CardinalDirection = "north" | "south" | "east" | "west" | "up" | "down"
+export type HorizontalDirection = "north" | "south" | "east" | "west"
+export type VerticalDirection = "up" | "down"
+export type CardinalDirection = HorizontalDirection | VerticalDirection
 
-const itemFrameRotations: Record<string, CardinalDirection> = {
+// Keyed by the block's numeric facing_direction state
+const itemFrameRotations: Record<number, CardinalDirection> = {
     2: "south",
     3: "north",
     4: "east",
     5: "west"
 }
 
-export function getItemFrameRotation(facingDirection: CardinalDirection | undefined) {
+export function getItemFrameRotation(facingDirection: number | undefined) {
     return facingDirection === undefined
         ? undefined
         : itemFrameRotations[facingDirection]
 }
 
 export function isVectorBetween(vector: Vector3, vector1: Vector3, vector2: Vector3, ignoreY = false): boolean {
-    const centeredVector = centerVector(vector)
+    // Compare block coordinates, with both corners inclusive. Comparing the block center (x + 0.5) against
+    // the max corner wrongly excluded the whole block at the max edge.
+    const blockVector = floorVector(vector)
     const startingVector = floorVector(minVectors(vector1, vector2))
-    const endingVector = ceilVector(maxVectors(vector1, vector2))
+    const endingVector = floorVector(maxVectors(vector1, vector2))
     return (
-        centeredVector.x >= startingVector.x && centeredVector.x <= endingVector.x && (ignoreY || (centeredVector.y >= startingVector.y && centeredVector.y <= endingVector.y)) && centeredVector.z >= startingVector.z && centeredVector.z <= endingVector.z
+        blockVector.x >= startingVector.x && blockVector.x <= endingVector.x && (ignoreY || (blockVector.y >= startingVector.y && blockVector.y <= endingVector.y)) && blockVector.z >= startingVector.z && blockVector.z <= endingVector.z
     )
 }
 
@@ -108,11 +113,26 @@ export function calculateChebyshevDistance(v1: Vector3, v2: Vector3, ignoreY = f
     return max
 }
 
+export function shuffle<T>(list: T[]): T[] {
+    for (let index = list.length - 1; index > 0; index--) {
+        const randomIndex = Math.floor(Math.random() * (index + 1))
+        const current = list[index]
+        const random = list[randomIndex]
+
+        if (current !== undefined && random !== undefined) {
+            list[index] = random
+            list[randomIndex] = current
+        }
+    }
+
+    return list
+}
+
 export function randomInt(min: number, max: number): number {
     return Math.floor(Math.random() * (max - min + 1)) + min
 }
 
-export function randomItem<T>(list: T[]): T | undefined {
+export function randomItem<T>(list: T[] | readonly T[]): T | undefined {
     return list[randomInt(0, list.length - 1)]
 }
 
@@ -265,8 +285,39 @@ export function subtractLists<T>(list1: T[], list2: T[]): T[] {
     return result
 }
 
+const directionRotationMap = {
+    north: { x: 0, y: -180 },
+    east: { x: 0, y: -90 },
+    south: { x: 0, y: 0 },
+    west: { x: 0, y: 90 },
+    up: { x: -90, y: 0 },
+    down: { x: 90, y: 0 }
+}
+
+export function directionToRotation(direction: CardinalDirection) {
+    return directionRotationMap[direction]
+}
+
 export function areVectorsEqual(vector1: Vector3, vector2: Vector3): boolean {
     return vector1.x === vector2.x && vector1.y === vector2.y && vector1.z === vector2.z
+}
+
+export function positiveMod(value: number, divisor: number) {
+    return ((value % divisor) + divisor) % divisor
+}
+
+const directionRotationList = ["north", "east", "south", "west"] as const
+
+export function rotateHorizontalDirection(
+    direction: HorizontalDirection,
+    rotateAmount: number
+): HorizontalDirection {
+    return directionRotationList[
+        positiveMod(
+            directionRotationList.indexOf(direction) + rotateAmount,
+            directionRotationList.length
+        )
+    ] as HorizontalDirection
 }
 
 export function directionToVector(direction: CardinalDirection): Vector3 {
@@ -367,6 +418,21 @@ export function removeIdentifier(string: string): string {
     return string.includes(":") ? string.split(":")[1] ?? "" : string
 }
 
+export function splitIdentifier(string: string): [identifier: string, id: string] {
+    const [identifier, ...rest] = string.split(":")
+    return rest.length > 0 ? [identifier ?? "", rest.join(":")] : ["", string]
+}
+
+export function reverseRecord(record: Record<string, string>): Record<string, string> {
+    const reversed: Record<string, string> = {}
+
+    for (const [key, value] of Object.entries(record)) {
+        reversed[value] = key
+    }
+
+    return reversed
+}
+
 export function exclusiveValues<T>(...lists: T[][]): T[] {
     const freq = new Map<T, number>()
     for (const lst of lists) {
@@ -399,7 +465,18 @@ export function arraysAreEqual<T>(array1: T[], array2: T[], orderMatters = true)
         return array1.every((value, index) => value === array2[index])
     }
 
-    return array1.every(value => array2.includes(value))
+    const counts = new Map<T, number>()
+    for (const value of array1) {
+        counts.set(value, (counts.get(value) ?? 0) + 1)
+    }
+    for (const value of array2) {
+        const count = counts.get(value)
+        if (count === undefined || count === 0) {
+            return false
+        }
+        counts.set(value, count - 1)
+    }
+    return true
 }
 
 export function copy<T>(object: T): T {

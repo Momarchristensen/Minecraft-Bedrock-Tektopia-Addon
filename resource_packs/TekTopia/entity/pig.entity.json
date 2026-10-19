@@ -1,0 +1,76 @@
+{
+  "format_version": "1.10.0",
+  "minecraft:client_entity": {
+    "description": {
+      "identifier": "minecraft:pig",
+      "min_engine_version": "1.8.0",
+      "materials": {
+        "default": "pig_v3",
+        "wireframe_mask": "entity_wireframe_mask",
+        "wireframe_outline": "entity_wireframe_outline"
+      },
+      "textures": {
+        "default": "textures/entity/pig/pig_v3",
+        "saddled": "textures/entity/pig/pig_saddle",
+        "warm": "textures/entity/pig/pig_warm",
+        "cold": "textures/entity/pig/pig_cold",
+        "saddle": "textures/entity/saddle_v2",
+        "baby_default": "textures/entity/pig/pig_temperate_baby",
+        "baby_warm": "textures/entity/pig/pig_warm_baby",
+        "baby_cold": "textures/entity/pig/pig_cold_baby",
+        "wireframe_default": "textures/wireframe/entity/pig/pig_v3",
+        "wireframe_warm": "textures/wireframe/entity/pig/pig_warm",
+        "wireframe_cold": "textures/wireframe/entity/pig/pig_cold",
+        "wireframe_baby_default": "textures/wireframe/entity/pig/pig_temperate_baby",
+        "wireframe_baby_warm": "textures/wireframe/entity/pig/pig_warm_baby",
+        "wireframe_baby_cold": "textures/wireframe/entity/pig/pig_cold_baby"
+      },
+      "geometry": {
+        "default": "geometry.pig.v3",
+        "baby": "geometry.pig.baby",
+        "default_mask": "geometry.pig.v3.mask",
+        "default_shell": "geometry.pig.v3.shell",
+        "baby_mask": "geometry.pig.baby.mask",
+        "baby_shell": "geometry.pig.baby.shell"
+      },
+      "animations": {
+        "setup": "animation.pig.setup",
+        "walk": "animation.quadruped.walk",
+        "look_at_target": "animation.common.look_at_target",
+        "baby_transform": "animation.pig.baby_transform",
+        "wireframe_scale": "animation.pig.wireframe_scale"
+      },
+      "scripts": {
+        "animate": [
+          "setup",
+          {
+            "walk": "query.modified_move_speed"
+          },
+          "look_at_target",
+          {
+            "wireframe_scale": "query.property('tektopia:show_wireframe')"
+          }
+        ],
+        "pre_animation": [
+          "t.variant = query.property('minecraft:climate_variant');",
+          "v.index = (t.variant == 'temperate') ? 0 : ((t.variant == 'warm') ? 1 : 2);",
+          "v.wireframe_t = math.min(query.distance_from_camera * 0.03, 1.5);"
+        ],
+        "scale": "query.is_baby ? 2.0 : 1.0"
+      },
+      "render_controllers": [
+        "controller.render.saddle",
+        "controller.render.pig.v4",
+        {
+          "controller.render.pig.v4.wireframe_mask": "query.property('tektopia:show_wireframe')"
+        },
+        {
+          "controller.render.pig.v4.wireframe_outline": "query.property('tektopia:show_wireframe')"
+        }
+      ],
+      "spawn_egg": {
+        "texture": "spawn_egg_pig"
+      }
+    }
+  }
+}

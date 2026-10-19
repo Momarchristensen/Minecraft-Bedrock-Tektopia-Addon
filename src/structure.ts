@@ -5,7 +5,8 @@ import {
     Dimension,
     type Vector3,
     EntityComponentTypes,
-    type Entity
+    type Entity,
+    StructureRotation
 } from "@minecraft/server"
 
 import { debugFlags } from "./debug_flags"
@@ -16,6 +17,7 @@ import {
     addVector,
     addVectors,
     calculateChebyshevDistance,
+    calculateDistance,
     type CardinalDirection,
     centerVector,
     directionToVector,
@@ -28,29 +30,37 @@ import {
     subtractVectors
 } from "./utils"
 
-import type {
-    LocationString,
-    PathNode,
-    VillageRanchEntity
-} from "./types"
+import type { LocationString } from "./types"
 
-import type { VillageStorage } from "./village_storage"
-
-export interface StructureVillage {
-    readonly pathNodes: Record<LocationString, PathNode>
-    readonly ranchEntities: Record<string, VillageRanchEntity>
-    readonly storage: VillageStorage
-    isInBounds(location: Vector3): boolean
-    addStructure(location: Vector3, structureData: StructureData): void
-}
+import type { Village } from "./village"
 
 const cardinalDirectionList = ["north", "east", "south", "west"] as CardinalDirection[]
+
+const noFloorLocations: readonly Vector3[] = []
+// Ticks before a structure whose floor scan found nothing valid scans again (the item frame scan runs every 100)
+const floorRescanCooldownTicks = 100
 
 export interface StructureValidationResult {
     result: boolean | undefined
     doorLocation?: Vector3 | undefined
+    // Every floor location of the scan. The first ownRoomFloorCount of them are in the room the scan started in
+    // (the structure's own room), the rest were reached through a door.
     floorLocations?: Vector3[]
-    village?: StructureVillage
+    ownRoomFloorCount?: number
+    village?: Village
+}
+
+/**
+ * Who has claimed each floor location of a village, so a room scan can tell when it has walked into another
+ * structure's room. Locations are the standing locations (the block above the floor block).
+ */
+export interface FloorClaims {
+    // Key of the structure that is scanning. Its own claims never count as another structure's.
+    readonly selfKey: LocationString
+    getOwner(location: Vector3): LocationString | undefined
+    // Whether the owner holds the location as part of its own room (as opposed to a room it reached through a
+    // door). Own-room claims are first-claim-wins: another structure scanning into one is invalid.
+    isOwnRoom(location: Vector3): boolean
 }
 
 export const entityStructures: Record<string, "cow_pen" | "sheep_pen" | "chicken_coop" | "pig_pen"> = {
@@ -81,7 +91,7 @@ Dimension.prototype.validateStructure = function* (
 
     const villageList = world.getVillages()
 
-    let village: StructureVillage | undefined
+    let village: Village | undefined
 
     if (structureId === "townhall") {
         const tooCloseToAnotherVillage = villageList
@@ -136,7 +146,8 @@ Dimension.prototype.validateStructure = function* (
         result = yield* validateDefaultStructure(
             dimension,
             block,
-            rotation
+            rotation,
+            village
         )
     }
 
@@ -154,7 +165,7 @@ function* validateAnimalPenStructure(
     dimension: Dimension,
     block: Block,
     rotation: CardinalDirection,
-    _village: StructureVillage
+    _village: Village
 ): Generator<void, StructureValidationResult, void> {
     const parseResult = (
         result: boolean | undefined,
@@ -471,7 +482,7 @@ function* validateMineshaftStructure(
     dimension: Dimension,
     block: Block,
     rotation: CardinalDirection,
-    village: StructureVillage,
+    village: Village,
     allowInactiveMineshaft = false
 ): Generator<void, StructureValidationResult, void> {
     const parseResult = (
@@ -538,7 +549,8 @@ function* validateMineshaftStructure(
 function* validateDefaultStructure(
     dimension: Dimension,
     block: Block,
-    rotation: CardinalDirection
+    rotation: CardinalDirection,
+    village: Village | undefined
 ): Generator<void, StructureValidationResult, void> {
     const parseResult = (
         result: boolean | undefined,
@@ -573,34 +585,80 @@ function* validateDefaultStructure(
 
     const doorLocation = addVector(foundDoor.location, "y", -1)
 
-    return yield* validateDefaultRoom(dimension, doorLocation, rotation)
+    return yield* validateDefaultRoom(
+        dimension,
+        doorLocation,
+        rotation,
+        village?.getFloorClaims(locationToString(doorLocation))
+    )
 }
 
+interface RoomScanCell {
+    floor: Block | undefined
+    ceiling: Block | undefined
+    // True when the path that reached this cell has gone through a door before reaching it
+    passedDoor: boolean
+}
+
+/**
+ * Scans the room behind a door for floor locations, flood filling over every floor with enough headroom.
+ *
+ * Rooms can hold other structures, and a scan may go through any number of doors to reach more rooms. A scan
+ * only takes floor over from another structure while it is still in the room it started in. Once it has gone
+ * through a door it leaves every location another structure has claimed alone (and does not scan past it), so
+ * an outer structure keeps its own rooms without swallowing the structure inside of it.
+ */
 function* validateDefaultRoom(
     dimension: Dimension,
     doorLocation: Vector3,
-    rotation: CardinalDirection
+    rotation: CardinalDirection,
+    claims?: FloorClaims
 ): Generator<void, StructureValidationResult, void> {
     const parseResult = (
         result: boolean | undefined,
         door?: Vector3,
-        floorLocations?: Vector3[]
-    ): StructureValidationResult => ({ result, doorLocation: door, floorLocations })
+        floorLocations?: Vector3[],
+        ownRoomFloorCount?: number
+    ): StructureValidationResult => ({ result, doorLocation: door, floorLocations, ownRoomFloorCount })
 
     function getFloorBlock(location: Vector3) {
-        return dimension.getBlockBelow(location, {
-            maxDistance: 32,
-            includeLiquidBlocks: false,
-            includePassableBlocks: false
-        })
+        let block = dimension.getBlockSafe(location)
+        for (let i = 0; i < 32 && block !== undefined; i++) {
+            block = block.below()
+            if (block === undefined) {
+                return undefined
+            }
+
+            if (block.getIsSolid() && !Registry.nonFloorBlocksSet.has(block.typeId)) {
+                return block
+            }
+        }
+        return undefined
     }
 
     function getCeilingBlock(location: Vector3) {
-        return dimension.getBlockAbove(location, {
-            maxDistance: 32,
-            includeLiquidBlocks: false,
-            includePassableBlocks: false
-        })
+        let block = dimension.getBlockSafe(location)
+        for (let i = 0; i < 32 && block !== undefined; i++) {
+            block = block.above()
+            if (block === undefined) {
+                return undefined
+            }
+
+            if (block.getIsSolid()) {
+                return block
+            }
+        }
+        return undefined
+    }
+
+    // Whether a door stands on this floor block, in either of the two blocks a door fills
+    function hasDoorAbove(floor: Block) {
+        const lower = floor.aboveSafe()
+        if (lower !== undefined && Registry.openableDoorTypes.includes(lower.typeId)) {
+            return true
+        }
+        const upper = lower?.aboveSafe()
+        return upper !== undefined && Registry.openableDoorTypes.includes(upper.typeId)
     }
 
     const doorBlock = dimension.getBlockSafe(doorLocation)
@@ -611,25 +669,36 @@ function* validateDefaultRoom(
         return parseResult(false, doorLocation)
     }
 
-    const floorLocations: Vector3[] = []
+    // Floor found in the room the scan started in, and floor found past a door. Kept apart so the claims know
+    // which locations the structure holds as its own room.
+    const ownRoomFloorLocations: Vector3[] = []
+    const throughDoorFloorLocations: Vector3[] = []
     const startingLocation = addVectors(doorBlock, directionToVector(rotation))
-    const checkLocationList: Array<{
-        floor: Block | undefined
-        ceiling: Block | undefined
-    } | undefined> = [
-        {
-            floor: getFloorBlock(startingLocation),
-            ceiling: getCeilingBlock(startingLocation)
-        }
-    ]
+    // Cells reached without going through a door are always scanned before cells reached through one. A cell
+    // that can be reached both ways is therefore treated as part of the room the scan started in, however
+    // short the way through the door is.
+    const ownRoomQueue: Array<RoomScanCell | undefined> = [{
+        floor: getFloorBlock(startingLocation),
+        ceiling: getCeilingBlock(startingLocation),
+        passedDoor: false
+    }]
+    const throughDoorQueue: Array<RoomScanCell | undefined> = []
     const alreadyCheckedLocations = new Set([locationToString(addVector(doorLocation, "y", -1))])
 
-    let checkLocationIndex = 0
+    let ownRoomIndex = 0
+    let throughDoorIndex = 0
     let steps = 0
-    while (checkLocationIndex < checkLocationList.length) {
-        const currentLocation = checkLocationList[checkLocationIndex]
-        checkLocationList[checkLocationIndex] = undefined
-        checkLocationIndex++
+    while (ownRoomIndex < ownRoomQueue.length || throughDoorIndex < throughDoorQueue.length) {
+        let currentLocation: RoomScanCell | undefined
+        if (ownRoomIndex < ownRoomQueue.length) {
+            currentLocation = ownRoomQueue[ownRoomIndex]
+            ownRoomQueue[ownRoomIndex++] = undefined
+        }
+        else {
+            currentLocation = throughDoorQueue[throughDoorIndex]
+            throughDoorQueue[throughDoorIndex++] = undefined
+        }
+
         if (
             currentLocation?.ceiling !== undefined
             && currentLocation.floor !== undefined
@@ -639,55 +708,98 @@ function* validateDefaultRoom(
             if (!alreadyCheckedLocations.has(floorLocationString)) {
                 alreadyCheckedLocations.add(floorLocationString)
 
-                if (debugFlags.structureScanParticles) {
-                    try {
-                        dimension.spawnParticle(
-                            "minecraft:basic_flame_particle",
-                            centerVector(addVector(currentLocation.floor, "y", 1))
-                        )
-                    }
-                    catch { }
+                // The door's own cell counts as through the door, so everything past a door is too
+                const isDoorTile = hasDoorAbove(currentLocation.floor)
+                const passedDoor = currentLocation.passedDoor || isDoorTile
+                const standingLocation = addVector(currentLocation.floor, "y", 1)
+
+                const owner = claims?.getOwner(standingLocation)
+                const claimedByAnother = owner !== undefined && owner !== claims?.selfKey
+
+                if (claimedByAnother && !passedDoor && claims?.isOwnRoom(standingLocation)) {
+                    // This room already belongs to another structure: first claim wins, so this one is invalid
+                    return parseResult(false, doorLocation)
                 }
 
-                floorLocations.push(addVector(currentLocation.floor, "y", 1))
-
-                const floorOffsetList = [
-                    { x: 1, y: 0, z: 0 },
-                    { x: -1, y: 0, z: 0 },
-                    { x: 0, y: 0, z: 1 },
-                    { x: 0, y: 0, z: -1 }
-                ]
-
-                for (const offset of floorOffsetList) {
-                    const offsetLocation = addVectors(currentLocation.floor, offset)
-                    if (alreadyCheckedLocations.has(locationToString(offsetLocation))) {
-                        continue
+                // Another structure's floor is off limits once the scan has left the room it started in. It is
+                // treated like a wall: not added, and not scanned past. In the room the scan started in, floor
+                // another structure only reached through a door is taken over (it was never that structure's own room).
+                if (!claimedByAnother || !passedDoor) {
+                    if (debugFlags.structureScanParticles) {
+                        try {
+                            dimension.spawnParticle(
+                                "minecraft:basic_flame_particle",
+                                centerVector(standingLocation)
+                            )
+                        }
+                        catch { }
                     }
 
-                    const checkLocation = addVector(offsetLocation, "y", 1)
-
-                    let floorBlock = getFloorBlock(checkLocation)?.aboveSafe()
-                    while (floorBlock?.isSolid) {
-                        floorBlock = floorBlock.aboveSafe()
-                    }
-                    if (floorBlock === undefined) {
-                        return parseResult(undefined, doorLocation)
+                    // A door tile is only passed over. It belongs to no room, so the structure standing behind
+                    // that door doesn't leak into the floor of the room in front of it.
+                    if (!isDoorTile) {
+                        (passedDoor ? throughDoorFloorLocations : ownRoomFloorLocations).push(standingLocation)
                     }
 
-                    const ceilingBlock = getCeilingBlock(floorBlock.location)
+                    const floorOffsetList = [
+                        { x: 1, y: 0, z: 0 },
+                        { x: -1, y: 0, z: 0 },
+                        { x: 0, y: 0, z: 1 },
+                        { x: 0, y: 0, z: -1 }
+                    ]
 
-                    floorBlock = floorBlock.belowSafe()
-                    if (
-                        floorBlock !== undefined
-                        && ceilingBlock !== undefined
-                        && ceilingBlock.y - floorBlock.y > 2
-                        && currentLocation.ceiling.y - floorBlock.y > 2
-                        && ceilingBlock.y - checkLocation.y >= 2
-                    ) {
-                        checkLocationList.push({
-                            floor: floorBlock,
-                            ceiling: ceilingBlock
-                        })
+                    for (const offset of floorOffsetList) {
+                        const offsetLocation = addVectors(currentLocation.floor, offset)
+                        if (alreadyCheckedLocations.has(locationToString(offsetLocation))) {
+                            continue
+                        }
+
+                        let checkLocation = addVector(offsetLocation, "y", 1)
+
+                        if (dimension.getBlockSafe(checkLocation)?.isSolid) {
+                            checkLocation = addVector(checkLocation, "y", 1)
+                        }
+
+                        // if (debugFlags.structureScanParticles) {
+                        //     try {
+                        //         dimension.spawnParticle(
+                        //             "minecraft:blue_flame_particle",
+                        //             centerVector(checkLocation)
+                        //         )
+                        //     }
+                        //     catch { }
+                        // }
+
+                        let floorBlock = getFloorBlock(checkLocation)?.aboveSafe()
+                        while (floorBlock?.getIsSolid() && !Registry.nonFloorBlocksSet.has(floorBlock.typeId)) {
+                            floorBlock = floorBlock.aboveSafe()
+                        }
+                        if (floorBlock === undefined) {
+                            return parseResult(undefined, doorLocation)
+                        }
+
+                        const ceilingBlock = getCeilingBlock(floorBlock.location)
+
+                        floorBlock = floorBlock.belowSafe()
+                        if (
+                            floorBlock !== undefined
+                            && ceilingBlock !== undefined
+                            && ceilingBlock.y - floorBlock.y > 2
+                            && currentLocation.ceiling.y - floorBlock.y > 2
+                            && ceilingBlock.y - checkLocation.y >= 2
+                        ) {
+                            const nextCell = {
+                                floor: floorBlock,
+                                ceiling: ceilingBlock,
+                                passedDoor
+                            }
+                            if (passedDoor) {
+                                throughDoorQueue.push(nextCell)
+                            }
+                            else {
+                                ownRoomQueue.push(nextCell)
+                            }
+                        }
                     }
                 }
             }
@@ -697,21 +809,25 @@ function* validateDefaultRoom(
         }
     }
 
-    return parseResult(floorLocations.length >= 9, doorLocation, floorLocations)
+    const floorLocations = ownRoomFloorLocations.concat(throughDoorFloorLocations)
+    return parseResult(floorLocations.length >= 9, doorLocation, floorLocations, ownRoomFloorLocations.length)
 }
 
 export interface StructureTypeMap {
     mineshaft: Mineshaft
-    storage: Structure
+    storage: StorageStructure
     butcher: Structure
     townhall: Structure
-    home_2: Structure
     pig_pen: AnimalPen
     sheep_pen: AnimalPen
     cow_pen: AnimalPen
     chicken_coop: AnimalPen
     guard_post: StationPost
     merchant_stall: StationPost
+    home_2: HomeStructure
+    home_4: HomeStructure
+    home_6: HomeStructure
+    barracks: Barracks
 }
 
 export type StructureType = keyof StructureTypeMap
@@ -733,7 +849,26 @@ export interface StationPostData extends StructureData {
     type: "guard_post" | "merchant_stall"
 }
 
-type StructureFactory = (locationString: LocationString, data: StructureData, dimension: Dimension, village: StructureVillage) => Structure
+export interface HomeStructureData extends StructureData {
+    type: "home_2" | "home_4" | "home_6"
+}
+
+export interface BarracksData extends StructureData {
+    type: "barracks"
+}
+
+export interface BedInfo {
+    // Location of the bed's head block
+    location: Vector3
+    // Location string of the home structure the bed belongs to
+    home: LocationString
+}
+
+export interface StorageStructureData extends StructureData {
+    type: "storage"
+}
+
+type StructureFactory = (locationString: LocationString, data: StructureData, dimension: Dimension, village: Village) => Structure
 
 export class Structure<T extends StructureData = StructureData> {
     private static cache = new WeakMap<StructureData, Structure>()
@@ -743,9 +878,12 @@ export class Structure<T extends StructureData = StructureData> {
     readonly locationString
     private readonly data: T
     readonly dimension
-    readonly village: StructureVillage
+    readonly village: Village
+    private cachedFloorLocations?: readonly Vector3[]
+    private nextFloorScanTick = 0
+    protected readonly claimsFloors: boolean = true
 
-    protected constructor(locationString: LocationString, data: T, dimension: Dimension, village: StructureVillage) {
+    protected constructor(locationString: LocationString, data: T, dimension: Dimension, village: Village) {
         this.location = stringToLocation(locationString)
         this.locationString = locationString
         this.data = data
@@ -757,11 +895,13 @@ export class Structure<T extends StructureData = StructureData> {
         Structure.factories.set(type, factory)
     }
 
-    static from(locationString: LocationString, data: MineshaftData, dimension: Dimension, village: StructureVillage): Mineshaft
-    static from(locationString: LocationString, data: AnimalPenData, dimension: Dimension, village: StructureVillage): AnimalPen
-    static from(locationString: LocationString, data: StationPostData, dimension: Dimension, village: StructureVillage): StationPost
-    static from(locationString: LocationString, data: StructureData, dimension: Dimension, village: StructureVillage): Structure
-    static from(locationString: LocationString, data: StructureData, dimension: Dimension, village: StructureVillage): Structure {
+    static from(locationString: LocationString, data: MineshaftData, dimension: Dimension, village: Village): Mineshaft
+    static from(locationString: LocationString, data: AnimalPenData, dimension: Dimension, village: Village): AnimalPen
+    static from(locationString: LocationString, data: StationPostData, dimension: Dimension, village: Village): StationPost
+    static from(locationString: LocationString, data: HomeStructureData, dimension: Dimension, village: Village): HomeStructure
+    static from(locationString: LocationString, data: BarracksData, dimension: Dimension, village: Village): Barracks
+    static from(locationString: LocationString, data: StructureData, dimension: Dimension, village: Village): Structure
+    static from(locationString: LocationString, data: StructureData, dimension: Dimension, village: Village): Structure {
         let structure = Structure.cache.get(data)
         if (structure === undefined) {
             const factory = Structure.factories.get(data.type)
@@ -774,13 +914,82 @@ export class Structure<T extends StructureData = StructureData> {
     }
 
     *validate(): Generator<void, boolean | undefined, void> {
-        const validation = yield* validateDefaultRoom(this.dimension, this.location, this.rotation)
+        const validation = yield* validateDefaultRoom(
+            this.dimension,
+            this.location,
+            this.rotation,
+            this.getFloorClaims()
+        )
+        if (validation.result === false) {
+            this.cacheFloorLocations(undefined)
+        }
         return validation.result
     }
 
     getFloorLocations(): Vector3[] {
-        const validation = runToCompletion(validateDefaultRoom(this.dimension, this.location, this.rotation))
-        return validation.floorLocations ?? []
+        return this.scanFloorLocations()?.floorLocations ?? []
+    }
+
+    protected scanFloorLocations(): { floorLocations: Vector3[], ownRoomFloorCount: number } | undefined {
+        const validation = runToCompletion(
+            validateDefaultRoom(this.dimension, this.location, this.rotation, this.getFloorClaims())
+        )
+        if (validation.result !== true || validation.floorLocations === undefined) {
+            return undefined
+        }
+        return {
+            floorLocations: validation.floorLocations,
+            ownRoomFloorCount: validation.ownRoomFloorCount ?? validation.floorLocations.length
+        }
+    }
+
+    private getFloorClaims(): FloorClaims | undefined {
+        return this.claimsFloors ? this.village.getFloorClaims(this.locationString) : undefined
+    }
+
+    cacheFloorLocations(floorLocations: readonly Vector3[] | undefined, ownRoomFloorCount = floorLocations?.length ?? 0): boolean {
+        if (floorLocations === undefined || !this.claimsFloors) {
+            this.cachedFloorLocations = floorLocations
+            this.nextFloorScanTick = 0
+            if (floorLocations === undefined && this.claimsFloors) {
+                this.village.releaseFloorClaims(this.locationString)
+            }
+            return true
+        }
+
+        const claimed = this.village.claimFloor(this.locationString, floorLocations, ownRoomFloorCount)
+        if (claimed === undefined) {
+            this.cachedFloorLocations = undefined
+            this.nextFloorScanTick = system.currentTick + floorRescanCooldownTicks
+            return false
+        }
+        this.cachedFloorLocations = floorLocations.filter(location => claimed.has(locationToString(location)))
+        this.nextFloorScanTick = 0
+        return true
+    }
+
+    dropFloorLocations(lost: ReadonlySet<LocationString>) {
+        const remaining = this.cachedFloorLocations?.filter(location => !lost.has(locationToString(location)))
+        this.cachedFloorLocations = remaining !== undefined && remaining.length > 0 ? remaining : undefined
+        this.nextFloorScanTick = 0
+    }
+
+    onFloorLost() { }
+
+    loadFloorLocations(): readonly Vector3[] {
+        if (this.cachedFloorLocations !== undefined) {
+            return this.cachedFloorLocations
+        }
+        if (system.currentTick < this.nextFloorScanTick) {
+            return noFloorLocations
+        }
+
+        const scan = this.scanFloorLocations()
+        if (scan === undefined || !this.cacheFloorLocations(scan.floorLocations, scan.ownRoomFloorCount)) {
+            this.nextFloorScanTick = system.currentTick + floorRescanCooldownTicks
+            return noFloorLocations
+        }
+        return this.cachedFloorLocations ?? noFloorLocations
     }
 
     get type(): T["type"] {
@@ -865,7 +1074,7 @@ export function getMineshaftMineBlock(
 type MineshaftTask = { type: "fill", block: Block, offset: Vector3 } | { type: "mine", block: Block } | { type: "light", block: Block }
 
 export class Mineshaft extends Structure<MineshaftData> {
-    constructor(locationString: LocationString, data: MineshaftData, dimension: Dimension, village: StructureVillage) {
+    constructor(locationString: LocationString, data: MineshaftData, dimension: Dimension, village: Village) {
         super(locationString, data, dimension, village)
     }
 
@@ -884,6 +1093,21 @@ export class Mineshaft extends Structure<MineshaftData> {
 
     getMineBlock() {
         return getMineshaftMineBlock(this.dimension, this.location, this.rotation)
+    }
+
+    /**
+     * True when the location is inside the mineshaft tunnel itself: the door column or beyond it, on the tunnel's
+     * centerline and at floor level. A villager standing in a side pocket, a floor pit or the ceiling gap is
+     * outside the tunnel, so filling blocks around the tunnel could wall them in.
+     */
+    isInTunnel(location: Vector3): boolean {
+        const direction = directionToVector(this.rotation)
+        const offset = subtractVectors(floorVector(location), this.location)
+
+        const alongTunnel = (offset.x * direction.x) + (offset.y * direction.y) + (offset.z * direction.z)
+        const acrossTunnel = (offset.x * direction.z) + (offset.z * direction.x)
+
+        return offset.y === 0 && acrossTunnel === 0 && alongTunnel >= 0
     }
 
     getNextTask(): MineshaftTask | undefined {
@@ -961,9 +1185,10 @@ const animalPenAnimals: Record<AnimalPenData["type"], { typeId: string, size: nu
 }
 
 export class AnimalPen extends Structure<AnimalPenData> {
+    protected override readonly claimsFloors = false
     private floorSpaceCount?: number
 
-    constructor(locationString: LocationString, data: AnimalPenData, dimension: Dimension, village: StructureVillage) {
+    constructor(locationString: LocationString, data: AnimalPenData, dimension: Dimension, village: Village) {
         super(locationString, data, dimension, village)
     }
 
@@ -1013,6 +1238,13 @@ export class AnimalPen extends Structure<AnimalPenData> {
         return includeFences ? floorLocations.concat(this.getFenceLocations()) : floorLocations
     }
 
+    protected override scanFloorLocations() {
+        const floorLocations = this.getFloorLocations()
+        return floorLocations.length > 0
+            ? { floorLocations, ownRoomFloorCount: floorLocations.length }
+            : undefined
+    }
+
     getAnimalTypeId(): string {
         return animalPenAnimals[this.type].typeId
     }
@@ -1057,8 +1289,9 @@ export class AnimalPen extends Structure<AnimalPenData> {
                 continue
             }
 
+            // world.getEntity only returns an entity that is valid this tick (see cache.ts)
             const entity = world.getEntity(id)
-            if (entity?.isValid !== true) {
+            if (entity === undefined) {
                 continue
             }
 
@@ -1083,12 +1316,295 @@ export class AnimalPen extends Structure<AnimalPenData> {
     }
 }
 
+export class StorageStructure extends Structure<StorageStructureData> {
+    constructor(locationString: LocationString, data: StorageStructureData, dimension: Dimension, village: Village) {
+        super(locationString, data, dimension, village)
+    }
+
+    getChests(floorLocations: readonly Vector3[] = this.loadFloorLocations()): Block[] {
+        const chestList: Block[] = []
+
+        for (const floorLocation of floorLocations) {
+            const chestBlock = this.dimension.getBlockSafe(floorLocation)
+
+            // Every chest type stores items, except the ender chest, which is a window into the player's own inventory
+            if (chestBlock?.chest !== undefined && chestBlock.chest.variant !== "ender") {
+                chestList.push(chestBlock)
+            }
+        }
+
+        return chestList
+    }
+
+    getCraftingTables(floorLocations: readonly Vector3[] = this.loadFloorLocations()): Block[] {
+        const craftingTableList: Block[] = []
+
+        for (const floorLocation of floorLocations) {
+            const craftingTableBlock = this.dimension.getBlockSafe(floorLocation)
+            if (craftingTableBlock === undefined) {
+                continue
+            }
+
+            if (craftingTableBlock.typeId !== "minecraft:crafting_table") {
+                continue
+            }
+
+            craftingTableList.push(craftingTableBlock)
+        }
+
+        return craftingTableList
+    }
+}
+
+const GUARD_TYPE_ID = "tektopia:villager_guard"
+
+type BedVillager = ReturnType<Village["getVillagers"]>[number]
+
+interface FoundBed {
+    block: Block
+    rotation: StructureRotation
+    placeLocation: Vector3
+    key: LocationString
+}
+
+// A structure whose floor holds beds that villagers claim and sleep in
+export abstract class BedStructure<T extends StructureData = StructureData> extends Structure<T> {
+    abstract getMaxBedCount(): number
+
+    // Whether this villager may be given a new bed here
+    protected canClaimBed(_villager: BedVillager): boolean {
+        return true
+    }
+
+    // Whether a villager that already holds a bed here may keep it. Otherwise the claim is released.
+    protected canKeepBed(_villager: BedVillager): boolean {
+        return true
+    }
+
+    // Whether a villager holding a bed in another structure should be moved over to a free bed here
+    protected shouldTransferBed(_villager: BedVillager, _claimed: BedInfo): boolean {
+        return false
+    }
+
+    // Beds that were on the floor another structure took must not stay claimed by villagers of this one
+    override onFloorLost() {
+        this.validateBeds()
+    }
+
+    protected findBeds(floorLocations: readonly Vector3[]): FoundBed[] {
+        const beds: FoundBed[] = []
+
+        for (const floorLocation of floorLocations) {
+            const bedBlock = this.dimension.getBlockSafe(floorLocation)
+            if (bedBlock === undefined) {
+                continue
+            }
+
+            if (bedBlock.typeId !== "minecraft:bed" || bedBlock.permutation.getState("head_piece_bit") !== true) {
+                continue
+            }
+
+            const bedPlacements: Array<{ rotation: StructureRotation, offset: Vector3 }> = [
+                { rotation: StructureRotation.None, offset: { x: 0, y: 0, z: -1 } },
+                { rotation: StructureRotation.Rotate90, offset: { x: 0, y: 0, z: 0 } },
+                { rotation: StructureRotation.Rotate180, offset: { x: 0, y: 0, z: 0 } },
+                { rotation: StructureRotation.Rotate270, offset: { x: -1, y: 0, z: 0 } }
+            ]
+
+            const bedDirection = bedBlock.permutation.getState("direction")
+
+            if (typeof bedDirection !== "number") {
+                continue
+            }
+
+            const placement = bedPlacements[bedDirection]
+
+            if (placement === undefined) {
+                continue
+            }
+
+            beds.push({
+                block: bedBlock,
+                rotation: placement.rotation,
+                placeLocation: addVectors(bedBlock.location, placement.offset),
+                key: locationToString(bedBlock.location)
+            })
+        }
+
+        return beds
+    }
+
+    validateBeds(floorLocations: readonly Vector3[] = this.loadFloorLocations()) {
+        const maxBedCount = this.getMaxBedCount()
+        const beds = this.findBeds(floorLocations)
+
+        // Only the first maxBedCount beds are usable, the rest are shown red
+        const usableKeys = new Set<LocationString>()
+        for (const bed of beds.slice(0, maxBedCount)) {
+            usableKeys.add(bed.key)
+        }
+
+        // Villagers that already hold a bed in this home, and releasing claims on beds that are gone or over the limit
+        const villagers = this.village.getVillagers()
+        const claimedBy = new Map<LocationString, (typeof villagers)[number]>()
+        const bedlessVillagers: typeof villagers = []
+
+        for (const villager of villagers) {
+            const claimed = villager.getBed()
+
+            if (claimed === undefined) {
+                if (this.canClaimBed(villager)) {
+                    bedlessVillagers.push(villager)
+                }
+                continue
+            }
+
+            if (claimed.home !== this.locationString) {
+                // Keeps its current bed unless a free bed here is found for it below
+                if (this.canClaimBed(villager) && this.shouldTransferBed(villager, claimed)) {
+                    bedlessVillagers.push(villager)
+                }
+                continue
+            }
+
+            const claimedKey = locationToString(claimed.location)
+
+            if (!this.canKeepBed(villager) || !usableKeys.has(claimedKey) || claimedBy.has(claimedKey)) {
+                villager.releaseBed()
+                if (this.canClaimBed(villager)) {
+                    bedlessVillagers.push(villager)
+                }
+                continue
+            }
+
+            claimedBy.set(claimedKey, villager)
+        }
+
+        // Unclaimed usable beds go to the closest villager without a bed
+        for (const bed of beds) {
+            if (!usableKeys.has(bed.key) || claimedBy.has(bed.key)) {
+                continue
+            }
+
+            let closestIndex = -1
+            let closestDistance = Infinity
+
+            for (const [index, villager] of bedlessVillagers.entries()) {
+                const distance = calculateDistance(villager.location, bed.block.location)
+
+                if (distance < closestDistance) {
+                    closestDistance = distance
+                    closestIndex = index
+                }
+            }
+
+            const [villager] = closestIndex === -1 ? [] : bedlessVillagers.splice(closestIndex, 1)
+
+            if (villager === undefined) {
+                continue
+            }
+
+            villager.claimBed({ location: bed.block.location, home: this.locationString })
+            claimedBy.set(bed.key, villager)
+        }
+
+        const bedList: Block[] = []
+
+        for (const bed of beds) {
+            let color = "yellow"
+
+            if (!usableKeys.has(bed.key)) {
+                color = "red"
+            }
+            else if (claimedBy.has(bed.key)) {
+                color = "green"
+            }
+
+            world.structureManager.place(`mystructure:home_bed_${color}`, this.dimension, bed.placeLocation, { rotation: bed.rotation })
+
+            if (color === "red") {
+                continue
+            }
+
+            bedList.push(bed.block)
+        }
+
+        return bedList
+    }
+}
+
+export class HomeStructure extends BedStructure<HomeStructureData> {
+    constructor(locationString: LocationString, data: HomeStructureData, dimension: Dimension, village: Village) {
+        super(locationString, data, dimension, village)
+    }
+
+    getMaxBedCount() {
+        return Number(this.type.replace("home_", ""))
+    }
+
+    // Guards sleep in the barracks, so they are not handed a home bed while a barracks bed is free
+    protected override canClaimBed(villager: BedVillager) {
+        if (villager.typeId !== GUARD_TYPE_ID) {
+            return true
+        }
+
+        return !this.village.findStructures({ includedTypes: ["barracks"] }).some(barracks => barracks.getFreeBedCount() > 0)
+    }
+}
+
+const BARRACKS_BED_COUNT = 10
+
+export class Barracks extends BedStructure<BarracksData> {
+    constructor(locationString: LocationString, data: BarracksData, dimension: Dimension, village: Village) {
+        super(locationString, data, dimension, village)
+    }
+
+    getMaxBedCount() {
+        return BARRACKS_BED_COUNT
+    }
+
+    // Only guards sleep in the barracks
+    protected override canClaimBed(villager: BedVillager) {
+        return villager.typeId === GUARD_TYPE_ID
+    }
+
+    protected override canKeepBed(villager: BedVillager) {
+        return villager.typeId === GUARD_TYPE_ID
+    }
+
+    // A guard sleeping in a normal home moves to the barracks as soon as a bed is free
+    protected override shouldTransferBed() {
+        return true
+    }
+
+    // Usable beds that no guard has claimed yet
+    getFreeBedCount(floorLocations: readonly Vector3[] = this.loadFloorLocations()) {
+        const usableKeys = new Set(this.findBeds(floorLocations).slice(0, this.getMaxBedCount()).map(bed => bed.key))
+        const claimedKeys = new Set<LocationString>()
+
+        for (const villager of this.village.getVillagers()) {
+            const claimed = villager.getBed()
+
+            if (claimed?.home !== this.locationString || !this.canKeepBed(villager)) {
+                continue
+            }
+
+            const claimedKey = locationToString(claimed.location)
+            if (usableKeys.has(claimedKey)) {
+                claimedKeys.add(claimedKey)
+            }
+        }
+
+        return usableKeys.size - claimedKeys.size
+    }
+}
+
 const GUARD_PATROL_RADIUS = 8
 const GUARD_LOCATION_ATTEMPTS = 10
 const GUARD_Y_OFFSETS = [0, 1, -1, 2, -2, 3, -3]
 
 export class StationPost extends Structure<StationPostData> {
-    constructor(locationString: LocationString, data: StationPostData, dimension: Dimension, village: StructureVillage) {
+    constructor(locationString: LocationString, data: StationPostData, dimension: Dimension, village: Village) {
         super(locationString, data, dimension, village)
     }
 
@@ -1153,6 +1669,14 @@ Structure.register("chicken_coop", animalPenFactory)
 
 Structure.register("guard_post", (locationString, data, dimension, village) => new StationPost(locationString, data as StationPostData, dimension, village))
 Structure.register("merchant_stall", (locationString, data, dimension, village) => new StationPost(locationString, data as StationPostData, dimension, village))
+
+Structure.register("home_2", (locationString, data, dimension, village) => new HomeStructure(locationString, data as HomeStructureData, dimension, village))
+Structure.register("home_4", (locationString, data, dimension, village) => new HomeStructure(locationString, data as HomeStructureData, dimension, village))
+Structure.register("home_6", (locationString, data, dimension, village) => new HomeStructure(locationString, data as HomeStructureData, dimension, village))
+
+Structure.register("barracks", (locationString, data, dimension, village) => new Barracks(locationString, data as BarracksData, dimension, village))
+
+Structure.register("storage", (locationString, data, dimension, village) => new StorageStructure(locationString, data as StorageStructureData, dimension, village))
 
 function tickScanStructures() {
     system.runJob(scanStructures(() => system.runTimeout(tickScanStructures, 100)))

@@ -1,0 +1,79 @@
+{
+  "format_version": "1.26.20",
+  "minecraft:entity": {
+    "description": {
+      "identifier": "tektopia:chest_display",
+      "is_spawnable": true,
+      "is_summonable": true,
+      "is_experimental": false,
+      "properties": {
+        "tektopia:open": {
+          "client_sync": true,
+          "type": "bool",
+          "default": false
+        },
+        "tektopia:double": {
+          "client_sync": true,
+          "type": "bool",
+          "default": false
+        },
+        "tektopia:variant": {
+          "client_sync": true,
+          "type": "int",
+          "range": [
+            0,
+            6
+          ],
+          "default": 6
+        },
+        "tektopia:is_base": {
+          "client_sync": true,
+          "type": "bool",
+          "default": true
+        }
+      }
+    },
+    "components": {
+      "minecraft:breathable": {
+        "breathes_water": true
+      },
+      "minecraft:physics": {
+        "has_gravity": false,
+        "has_collision": false
+      },
+      "minecraft:custom_hit_test": {
+        "hitboxes": [
+          {
+            "pivot": [
+              0,
+              0.5,
+              0
+            ],
+            "width": 0,
+            "height": 0
+          }
+        ]
+      },
+      "minecraft:health": {
+        "value": 1,
+        "min": 1
+      },
+      "minecraft:damage_sensor": {
+        "triggers": {
+          "deals_damage": "no"
+        }
+      },
+      "minecraft:collision_box": {
+        "width": 0,
+        "height": 0
+      },
+      "minecraft:nameable": {
+        "allow_name_tag_renaming": false,
+        "always_show": false
+      },
+      "minecraft:knockback_resistance": {
+        "value": 1.0
+      }
+    }
+  }
+}

@@ -1,14 +1,14 @@
-const setCache = new WeakMap()
+const setCache = new WeakMap<object, { set: Set<unknown>, length: number }>()
 
 Array.prototype.includesFast = function (value) {
-    let set = setCache.get(this)
+    let entry = setCache.get(this)
 
-    if (set === undefined) {
-        set = new Set(this)
-        setCache.set(this, set)
+    if (entry?.length !== this.length) {
+        entry = { set: new Set(this), length: this.length }
+        setCache.set(this, entry)
     }
 
-    return set.has(value)
+    return entry.set.has(value)
 }
 
 Array.prototype.remove = function (value) {

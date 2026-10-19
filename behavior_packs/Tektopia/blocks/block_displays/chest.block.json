@@ -1,0 +1,45 @@
+{
+    "format_version": "1.26.50",
+    "minecraft:block": {
+        "description": {
+            "identifier": "tektopia:chest_item",
+            "menu_category": {
+                "category": "none",
+                "is_hidden_in_commands": false
+            },
+            "traits": {
+                "minecraft:placement_direction": {
+                    "enabled_states": [
+                        "minecraft:cardinal_direction"
+                    ],
+                    "y_rotation_offset": 180
+                }
+            }
+        },
+        "components": {
+            "minecraft:geometry": {
+                "identifier": "geometry.chest"
+            },
+            "minecraft:material_instances": {
+                "*": {
+                    "texture": "chest_normal",
+                    "render_method": "opaque",
+                    "ambient_occlusion": 0,
+                    "face_dimming": true
+                }
+            },
+            "minecraft:display_name": "tile.chest.name",
+            "minecraft:destructible_by_mining": true,
+            "minecraft:selection_box": true,
+            "minecraft:collision_box": false,
+            "tektopia:display_block": {
+               
+            },
+            "minecraft:sound": {
+                "sound": "wood"
+            },
+            "minecraft:light_dampening": 0,
+            "minecraft:light_emission": 0
+        }
+    }
+}

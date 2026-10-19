@@ -8,10 +8,9 @@ import {
 
 import { subtractLists } from "./utils"
 
-import {
-    minecraftNonSolidBlocks,
-    type TagId
-} from "./variables"
+import type { TagId } from "./big_variables"
+
+import type { Recipe } from "./recipes"
 
 function lazy<T>(compute: () => T): () => T {
     let cached: T
@@ -63,6 +62,8 @@ export const Registry = defineRegistry({
         return result
     },
 
+    liquidTypes: (): string[] => ["minecraft:water", "minecraft:flowing_water", "minecraft:lava", "minecraft:flowing_lava"],
+    liquidTypesSet: (): Set<string> => new Set(Registry.liquidTypes),
     trapdoorTypes: blocks(id => id.includes("trapdoor")),
     doorTypes: (): string[] => [...Registry.itemTagItems["minecraft:door"] ?? []],
     openableDoorTypes: (): string[] => Registry.doorTypes.filter(id => id !== "minecraft:iron_door"),
@@ -71,23 +72,38 @@ export const Registry = defineRegistry({
     fenceTypes: blocks(id => id.includes("_fence") || (id.includes("_wall") && !id.includes("_sign") && !id.includes("_fan"))),
     fenceGateTypes: blocks(id => id.includes("_gate") && id.includes("fence")),
     saplingTypes: blocks(id => id.includes("_sapling")),
-    logTypes: blocks(id => id.includes("_log") && !id.includes("stripped_")),
+    logTypes: blocks(id => id.includes("_log")),
+    plankTypes: blocks(id => id.includes("_planks")),
+    nonStrippedLogTypes: (): string[] => Registry.logTypes.filter(id => !id.includes("stripped_")),
+    nonStrippedLogTypesSet: (): Set<string> => new Set(Registry.nonStrippedLogTypes),
     leafTypes: blocks(id => id.includes("_leaves")),
     oreTypes: blocks(id => id.endsWith("_ore")),
+    pressurePlateTypes: blocks(id => id.endsWith("_pressure_plate")),
 
-    villagerTypes: entities(id => id.startsWith("tektopia:")),
+    nonFloorBlocks: (): string[] => ["minecraft:crafting_table"],
+    nonFloorBlocksSet: (): Set<string> => new Set(Registry.nonFloorBlocks),
+
+    villagerTypes: entities(id => id.startsWith("tektopia:villager_")),
 
     woolTypes: (): string[] => Registry.itemTagItems["minecraft:wool"]?.filter(id => !id.includes("_stairs") && !id.includes("_slab")) ?? [],
     eggTypes: (): string[] => Registry.itemTagItems["minecraft:egg"] ?? [],
 
-    noWalkBlocks: (): string[] => [...Registry.fenceTypes, ...Registry.fenceGateTypes, ...Registry.doorTypes, ...Registry.trapdoorTypes],
-    solidBlocks: (): string[] => subtractLists(subtractLists(Registry.blockTypes, minecraftNonSolidBlocks), Registry.noWalkBlocks),
+    noWalkBlocks: (): string[] => [...Registry.fenceTypes, ...Registry.fenceGateTypes, ...Registry.doorTypes, ...Registry.trapdoorTypes, "tektopia:chair"],
+    solidBlocks: (): string[] => subtractLists(Registry.blockTypes, [
+        ...Registry.nonSolidBlocks,
+        ...Registry.noWalkBlocks,
+        ...Registry.chestTypes,
+        "minecraft:bed",
+        ...Registry.fenceTypes,
+        ...Registry.pressurePlateTypes
+    ]),
     solidBlocksSet: (): Set<string> => new Set(Registry.solidBlocks),
 
-    dimensionTypes: (): string[] => DimensionTypes.getAll().map(dimensionType => dimensionType.typeId),
+    chestTypes: blocks(id => id.endsWith("chest")),
+    chestTypesSet: (): Set<string> => new Set(Registry.chestTypes),
+    storageChestTypes: (): string[] => Registry.chestTypes.filter(id => id !== "minecraft:ender_chest"),
 
-    nonSolidBlocks: (): string[] => [...minecraftNonSolidBlocks, ...Registry.fenceGateTypes],
-    nonSolidBlocksSet: (): Set<string> => new Set(Registry.nonSolidBlocks),
+    dimensionTypes: (): string[] => DimensionTypes.getAll().map(dimensionType => dimensionType.typeId),
 
     pathBlockCosts: (): Map<string, number> => new Map<string, number>([
         ["minecraft:dirt_path", -0.25],
@@ -97,6 +113,272 @@ export const Registry = defineRegistry({
         ["minecraft:grass_path", -1],
         ["minecraft:farmland", 3],
         ["minecraft:web", 12],
-        ...Registry.fenceGateTypes.map((id): [string, number] => [id, 6])
-    ])
+        ...Registry.fenceGateTypes.map((id): [string, number] => [id, 6]),
+        ...Registry.doorTypes.map((id): [string, number] => [id, 6])
+    ]),
+
+    dirtTypes: (): string[] => [
+        "minecraft:mycelium",
+        "minecraft:pale_moss_block",
+        "minecraft:coarse_dirt",
+        "minecraft:podzol",
+        "minecraft:muddy_mangrove_roots",
+        "minecraft:farmland",
+        "minecraft:dirt_with_roots",
+        "minecraft:dirt",
+        "minecraft:grass_block",
+        "minecraft:moss_block",
+        "minecraft:mud"
+    ],
+
+    dirtTypesSet: (): Set<string> => new Set(Registry.dirtTypes),
+
+    dangerousTypes: (): string[] => [
+        ...Registry.liquidTypes,
+        "minecraft:magma",
+        "minecraft:fire",
+        "minecraft:soul_fire",
+        "minecraft:cactus",
+        "minecraft:powder_snow",
+        "minecraft:campfire",
+        "minecraft:soul_campfire",
+        "minecraft:sweet_berry_bush"
+    ],
+    dangerousTypesSet: (): Set<string> => new Set(Registry.dangerousTypes),
+
+    // ---- Non-solid block groups ----
+    carpetTypes: (): string[] => Registry.blockTypes.filter(id => id.endsWith("_carpet")), // all colors + moss_carpet, pale_moss_carpet
+    signTypes: blocks(id => id.endsWith("_sign")), // standing, wall, hanging, all woods
+    railTypes: (): string[] => [
+        ...Registry.blockTypes.filter(id => id.endsWith("_rail")),
+        "minecraft:rail"
+    ],
+    torchTypes: blocks(id => id.includes("torch")), // torch, soul, redstone, unlit, colored, torchflower(+crop)
+    headTypes: blocks(id => id.endsWith("_head") || id.endsWith("_skull")),
+    lightBlockTypes: blocks(id => id.startsWith("minecraft:light_block_")),
+    coralPlantTypes: blocks(id => id.includes("coral") && !id.endsWith("_block")), // coral, fans, wall fans, dead variants (not coral blocks)
+    redstoneComponentTypes: (): string[] => [
+        ...Registry.blockTypes.filter(id => id.includes("repeater") || id.includes("comparator")),
+        "minecraft:redstone_wire"
+    ],
+    tulipTypes: blocks(id => id.endsWith("_tulip")),
+    mushroomTypes: blocks(id => id.endsWith("_mushroom")), // excludes *_mushroom_block
+    fungusTypes: blocks(id => id.endsWith("_fungus")),
+    vineTypes: blocks(id => id.includes("vine")), // vine, cave_vines*, weeping/twisting_vines
+    eyeblossomTypes: blocks(id => id.includes("eyeblossom")),
+
+    cropTypes: (): string[] => [
+        ...Registry.blockTypes.filter(id => id.endsWith("_crop")),
+        "minecraft:wheat",
+        "minecraft:potatoes",
+        "minecraft:carrots",
+        "minecraft:beetroot",
+        "minecraft:melon_stem",
+        "minecraft:pumpkin_stem"
+    ],
+
+    plantTypes: (): string[] => [
+        ...Registry.blockTypes.filter(id =>
+            id.endsWith("_grass")
+            || id.endsWith("fern")
+            || (id.endsWith("_roots") && id !== "minecraft:muddy_mangrove_roots" && id !== "minecraft:mangrove_roots") // includes hanging_roots
+        ),
+        "minecraft:deadbush",
+        "minecraft:seagrass",
+        "minecraft:kelp",
+        "minecraft:reeds",
+        "minecraft:waterlily",
+        "minecraft:big_dripleaf",
+        "minecraft:small_dripleaf_block",
+        "minecraft:spore_blossom",
+        "minecraft:azalea",
+        "minecraft:flowering_azalea",
+        "minecraft:bush",
+        "minecraft:firefly_bush",
+        "minecraft:sweet_berry_bush",
+        "minecraft:rose_bush",
+        "minecraft:pitcher_plant",
+        "minecraft:chorus_plant",
+        "minecraft:chorus_flower",
+        "minecraft:mangrove_propagule",
+        "minecraft:nether_sprouts",
+        "minecraft:nether_wart",
+        "minecraft:cocoa",
+        "minecraft:sea_pickle",
+        "minecraft:pale_hanging_moss",
+        "minecraft:leaf_litter",
+        "minecraft:glow_lichen"
+    ],
+
+    flowerTypes: (): string[] => [
+        ...Registry.blockTypes.filter(id =>
+            id.endsWith("_tulip")
+            || id.endsWith("_petals")
+            || id.endsWith("_orchid")
+            || id.endsWith("_rose")
+        ),
+        "minecraft:dandelion",
+        "minecraft:poppy",
+        "minecraft:allium",
+        "minecraft:azure_bluet",
+        "minecraft:cornflower",
+        "minecraft:lily_of_the_valley",
+        "minecraft:oxeye_daisy",
+        "minecraft:sunflower",
+        "minecraft:lilac",
+        "minecraft:peony",
+        "minecraft:torchflower",
+        "minecraft:cactus_flower",
+        "minecraft:wildflowers"
+    ],
+
+    fireTypes: (): string[] => [
+        "minecraft:fire",
+        "minecraft:soul_fire"
+    ],
+
+    // ---- Final union ----
+    nonSolidBlocks: (): string[] => [...new Set([
+        ...Registry.liquidTypes,
+        ...Registry.carpetTypes,
+        ...Registry.signTypes,
+        ...Registry.railTypes,
+        ...Registry.torchTypes,
+        ...Registry.headTypes,
+        ...Registry.lightBlockTypes,
+        ...Registry.coralPlantTypes,
+        ...Registry.redstoneComponentTypes,
+        ...Registry.mushroomTypes,
+        ...Registry.fungusTypes,
+        ...Registry.vineTypes,
+        ...Registry.eyeblossomTypes,
+        ...Registry.cropTypes,
+        ...Registry.plantTypes,
+        ...Registry.flowerTypes,
+        ...Registry.saplingTypes,
+        ...Registry.fireTypes,
+        "minecraft:air",
+        "minecraft:web",
+        "minecraft:powder_snow",
+        "minecraft:snow_layer",
+        "minecraft:frog_spawn",
+        "minecraft:bubble_column",
+        "minecraft:end_rod",
+        "minecraft:lever",
+        "minecraft:tripwire_hook",
+        "minecraft:trip_wire",
+        "minecraft:flower_pot",
+        "minecraft:frame",
+        "minecraft:glow_frame",
+        "minecraft:lantern",
+        "minecraft:compound_creator",
+        "minecraft:lab_table",
+        "minecraft:element_constructor",
+        "minecraft:material_reducer"
+    ])],
+    nonSolidBlocksSet: (): Set<string> => new Set(Registry.nonSolidBlocks),
+
+    craftingRecipes: (): Recipe[] => {
+        const recipes: Recipe[] = [
+            {
+                input: [{
+                    id: "minecraft:iron_ingot",
+                    amount: 2
+                }],
+                output: {
+                    id: "minecraft:shears",
+                    amount: 1
+                }
+            },
+            {
+                input: [{
+                    id: Registry.plankTypes,
+                    amount: 2
+                }],
+                output: {
+                    id: "minecraft:stick",
+                    amount: 4
+                }
+            },
+            {
+                input: [
+                    {
+                        id: Registry.plankTypes,
+                        amount: 3
+                    },
+                    {
+                        id: "minecraft:stick",
+                        amount: 2
+                    }
+                ],
+                output: {
+                    id: "minecraft:wooden_axe",
+                    amount: 1
+                }
+            },
+            {
+                input: [
+                    {
+                        id: Registry.plankTypes,
+                        amount: 2
+                    },
+                    {
+                        id: "minecraft:stick",
+                        amount: 2
+                    }
+                ],
+                output: {
+                    id: "minecraft:wooden_hoe",
+                    amount: 1
+                }
+            },
+            {
+                input: [
+                    {
+                        id: Registry.plankTypes,
+                        amount: 2
+                    },
+                    {
+                        id: "minecraft:stick",
+                        amount: 1
+                    }
+                ],
+                output: {
+                    id: "minecraft:wooden_sword",
+                    amount: 1
+                }
+            },
+            {
+                input: [
+                    {
+                        id: Registry.plankTypes,
+                        amount: 3
+                    },
+                    {
+                        id: "minecraft:stick",
+                        amount: 2
+                    }
+                ],
+                output: {
+                    id: "minecraft:wooden_pickaxe",
+                    amount: 1
+                }
+            }
+        ]
+
+        for (const id of Registry.logTypes) {
+            recipes.push({
+                input: [{
+                    id,
+                    amount: 1
+                }],
+                output: {
+                    id: `${id.replace("stripped_", "").replace("_log", "")}_planks`,
+                    amount: 4
+                }
+            })
+        }
+
+        return recipes
+    }
 })

@@ -1,0 +1,186 @@
+{
+    "block_sounds": {
+        "wood": {
+            "events": {
+                "break": {
+                    "pitch": [
+                        0.8,
+                        1.0
+                    ],
+                    "sound": "dig.wood",
+                    "volume": 1.0
+                },
+                "button.click_off": {
+                    "pitch": 0.5,
+                    "sound": "random.wood_click"
+                },
+                "button.click_on": {
+                    "pitch": 0.6,
+                    "sound": "random.wood_click"
+                },
+                "chest.closed": {
+                    "pitch": [
+                        0.9,
+                        1.0
+                    ],
+                    "sound": "random.chestclosed",
+                    "volume": 0.5
+                },
+                "chest.open": {
+                    "pitch": [
+                        0.9,
+                        1.0
+                    ],
+                    "sound": "random.chestopen",
+                    "volume": 0.5
+                },
+                "default": "",
+                "door.close": {
+                    "pitch": [
+                        0.9,
+                        1.0
+                    ],
+                    "sound": "close.wooden_door"
+                },
+                "door.open": {
+                    "pitch": [
+                        0.9,
+                        1.0
+                    ],
+                    "sound": "open.wooden_door"
+                },
+                "fence_gate.close": {
+                    "pitch": [
+                        0.9,
+                        1.0
+                    ],
+                    "sound": "close.fence_gate"
+                },
+                "fence_gate.open": {
+                    "pitch": [
+                        0.9,
+                        1.0
+                    ],
+                    "sound": "open.fence_gate"
+                },
+                "hit": {
+                    "pitch": 0.5,
+                    "sound": "hit.wood",
+                    "volume": 0.23
+                },
+                "item.use.on": {
+                    "pitch": 0.8,
+                    "sound": "use.wood"
+                },
+                "place": {
+                    "pitch": [
+                        0.8,
+                        0.8
+                    ],
+                    "sound": "place.wood",
+                    "volume": 1.0
+                },
+                "power.off": {
+                    "pitch": 0.5,
+                    "sound": "random.wood_click"
+                },
+                "power.on": {
+                    "pitch": 0.6,
+                    "sound": "random.wood_click"
+                },
+                "pressure_plate.click_off": {
+                    "sound": "click_off.wooden_pressure_plate"
+                },
+                "pressure_plate.click_on": {
+                    "sound": "click_on.wooden_pressure_plate"
+                },
+                "trapdoor.close": {
+                    "pitch": [
+                        0.9,
+                        1.0
+                    ],
+                    "sound": "close.wooden_trapdoor"
+                },
+                "trapdoor.open": {
+                    "pitch": [
+                        0.9,
+                        1.0
+                    ],
+                    "sound": "open.wooden_trapdoor"
+                }
+            },
+            "pitch": 1.0,
+            "volume": 1.0
+        },
+        "ender_chest": {
+            "events": {
+                "break": {
+                    "pitch": [
+                        0.8,
+                        1.0
+                    ],
+                    "sound": "dig.stone",
+                    "volume": 1.0
+                },
+                "button.click_off": {
+                    "pitch": 0.5,
+                    "sound": "random.stone_click"
+                },
+                "button.click_on": {
+                    "pitch": 0.6,
+                    "sound": "random.stone_click"
+                },
+                "chest.closed": {
+                    "pitch": [
+                        0.9,
+                        1.0
+                    ],
+                    "sound": "random.enderchestclosed",
+                    "volume": 0.5
+                },
+                "chest.open": {
+                    "pitch": [
+                        0.9,
+                        1.0
+                    ],
+                    "sound": "random.enderchestopen",
+                    "volume": 0.5
+                },
+                "default": "",
+                "hit": {
+                    "pitch": 0.5,
+                    "sound": "hit.stone",
+                    "volume": 0.37
+                },
+                "item.use.on": {
+                    "pitch": 0.8,
+                    "sound": "use.stone"
+                },
+                "place": {
+                    "pitch": [
+                        0.8,
+                        1.0
+                    ],
+                    "sound": "place.stone",
+                    "volume": 1.0
+                },
+                "power.off": {
+                    "pitch": 0.5,
+                    "sound": "random.stone_click"
+                },
+                "power.on": {
+                    "pitch": 0.6,
+                    "sound": "random.stone_click"
+                },
+                "pressure_plate.click_off": {
+                    "sound": "click_off.stone_pressure_plate"
+                },
+                "pressure_plate.click_on": {
+                    "sound": "click_on.stone_pressure_plate"
+                }
+            },
+            "pitch": 1.0,
+            "volume": 1.0
+        }
+    }
+}

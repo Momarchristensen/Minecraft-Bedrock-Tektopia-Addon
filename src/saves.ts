@@ -33,6 +33,11 @@ export const worldSaveDataList = [
         compression: undefined
     },
     {
+        property: "connectedChestList",
+        default: [],
+        compression: undefined
+    },
+    {
         property: "villageList",
         default: [],
         compression: {
@@ -91,20 +96,30 @@ World.prototype.loadData = function () {
         return data
     }
 
+    let failed = false
+
     for (const property of worldSaveDataList) {
-        const raw = readRaw(property.property)
-        const json = raw === undefined ? null : LZString.decompressFromBase64(raw)
+        try {
+            const raw = readRaw(property.property)
+            const json = raw === undefined ? null : LZString.decompressFromBase64(raw)
 
-        let value = json !== null && json !== "null" ? JSON.parse(json) : copy(property.default)
+            let value = json !== null && json !== "null" ? JSON.parse(json) : copy(property.default)
 
-        if (property.compression !== undefined) {
-            value = property.compression.decompress(value)
+            if (property.compression !== undefined) {
+                value = property.compression.decompress(value)
+            }
+
+            this[property.property] = value
         }
-
-        this[property.property] = value
+        catch (error) {
+            failed = true
+            console.error(`Failed to load ${property.property}; saving is disabled so the stored data isn't overwritten:`, error)
+            this[property.property] = copy(property.default) as never
+        }
     }
 
-    this.loadedData = true
+    // Stay unloaded after a failure: saving is skipped while loadedData is false, so unreadable data is never overwritten
+    this.loadedData = !failed
 }
 
 const globalScope = globalThis as unknown as Record<string, unknown>
@@ -293,6 +308,8 @@ World.prototype.saveData = saveWorldData
 export interface EntityData {
     breedingData?: BreedingSaveData | undefined
     villagerEntity?: boolean
+    eggLayTimer?: number
+    pickupDelay?: number
 }
 
 Entity.prototype.saveData = function <K extends keyof EntityData>(
@@ -348,7 +365,12 @@ function loadEntities() {
 }
 
 system.beforeEvents.shutdown.subscribe(() => {
-    world.saveData()
+    try {
+        world.saveData()
+    }
+    catch (error) {
+        console.error("Failed to save world data on shutdown:", error)
+    }
 })
 
 World.prototype.autoSave = function () {
@@ -380,10 +402,15 @@ system.beforeEvents.startup.subscribe(event => {
 system.runInterval(() => {
     world.autoSave()
     loadEntities()
-}, 1200)
+}, 6000)
 
 function main() {
-    world.loadData()
+    try {
+        world.loadData()
+    }
+    catch (error) {
+        console.error("World load failed:", error)
+    }
     loadEntities()
 }
 

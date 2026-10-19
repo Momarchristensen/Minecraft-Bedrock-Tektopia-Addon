@@ -7,11 +7,15 @@ export const debugFlags = {
     rancherDebugNameTags: false,
     structureScanParticles: false,
     pathScanParticles: false,
+    pathNodeValidationParticles: false,
     villagerPathParticles: false,
     pathfindingWarnings: false,
     depositWarnings: false,
     nodeUpdatedWarnings: false,
-    rancherPenParticles: false
+    rancherPenParticles: false,
+    rancherAvoidedGateParticles: false,
+    itemFrameFloorParticles: false,
+    tickRateActionBar: false
 }
 
 export type DebugFlag = keyof typeof debugFlags

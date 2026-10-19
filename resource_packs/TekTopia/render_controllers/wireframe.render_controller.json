@@ -1,0 +1,221 @@
+{
+  "format_version": "1.10.0",
+  "render_controllers": {
+    "controller.render.pig.v4.wireframe_mask": {
+      "arrays": {
+        "textures": {
+          "Array.default": [
+            "Texture.wireframe_default",
+            "Texture.wireframe_warm",
+            "Texture.wireframe_cold"
+          ],
+          "Array.baby": [
+            "Texture.wireframe_baby_default",
+            "Texture.wireframe_baby_warm",
+            "Texture.wireframe_baby_cold"
+          ]
+        }
+      },
+      "geometry": "query.is_baby ? Geometry.baby_mask : Geometry.default_mask",
+      "materials": [
+        {
+          "*": "Material.wireframe_mask"
+        }
+      ],
+      "textures": [
+        "query.is_baby ? Array.baby[v.index] : Array.default[v.index]"
+      ]
+    },
+    "controller.render.pig.v4.wireframe_outline": {
+      "arrays": {
+        "textures": {
+          "Array.default": [
+            "Texture.wireframe_default",
+            "Texture.wireframe_warm",
+            "Texture.wireframe_cold"
+          ],
+          "Array.baby": [
+            "Texture.wireframe_baby_default",
+            "Texture.wireframe_baby_warm",
+            "Texture.wireframe_baby_cold"
+          ]
+        }
+      },
+      "geometry": "query.is_baby ? Geometry.baby_shell : Geometry.default_shell",
+      "materials": [
+        {
+          "*": "Material.wireframe_outline"
+        }
+      ],
+      "textures": [
+        "query.is_baby ? Array.baby[v.index] : Array.default[v.index]"
+      ]
+    },
+    "controller.render.chicken.v3.wireframe_mask": {
+      "arrays": {
+        "textures": {
+          "Array.textures": [
+            "Texture.wireframe_default",
+            "Texture.wireframe_warm",
+            "Texture.wireframe_cold"
+          ],
+          "Array.baby_textures": [
+            "Texture.wireframe_baby_default",
+            "Texture.wireframe_baby_warm",
+            "Texture.wireframe_baby_cold"
+          ]
+        },
+        "geometries": {
+          "Array.geos": [
+            "Geometry.default_mask",
+            "Geometry.warm_mask",
+            "Geometry.cold_mask"
+          ]
+        }
+      },
+      "geometry": "query.is_baby ? Geometry.baby_mask : Array.geos[v.index]",
+      "materials": [
+        {
+          "*": "Material.wireframe_mask"
+        }
+      ],
+      "textures": [
+        "query.is_baby ? Array.baby_textures[v.index] : Array.textures[v.index]"
+      ]
+    },
+    "controller.render.chicken.v3.wireframe_outline": {
+      "arrays": {
+        "textures": {
+          "Array.textures": [
+            "Texture.wireframe_default",
+            "Texture.wireframe_warm",
+            "Texture.wireframe_cold"
+          ],
+          "Array.baby_textures": [
+            "Texture.wireframe_baby_default",
+            "Texture.wireframe_baby_warm",
+            "Texture.wireframe_baby_cold"
+          ]
+        },
+        "geometries": {
+          "Array.geos": [
+            "Geometry.default_shell",
+            "Geometry.warm_shell",
+            "Geometry.cold_shell"
+          ]
+        }
+      },
+      "geometry": "query.is_baby ? Geometry.baby_shell : Array.geos[v.index]",
+      "materials": [
+        {
+          "*": "Material.wireframe_outline"
+        }
+      ],
+      "textures": [
+        "query.is_baby ? Array.baby_textures[v.index] : Array.textures[v.index]"
+      ]
+    },
+    "controller.render.cow.v3.wireframe_mask": {
+      "arrays": {
+        "textures": {
+          "Array.textures": [
+            "Texture.wireframe_default",
+            "Texture.wireframe_warm",
+            "Texture.wireframe_cold"
+          ],
+          "Array.baby_textures": [
+            "Texture.wireframe_baby_default",
+            "Texture.wireframe_baby_warm",
+            "Texture.wireframe_baby_cold"
+          ]
+        },
+        "geometries": {
+          "Array.geos": [
+            "Geometry.default_mask",
+            "Geometry.warm_mask",
+            "Geometry.cold_mask"
+          ]
+        }
+      },
+      "geometry": "query.is_baby ? Geometry.baby_mask : Array.geos[v.index]",
+      "materials": [
+        {
+          "*": "Material.wireframe_mask"
+        }
+      ],
+      "textures": [
+        "query.is_baby ? Array.baby_textures[v.index] : Array.textures[v.index]"
+      ]
+    },
+    "controller.render.cow.v3.wireframe_outline": {
+      "arrays": {
+        "textures": {
+          "Array.textures": [
+            "Texture.wireframe_default",
+            "Texture.wireframe_warm",
+            "Texture.wireframe_cold"
+          ],
+          "Array.baby_textures": [
+            "Texture.wireframe_baby_default",
+            "Texture.wireframe_baby_warm",
+            "Texture.wireframe_baby_cold"
+          ]
+        },
+        "geometries": {
+          "Array.geos": [
+            "Geometry.default_shell",
+            "Geometry.warm_shell",
+            "Geometry.cold_shell"
+          ]
+        }
+      },
+      "geometry": "query.is_baby ? Geometry.baby_shell : Array.geos[v.index]",
+      "materials": [
+        {
+          "*": "Material.wireframe_outline"
+        }
+      ],
+      "textures": [
+        "query.is_baby ? Array.baby_textures[v.index] : Array.textures[v.index]"
+      ]
+    },
+    "controller.render.sheep.v2.wireframe_mask": {
+      "arrays": {
+        "geometries": {
+          "Array.geos": [
+            "Geometry.default_mask",
+            "Geometry.sheared_mask"
+          ]
+        }
+      },
+      "geometry": "query.is_baby ? Geometry.baby_mask : Array.geos[query.is_sheared]",
+      "materials": [
+        {
+          "*": "Material.wireframe_mask"
+        }
+      ],
+      "textures": [
+        "query.is_baby ? Texture.wireframe_baby : Texture.wireframe_default"
+      ]
+    },
+    "controller.render.sheep.v2.wireframe_outline": {
+      "arrays": {
+        "geometries": {
+          "Array.geos": [
+            "Geometry.default_shell",
+            "Geometry.sheared_shell"
+          ]
+        }
+      },
+      "geometry": "query.is_baby ? Geometry.baby_shell : Array.geos[query.is_sheared]",
+      "materials": [
+        {
+          "*": "Material.wireframe_outline"
+        }
+      ],
+      "textures": [
+        "query.is_baby ? Texture.wireframe_baby : Texture.wireframe_default"
+      ]
+    }
+  }
+}

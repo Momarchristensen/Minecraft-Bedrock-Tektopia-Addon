@@ -3,13 +3,27 @@ import {
     Container,
     type Block,
     type Vector3,
-    BlockComponentTypes
+    BlockComponentTypes,
+    ContainerSlot
 } from "@minecraft/server"
 
+import {
+    canCraft,
+    getCraftingPlan,
+    getMaxCrafts
+} from "./recipes"
+
+import {
+    arraysAreEqual,
+    locationToString
+} from "./utils"
+
 import type {
-    DepositPlan,
+    ItemFilterResult,
     ItemStackFilter
 } from "./minecraft_extensions"
+
+import type { LocationString } from "./types"
 
 import type { Village } from "./village"
 
@@ -18,10 +32,17 @@ export interface StorageChest {
     container: Container
 }
 
+export interface StorageItemResult extends ItemFilterResult {
+    /** Index of the slot within `chest.container` */
+    slotIndex: number
+    /** The chest the item came from */
+    chest: StorageChest
+}
+
 export interface InventorySlot {
     chest: StorageChest
-    slot: number
-    item: ItemStack
+    slotIndex: number
+    slot: ContainerSlot
 }
 
 function distanceSquared(a: Vector3, b: Vector3) {
@@ -32,39 +53,16 @@ function distanceSquared(a: Vector3, b: Vector3) {
     return (dx * dx) + (dy * dy) + (dz * dz)
 }
 
-function countMatching(container: Container, itemFilter: ItemStackFilter) {
-    let total = 0
-
-    for (const item of container) {
-        if (item?.matchesFilter(itemFilter)) {
-            total += item.amount
-        }
-    }
-
-    return total
-}
-
-function containsType(container: Container, typeId: string) {
-    for (const item of container) {
-        if (item?.typeId === typeId) {
-            return true
-        }
-    }
-
-    return false
-}
-
-// How many more of `itemStack` the container could accept (empty slots + partial stacks)
-function getRoomFor(container: Container, itemStack: ItemStack) {
+Container.prototype.getRoomFor = function (item) {
     let room = 0
 
-    for (let slot = 0; slot < container.size; slot++) {
-        const existing = container.getItem(slot)
+    for (let slot = 0; slot < this.size; slot++) {
+        const existing = this.getItem(slot)
 
         if (existing === undefined) {
-            room += itemStack.maxAmount
+            room += item.maxAmount
         }
-        else if (existing.isStackableWith(itemStack)) {
+        else if (existing.isStackableWith(item)) {
             room += existing.maxAmount - existing.amount
         }
     }
@@ -72,472 +70,341 @@ function getRoomFor(container: Container, itemStack: ItemStack) {
     return room
 }
 
-// Moves up to `amount` items out of one slot and into another container.
-// Nothing is removed from the source unless the destination accepted it.
-function moveItems(from: Container, slot: number, to: Container, amount: number) {
-    const item = from.getItem(slot)
+Container.prototype.transferItemStack = function (fromSlot: number, toContainer: Container, amount: number) {
+    const item = this.getItem(fromSlot)
 
     if (item === undefined) {
         return 0
     }
 
-    const stack = item.clone()
-    stack.amount = Math.min(amount, item.amount)
+    const itemClone = item.clone()
+    itemClone.amount = Math.min(amount, item.amount)
 
-    const leftover = to.addItem(stack)
-    const moved = stack.amount - (leftover?.amount ?? 0)
+    const leftover = toContainer.addItem(itemClone)
+    const moved = itemClone.amount - (leftover?.amount ?? 0)
 
     if (moved <= 0) {
         return 0
     }
 
     if (moved >= item.amount) {
-        from.setItem(slot, undefined)
+        this.setItem(fromSlot, undefined)
     }
     else {
         item.amount -= moved
-        from.setItem(slot, item)
+        this.setItem(fromSlot, item)
     }
 
     return moved
 }
 
-export class VillageStorage implements Iterable<ItemStack> {
-    private chests: StorageChest[] = []
+Container.prototype.removeItem = function (itemFilter, amount, cancelIfUnable = false) {
+    return this.removeItems([{ itemFilter, amount }], cancelIfUnable)
+}
 
-    constructor(readonly village: Village) { }
+Container.prototype.removeItems = function (requests, cancelIfUnable = false) {
+    const remainingInSlot = new Map<number, number>()
+    const items = new Map<number, ItemStack>()
+    let allFulfilled = true
 
-    setContainers(blocks: Block[]) {
-        const chests: StorageChest[] = []
+    for (const { itemFilter, amount } of requests) {
+        let amountLeft = amount
 
-        for (const block of blocks) {
-            if (!block.isValid) {
+        for (let slotIndex = 0; slotIndex < this.size && amountLeft > 0; slotIndex++) {
+            let item = items.get(slotIndex)
+            if (item === undefined) {
+                item = this.getItem(slotIndex)
+                if (item === undefined) {
+                    continue
+                }
+                items.set(slotIndex, item)
+                remainingInSlot.set(slotIndex, item.amount)
+            }
+
+            const remaining = remainingInSlot.get(slotIndex) ?? 0
+            if (remaining <= 0 || !item.matchesFilter(itemFilter)) {
                 continue
             }
 
-            if (block.dimension.id !== this.village.dimensionId || !this.village.isInBounds(block.location)) {
+            const remove = Math.min(remaining, amountLeft)
+            remainingInSlot.set(slotIndex, remaining - remove)
+            amountLeft -= remove
+        }
+
+        if (amountLeft > 0) {
+            allFulfilled = false
+        }
+    }
+
+    if (!allFulfilled && cancelIfUnable) {
+        return false
+    }
+
+    for (const [slotIndex, remaining] of remainingInSlot) {
+        const item = items.get(slotIndex)
+        if (item === undefined || remaining === item.amount) {
+            continue
+        }
+
+        if (remaining <= 0) {
+            this.setItem(slotIndex, undefined)
+        }
+        else {
+            item.amount = remaining
+            this.setItem(slotIndex, item)
+        }
+    }
+
+    return allFulfilled
+}
+
+export class VillageStorage implements Iterable<ContainerSlot> {
+    // The chests of each storage structure, keyed by that structure's location, so several storage rooms can coexist
+    private chestsByStructure = new Map<LocationString, StorageChest[]>()
+
+    constructor(readonly village: Village) { }
+
+    setContainers(structureKey: LocationString, blocks: Block[]) {
+        const chests: StorageChest[] = []
+        const otherHalves = new Set<LocationString>()
+
+        for (const block of blocks) {
+            if (!block.isValid || block.dimension.id !== this.village.dimensionId || !this.village.isInBounds(block.location)) {
+                continue
+            }
+
+            if (otherHalves.has(locationToString(block.location))) {
                 continue
             }
 
             const container = block.getComponent(BlockComponentTypes.Inventory)?.container
-
             if (container === undefined) {
                 continue
+            }
+
+            // Both halves of a double chest share one container, so only the first half is stored
+            const connected = block.chest?.getConnectingChest()
+            if (connected !== undefined) {
+                otherHalves.add(locationToString(connected.block.location))
             }
 
             chests.push({ location: block.location, container })
         }
 
-        this.chests = chests
+        this.chestsByStructure.set(structureKey, chests)
     }
 
-    // ---------- Chests ----------
+    clearContainers(structureKey: LocationString) {
+        this.chestsByStructure.delete(structureKey)
+    }
 
     private *liveChests(): Generator<StorageChest> {
-        for (const chest of this.chests) {
-            if (chest.container.isValid) {
+        for (const chests of this.chestsByStructure.values()) {
+            for (const chest of chests) {
+                if (!chest.container.isValid) {
+                    // A container goes stale when its chunk unloads; look it up again instead of forgetting the chest
+                    const container = this.village.dimension.getBlockSafe(chest.location)?.getComponent(BlockComponentTypes.Inventory)?.container
+                    if (container === undefined) {
+                        continue
+                    }
+                    chest.container = container
+                }
+
                 yield chest
             }
         }
     }
 
-    // Chests that still exist, nearest to `origin` first (or in the order they were added)
+    getItemCounts(itemFilter?: ItemStackFilter): Record<string, number> {
+        const counts: Record<string, number> = {}
+        for (const chest of this.liveChests()) {
+            for (const [id, amount] of Object.entries(chest.container.getItemCounts(itemFilter))) {
+                counts[id] = (counts[id] ?? 0) + amount
+            }
+        }
+        return counts
+    }
+
+    canCraft(itemId: string, amount = 1) {
+        return canCraft(itemId, this.getItemCounts(), amount)
+    }
+
+    getCraftingPlan(itemId: string, amount = 1) {
+        return getCraftingPlan(itemId, this.getItemCounts(), amount)
+    }
+
+    getMaxCrafts(itemId: string, max = Infinity) {
+        return getMaxCrafts(itemId, this.getItemCounts(), max)
+    }
+
     getChests(origin?: Vector3): StorageChest[] {
         const chests = [...this.liveChests()]
 
         if (origin !== undefined) {
-            chests.sort((a, b) => distanceSquared(a.location, origin) - distanceSquared(b.location, origin))
+            chests.sort((chest1, chest2) => distanceSquared(chest1.location, origin) - distanceSquared(chest2.location, origin))
         }
 
         return chests
     }
 
-    get chestCount(): number {
-        return this.getChests().length
-    }
-
-    // ---------- Iteration ----------
-
     *entries(chests: Iterable<StorageChest> = this.liveChests()): Generator<InventorySlot> {
         for (const chest of chests) {
-            for (let slot = 0; slot < chest.container.size; slot++) {
-                const item = chest.container.getItem(slot)
+            for (let i = 0; i < chest.container.size; i++) {
+                const slot = chest.container.getSlot(i)
 
+                yield { chest, slotIndex: i, slot }
+            }
+        }
+    }
+
+    *[Symbol.iterator](): Iterator<ContainerSlot> {
+        for (const { slot } of this.entries()) {
+            yield slot
+        }
+    }
+
+    *filter(itemFilter: ItemStackFilter): Generator<ContainerSlot> {
+        for (const slot of this) {
+            if (slot.matchesFilter(itemFilter)) {
+                yield slot
+            }
+        }
+    }
+
+    getRoomFor(itemStack: ItemStack) {
+        for (const slot of this) {
+            const item = slot.getItem()
+            if (item === undefined) {
+                return itemStack.amount
+            }
+
+            if (item.isStackableWith(itemStack) && item.amount < item.maxAmount) {
+                return Math.min(itemStack.amount, item.maxAmount - item.amount)
+            }
+        }
+
+        return 0
+    }
+
+    findItem(itemFilter: ItemStackFilter): StorageItemResult | undefined {
+
+        for (const { chest, slotIndex, slot } of this.entries()) {
+            const item = slot.getItem()?.clone()
+            if (item === undefined) {
+                continue
+            }
+
+            if (!item.matchesFilter(itemFilter)) {
+                continue
+            }
+
+            return { item, slotIndex, chest }
+        }
+
+        return undefined
+    }
+
+    findItems(itemFilter: ItemStackFilter, amount: number): StorageItemResult[] {
+        let amountLeft = amount
+        const matchingItems: StorageItemResult[] = []
+
+        if (amountLeft <= 0) {
+            return matchingItems
+        }
+
+        for (const { chest, slotIndex, slot } of this.entries()) {
+            const item = slot.getItem()?.clone()
+            if (item === undefined) {
+                continue
+            }
+
+            if (!item.matchesFilter(itemFilter)) {
+                continue
+            }
+
+            if (item.amount > amountLeft) {
+                item.amount = amountLeft
+            }
+
+            amountLeft -= item.amount
+            matchingItems.push({ item, slotIndex, chest })
+            if (amountLeft <= 0) {
+                break
+            }
+        }
+
+        return matchingItems
+    }
+
+    filterItems(itemFilter: ItemStackFilter): StorageItemResult[] {
+        const matchingItems: StorageItemResult[] = []
+
+        for (const { chest, slotIndex, slot } of this.entries()) {
+            const item = slot.getItem()
+            if (item === undefined) {
+                continue
+            }
+
+            if (!item.matchesFilter(itemFilter)) {
+                continue
+            }
+
+            matchingItems.push({ item, slotIndex, chest })
+        }
+
+        return matchingItems
+    }
+
+    /**
+     * The closest chest that can top up a stack of the item, else the closest one that already holds the item and has
+     * a free slot, else the closest one with any free slot.
+     */
+    findDepositChest(itemStack: ItemStack, origin?: Vector3): StorageChest | undefined {
+        let holdsItemWithRoom: StorageChest | undefined
+        let hasFreeSlot: StorageChest | undefined
+
+        for (const chest of this.getChests(origin)) {
+            let freeSlot = false
+            let holdsItem = false
+
+            for (const slot of chest.container) {
+                const item = slot.getItem()
                 if (item === undefined) {
-                    continue
+                    freeSlot = true
                 }
-
-                yield { chest, slot, item }
-            }
-        }
-    }
-
-    *[Symbol.iterator](): Iterator<ItemStack> {
-        for (const { item } of this.entries()) {
-            yield item
-        }
-    }
-
-    *filter(itemFilter: ItemStackFilter): Generator<ItemStack> {
-        for (const item of this) {
-            if (item.matchesFilter(itemFilter)) {
-                yield item
-            }
-        }
-    }
-
-    // ---------- Searching ----------
-
-    hasItem(itemFilter: ItemStackFilter) {
-        for (const item of this) {
-            if (item.matchesFilter(itemFilter)) {
-                return true
-            }
-        }
-
-        return false
-    }
-
-    getItemCount(itemFilter: ItemStackFilter) {
-        let total = 0
-
-        for (const item of this) {
-            if (item.matchesFilter(itemFilter)) {
-                total += item.amount
-            }
-        }
-
-        return total
-    }
-
-    hasAmount(itemFilter: ItemStackFilter, amount: number): boolean {
-        return this.getItemCount(itemFilter) >= amount
-    }
-
-    // Totals per item type, e.g. for "what can I craft / what's missing" checks
-    getItemCounts(itemFilter?: ItemStackFilter): Map<string, number> {
-        const counts = new Map<string, number>()
-
-        for (const item of this) {
-            if (itemFilter !== undefined && !item.matchesFilter(itemFilter)) {
-                continue
-            }
-
-            counts.set(item.typeId, (counts.get(item.typeId) ?? 0) + item.amount)
-        }
-
-        return counts
-    }
-
-    // First matching stack, searching the chests nearest to `origin` first
-    findItem(itemFilter: ItemStackFilter, origin?: Vector3): InventorySlot | undefined {
-        for (const entry of this.entries(this.getChests(origin))) {
-            if (entry.item.matchesFilter(itemFilter)) {
-                return entry
-            }
-        }
-
-        return undefined
-    }
-
-    // Nearest chest holding at least `minAmount` matching items (so the trip is worth it)
-    findChestWithItem(itemFilter: ItemStackFilter, origin?: Vector3, minAmount = 1): StorageChest | undefined {
-        for (const chest of this.getChests(origin)) {
-            if (countMatching(chest.container, itemFilter) >= minAmount) {
-                return chest
-            }
-        }
-
-        return undefined
-    }
-
-    // ---------- Withdrawing ----------
-
-    // Moves up to `amount` matching items into `into` (e.g. a villager's inventory), nearest chests first.
-    // Stops safely when `into` is full; returns how many items were actually moved.
-    withdraw(itemFilter: ItemStackFilter, amount: number, into: Container, origin?: Vector3): number {
-        let remaining = amount
-
-        for (const { chest, slot, item } of this.entries(this.getChests(origin))) {
-            if (remaining <= 0) {
-                break
-            }
-
-            if (!item.matchesFilter(itemFilter)) {
-                continue
-            }
-
-            remaining -= moveItems(chest.container, slot, into, Math.min(item.amount, remaining))
-        }
-
-        return amount - remaining
-    }
-
-    removeItem(itemFilter: ItemStackFilter, amount: number): number {
-        let remaining = amount
-
-        for (const { chest, slot, item } of this.entries()) {
-            if (remaining <= 0) {
-                break
-            }
-
-            if (!item.matchesFilter(itemFilter)) {
-                continue
-            }
-
-            const taken = Math.min(item.amount, remaining)
-            remaining -= taken
-
-            if (taken === item.amount) {
-                chest.container.setItem(slot, undefined)
-            }
-            else {
-                item.amount -= taken
-                chest.container.setItem(slot, item)
-            }
-        }
-
-        return amount - remaining
-    }
-
-    // ---------- Depositing ----------
-
-    getRoomFor(itemStack: ItemStack): number {
-        let total = 0
-
-        for (const chest of this.liveChests()) {
-            total += getRoomFor(chest.container, itemStack)
-        }
-
-        return total
-    }
-
-    canFit(itemStack: ItemStack): boolean {
-        return this.getRoomFor(itemStack) >= itemStack.amount
-    }
-
-    findDepositChest(
-        itemStack: ItemStack,
-        origin?: Vector3,
-        accept?: (chest: StorageChest) => boolean
-    ): StorageChest | undefined {
-        let sameType: StorageChest | undefined
-        let fitsAll: StorageChest | undefined
-        let fitsSome: StorageChest | undefined
-
-        for (const chest of this.getChests(origin)) {
-            const room = getRoomFor(chest.container, itemStack)
-
-            if (room <= 0) {
-                continue
-            }
-
-            if (accept !== undefined && !accept(chest)) {
-                continue
-            }
-
-            if (containsType(chest.container, itemStack.typeId)) {
-                sameType = chest
-                break
-            }
-
-            if (fitsAll === undefined && room >= itemStack.amount) {
-                fitsAll = chest
-            }
-
-            fitsSome ??= chest
-        }
-
-        return sameType ?? fitsAll ?? fitsSome
-    }
-
-    // True if some chest other than `except` already holds this item type and still has room for it
-    hasOtherChestWithType(
-        itemStack: ItemStack,
-        except: StorageChest,
-        accept?: (chest: StorageChest) => boolean
-    ): boolean {
-        for (const chest of this.liveChests()) {
-            if (chest === except || (accept !== undefined && !accept(chest))) {
-                continue
-            }
-
-            if (containsType(chest.container, itemStack.typeId) && getRoomFor(chest.container, itemStack) > 0) {
-                return true
-            }
-        }
-
-        return false
-    }
-
-    canDeposit(source: Container, itemFilter?: ItemStackFilter): boolean {
-        for (const item of source) {
-            if (item === undefined) {
-                continue
-            }
-
-            if (itemFilter !== undefined && !item.matchesFilter(itemFilter)) {
-                continue
-            }
-
-            if (this.findDepositChest(item) !== undefined) {
-                return true
-            }
-        }
-
-        return false
-    }
-
-    deposit(source: Container, itemFilter?: ItemStackFilter, origin?: Vector3): number {
-        let total = 0
-
-        for (let slot = 0; slot < source.size; slot++) {
-            let item = source.getItem(slot)
-
-            if (item !== undefined && itemFilter !== undefined && !item.matchesFilter(itemFilter)) {
-                continue
-            }
-
-            while (item !== undefined) {
-                const chest = this.findDepositChest(item, origin)
-
-                if (chest === undefined) {
-                    break
+                else if (item.typeId === itemStack.typeId) {
+                    if (item.isStackableWith(itemStack) && item.amount < item.maxAmount) {
+                        return chest
+                    }
+                    holdsItem = true
                 }
+            }
 
-                const moved = moveItems(source, slot, chest.container, item.amount)
-
-                if (moved === 0) {
-                    break
+            if (freeSlot) {
+                hasFreeSlot ??= chest
+                if (holdsItem) {
+                    holdsItemWithRoom ??= chest
                 }
-
-                total += moved
-                item = source.getItem(slot)
             }
         }
 
-        return total
-    }
-
-    depositInto(chest: StorageChest, source: Container, itemFilter?: ItemStackFilter): number {
-        if (!chest.container.isValid) {
-            return 0
-        }
-
-        let total = 0
-
-        for (let slot = 0; slot < source.size; slot++) {
-            const item = source.getItem(slot)
-
-            if (item === undefined) {
-                continue
-            }
-
-            if (itemFilter !== undefined && !item.matchesFilter(itemFilter)) {
-                continue
-            }
-
-            total += moveItems(source, slot, chest.container, item.amount)
-        }
-
-        return total
-    }
-
-    depositPlanInto(
-        chest: StorageChest,
-        source: Container,
-        plan: DepositPlan,
-        accept?: (chest: StorageChest) => boolean,
-        preferExisting = true
-    ): number {
-        if (!chest.container.isValid) {
-            return 0
-        }
-
-        const remaining = { ...plan }
-        let total = 0
-
-        for (let slot = 0; slot < source.size; slot++) {
-            const item = source.getItem(slot)
-
-            if (item === undefined) {
-                continue
-            }
-
-            const wanted = remaining[item.typeId] ?? 0
-
-            if (wanted <= 0) {
-                continue
-            }
-
-            if (preferExisting && !containsType(chest.container, item.typeId) && this.hasOtherChestWithType(item, chest, accept)) {
-                continue
-            }
-
-            const moved = moveItems(source, slot, chest.container, wanted)
-
-            remaining[item.typeId] = wanted - moved
-            total += moved
-        }
-
-        return total
-    }
-
-    // Human-readable reason a deposit into `chest` moved nothing, for debug logging
-    explainDepositFailure(chest: StorageChest, source: Container, plan: DepositPlan): string {
-        const container = chest.container
-        const parts = [`chest has ${container.size} slots, ${container.emptySlotsCount} empty`]
-
-        for (const typeId of Object.keys(plan)) {
-            for (let slot = 0; slot < source.size; slot++) {
-                const item = source.getItem(slot)
-
-                if (item?.typeId !== typeId) {
-                    continue
-                }
-
-                parts.push(
-                    `${typeId} x${item.amount} (villagerItem ${item.isVillagerItem}): `
-                    + `room ${getRoomFor(container, item)}, chestHasType ${containsType(container, typeId)}, `
-                    + `otherChestHasType ${this.hasOtherChestWithType(item, chest)}`
-                )
-                break
-            }
-        }
-
-        return parts.join("; ")
-    }
-
-    addItem(itemStack: ItemStack): ItemStack | undefined {
-        let leftover: ItemStack | undefined = itemStack
-
-        for (const chest of this.liveChests()) {
-            if (leftover === undefined) {
-                break
-            }
-
-            leftover = chest.container.addItem(leftover)
-        }
-
-        return leftover
-    }
-
-    get emptySlotCount(): number {
-        let total = 0
-
-        for (const chest of this.liveChests()) {
-            total += chest.container.emptySlotsCount
-        }
-
-        return total
-    }
-
-    get isFull(): boolean {
-        return this.emptySlotCount === 0
+        return holdsItemWithRoom ?? hasFreeSlot
     }
 }
 
+ContainerSlot.prototype.matchesFilter = function (itemFilter) {
+    const item = this.getItem()
+    if (item === undefined) {
+        return false
+    }
+    return item.matchesFilter(itemFilter)
+}
+
 ItemStack.prototype.matchesFilter = function (itemFilter) {
+    if (itemFilter === undefined) {
+        return true
+    }
+
     const {
         includesTypes: includesType,
         excludesTypes: excludesType,
@@ -561,32 +428,85 @@ ItemStack.prototype.matchesFilter = function (itemFilter) {
 
 Container.prototype[Symbol.iterator] = function* () {
     for (let i = 0; i < this.size; i++) {
-        yield this.getItem(i)
+        yield this.getSlot(i)
+    }
+}
+
+Container.prototype.entries = function* () {
+    for (let slotIndex = 0; slotIndex < this.size; slotIndex++) {
+        yield { slotIndex, slot: this.getSlot(slotIndex) }
     }
 }
 
 Container.prototype.getItemCount = function (itemFilter) {
     let total = 0
 
-    for (const item of this) {
-        if (item?.matchesFilter(itemFilter)) {
-            total += item.amount
+    for (const slot of this) {
+        if (slot.matchesFilter(itemFilter)) {
+            total += slot.amount
         }
     }
 
     return total
 }
 
+Container.prototype.hasItem = function (itemFilter) {
+    for (const slot of this) {
+        if (slot.matchesFilter(itemFilter)) {
+            return true
+        }
+    }
+
+    return false
+}
+
 Container.prototype.getItemCounts = function (itemFilter) {
     const totals: Record<string, number> = {}
 
-    for (const item of this) {
-        if (item?.matchesFilter(itemFilter)) {
-            totals[item.typeId] = (totals[item.typeId] ?? 0) + item.amount
+    for (const slot of this) {
+        if (slot.matchesFilter(itemFilter)) {
+            totals[slot.typeId] = (totals[slot.typeId] ?? 0) + slot.amount
         }
     }
 
     return totals
+}
+
+ItemStack.prototype.matchesItem = function (otherItem) {
+    if (this.typeId !== otherItem.typeId) {
+        return false
+    }
+
+    if (this.nameTag !== otherItem.nameTag) {
+        return false
+    }
+
+    if (!arraysAreEqual(this.getLore(), otherItem.getLore(), true)) {
+        return false
+    }
+
+    return true
+}
+
+Container.prototype.isSameContainer = function (otherContainer) {
+    if (this.size !== otherContainer.size || this.size === 0) {
+        return false
+    }
+
+    const slotIndex = Math.floor(Math.random() * this.size)
+    const originalItem = this.getItem(slotIndex)
+
+    const markerTag = `same_container_${Math.random().toString(36).slice(2)}`
+    const marker = new ItemStack("minecraft:stick", 1)
+    marker.nameTag = markerTag
+
+    try {
+        this.setItem(slotIndex, marker)
+        return otherContainer.getItem(slotIndex)?.nameTag === markerTag
+    }
+    finally {
+        this.setItem(slotIndex, originalItem)
+    }
 }
 
 Object.defineProperty(Container.prototype, "isFull", {
@@ -594,3 +514,37 @@ Object.defineProperty(Container.prototype, "isFull", {
         return this.emptySlotsCount === 0
     }
 })
+
+Container.prototype.findItem = function (itemFilter) {
+    for (const { slotIndex, slot } of this.entries()) {
+        const item = slot.getItem()?.clone()
+        if (item === undefined) {
+            continue
+        }
+
+        if (!item.matchesFilter(itemFilter)) {
+            continue
+        }
+
+        return { item, slotIndex }
+    }
+
+    return undefined
+}
+
+Container.prototype.filterItems = function (itemFilter) {
+    const matchingItems = []
+
+    for (const { slotIndex, slot } of this.entries()) {
+        const item = slot.getItem()
+        if (item === undefined) {
+            continue
+        }
+
+        if (item.matchesFilter(itemFilter)) {
+            matchingItems.push({ item, slotIndex })
+        }
+    }
+
+    return matchingItems
+}

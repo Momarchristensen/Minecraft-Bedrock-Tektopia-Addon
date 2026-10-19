@@ -1,0 +1,81 @@
+{
+  "format_version": "1.10.0",
+  "minecraft:client_entity": {
+    "description": {
+      "identifier": "minecraft:cow",
+      "min_engine_version": "1.8.0",
+      "materials": {
+        "default": "cow",
+        "cold": "cow_cold",
+        "wireframe_mask": "entity_wireframe_mask",
+        "wireframe_outline": "entity_wireframe_outline"
+      },
+      "textures": {
+        "default": "textures/entity/cow/cow_v2",
+        "warm": "textures/entity/cow/cow_warm",
+        "cold": "textures/entity/cow/cow_cold",
+        "baby_default": "textures/entity/cow/cow_temperate_baby",
+        "baby_cold": "textures/entity/cow/cow_cold_baby",
+        "baby_warm": "textures/entity/cow/cow_warm_baby",
+        "wireframe_default": "textures/wireframe/entity/cow/cow_v2",
+        "wireframe_warm": "textures/wireframe/entity/cow/cow_warm",
+        "wireframe_cold": "textures/wireframe/entity/cow/cow_cold",
+        "wireframe_baby_default": "textures/wireframe/entity/cow/cow_temperate_baby",
+        "wireframe_baby_cold": "textures/wireframe/entity/cow/cow_cold_baby",
+        "wireframe_baby_warm": "textures/wireframe/entity/cow/cow_warm_baby"
+      },
+      "geometry": {
+        "default": "geometry.cow.v2",
+        "warm": "geometry.cow.warm",
+        "cold": "geometry.cow.cold",
+        "baby": "geometry.cow.baby",
+        "default_mask": "geometry.cow.v2.mask",
+        "default_shell": "geometry.cow.v2.shell",
+        "warm_mask": "geometry.cow.warm.mask",
+        "warm_shell": "geometry.cow.warm.shell",
+        "cold_mask": "geometry.cow.cold.mask",
+        "cold_shell": "geometry.cow.cold.shell",
+        "baby_mask": "geometry.cow.baby.mask",
+        "baby_shell": "geometry.cow.baby.shell"
+      },
+      "animations": {
+        "setup": "animation.cow.setup",
+        "walk": "animation.quadruped.walk",
+        "look_at_target": "animation.common.look_at_target",
+        "baby_transform": "animation.cow.baby_transform",
+        "wireframe_scale": "animation.cow.wireframe_scale"
+      },
+      "scripts": {
+        "animate": [
+          "setup",
+          {
+            "walk": "query.modified_move_speed"
+          },
+          "look_at_target",
+          {
+            "wireframe_scale": "query.property('tektopia:show_wireframe')"
+          }
+        ],
+        "pre_animation": [
+          "t.variant = query.property('minecraft:climate_variant');",
+          "v.index = (t.variant == 'temperate') ? 0 : ((t.variant == 'warm') ? 1 : 2);",
+          "v.is_cold = t.variant == 'cold';",
+          "v.wireframe_t = math.min(query.distance_from_camera * 0.03, 1.5);"
+        ],
+        "scale": "query.is_baby ? 2.0 : 1.0"
+      },
+      "render_controllers": [
+        "controller.render.cow.v3",
+        {
+          "controller.render.cow.v3.wireframe_mask": "query.property('tektopia:show_wireframe')"
+        },
+        {
+          "controller.render.cow.v3.wireframe_outline": "query.property('tektopia:show_wireframe')"
+        }
+      ],
+      "spawn_egg": {
+        "texture": "spawn_egg_cow"
+      }
+    }
+  }
+}

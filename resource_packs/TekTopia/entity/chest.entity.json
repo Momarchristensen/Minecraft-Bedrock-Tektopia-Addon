@@ -1,0 +1,47 @@
+{
+    "format_version": "1.10.0",
+    "minecraft:client_entity": {
+        "description": {
+            "identifier": "tektopia:chest_display",
+            "materials": {
+                "default": "entity_alphatest"
+            },
+            "textures": {
+                "normal": "textures/entity/chest_entity/normal",
+                "trapped": "textures/entity/chest_entity/trapped",
+                "copper_default": "textures/entity/chest_entity/copper_default",
+                "copper_exposed": "textures/entity/chest_entity/copper_exposed",
+                "copper_oxidized": "textures/entity/chest_entity/copper_oxidized",
+                "copper_weathered": "textures/entity/chest_entity/copper_weathered",
+                "ender": "textures/entity/chest_entity/ender",
+                "double_normal": "textures/entity/chest_entity/double_normal",
+                "double_trapped": "textures/entity/chest_entity/trapped_double",
+                "double_copper_default": "textures/entity/chest_entity/copper_default_double",
+                "double_copper_exposed": "textures/entity/chest_entity/copper_exposed_double",
+                "double_copper_oxidized": "textures/entity/chest_entity/copper_oxidized_double",
+                "double_copper_weathered": "textures/entity/chest_entity/copper_weathered_double"
+            },
+            "geometry": {
+                "single": "geometry.chest",
+                "double": "geometry.double_chest"
+            },
+            "animations": {
+                "main": "animation.chest.main"
+            },
+            "scripts": {
+                "initialize": [
+                    "variable.openness = (query.property('tektopia:open') ? 1 : 0);"
+                ],
+                "pre_animation": [
+                    "variable.openness = math.clamp(variable.openness + (query.property('tektopia:open') ? 1 : -1) * query.delta_time * 2, 0, 1);"
+                ],
+                "animate": [
+                    "main"
+                ]
+            },
+            "render_controllers": [
+                "controller.render.chest"
+            ]
+        }
+    }
+}

@@ -66,8 +66,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     acacia_door: {
         break: {
@@ -114,8 +128,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     acacia_double_slab: {
         break: {
@@ -162,8 +190,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     acacia_fence: {
         break: {
@@ -210,8 +252,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     acacia_fence_gate: {
         break: {
@@ -258,8 +314,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     acacia_hanging_sign: {
         break: {
@@ -354,8 +424,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     acacia_planks: {
         break: {
@@ -402,8 +486,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     acacia_pressure_plate: {
         break: {
@@ -450,8 +548,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     acacia_sapling: {
         break: {
@@ -532,8 +644,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     acacia_stairs: {
         break: {
@@ -580,8 +706,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     acacia_standing_sign: {
         break: {
@@ -628,8 +768,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     acacia_trapdoor: {
         break: {
@@ -676,8 +830,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     acacia_wall_sign: {
         break: {
@@ -724,8 +892,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     acacia_wood: {
         break: {
@@ -772,8 +954,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     activator_rail: {
         break: {
@@ -2100,8 +2296,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     basalt: {
         break: {
@@ -2196,8 +2406,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     bedrock: {
         break: {
@@ -2268,8 +2492,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     bell: {
         break: {
@@ -2376,8 +2614,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     birch_door: {
         break: {
@@ -2424,8 +2676,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     birch_double_slab: {
         break: {
@@ -2472,8 +2738,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     birch_fence: {
         break: {
@@ -2520,8 +2800,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     birch_fence_gate: {
         break: {
@@ -2568,8 +2862,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     birch_hanging_sign: {
         break: {
@@ -2664,8 +2972,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     birch_planks: {
         break: {
@@ -2712,8 +3034,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     birch_pressure_plate: {
         break: {
@@ -2760,8 +3096,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     birch_sapling: {
         break: {
@@ -2842,8 +3192,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     birch_stairs: {
         break: {
@@ -2890,8 +3254,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     birch_standing_sign: {
         break: {
@@ -2938,8 +3316,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     birch_trapdoor: {
         break: {
@@ -2986,8 +3378,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     birch_wall_sign: {
         break: {
@@ -3034,8 +3440,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     birch_wood: {
         break: {
@@ -3082,8 +3502,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     black_candle: {
         break: {
@@ -4122,8 +4556,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     border_block: {
         break: {
@@ -4620,8 +5068,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     brown_shulker_box: {
         break: {
@@ -5088,8 +5550,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     candle: {
         break: {
@@ -5226,8 +5702,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     carved_pumpkin: {
         break: {
@@ -5274,8 +5764,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     cave_vines: {
         break: {
@@ -6200,8 +6704,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     chipped_anvil: {
         break: {
@@ -7107,8 +7625,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     command_block: {
         break: {
@@ -7191,8 +7723,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     concrete: {
         break: {
@@ -7386,7 +7932,13 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "block.copper_chest.open"
         },
-        "chest.close": null
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "block.copper_chest.closed"
+        }
     },
     copper_door: {
         break: {
@@ -7542,8 +8094,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     copper_trapdoor: {
         break: {
@@ -7935,8 +8501,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     creaking_heart: {
         break: {
@@ -9458,8 +10038,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     dark_oak_door: {
         break: {
@@ -9506,8 +10100,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     dark_oak_double_slab: {
         break: {
@@ -9554,8 +10162,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     dark_oak_fence: {
         break: {
@@ -9602,8 +10224,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     dark_oak_fence_gate: {
         break: {
@@ -9650,8 +10286,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     dark_oak_hanging_sign: {
         break: {
@@ -9746,8 +10396,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     dark_oak_planks: {
         break: {
@@ -9794,8 +10458,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     dark_oak_pressure_plate: {
         break: {
@@ -9842,8 +10520,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     dark_oak_sapling: {
         break: {
@@ -9924,8 +10616,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     dark_oak_stairs: {
         break: {
@@ -9972,8 +10678,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     dark_oak_trapdoor: {
         break: {
@@ -10020,8 +10740,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     dark_oak_wood: {
         break: {
@@ -10068,8 +10802,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     dark_prismarine: {
         break: {
@@ -10212,8 +10960,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     darkoak_wall_sign: {
         break: {
@@ -10260,8 +11022,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     daylight_detector: {
         break: {
@@ -10308,8 +11084,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     daylight_detector_inverted: {
         break: {
@@ -10356,8 +11146,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     dead_brain_coral: {
         break: {
@@ -11901,8 +12705,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     dragon_egg: {
         break: {
@@ -12209,8 +13027,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     end_stone: {
         break: {
@@ -12307,6 +13139,44 @@ export const blockSounds: Record<string, BlockSounds> = {
         "door.close": null,
         "chest.open": null,
         "chest.close": null
+    },
+    ender_chest: {
+        break: {
+            pitch: [
+                0.8,
+                1.0
+            ],
+            sound: "dig.stone",
+            volume: 1.0
+        },
+        place: {
+            pitch: [
+                0.8,
+                1.0
+            ],
+            sound: "place.stone",
+            volume: 1.0
+        },
+        "fence_gate.close": null,
+        "fence_gate.open": null,
+        "door.open": null,
+        "door.close": null,
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.enderchestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.enderchestclosed",
+            volume: 0.5
+        }
     },
     exposed_chiseled_copper: {
         break: {
@@ -12461,7 +13331,13 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "block.copper_chest.open"
         },
-        "chest.close": null
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "block.copper_chest.closed"
+        }
     },
     exposed_copper_door: {
         break: {
@@ -12815,8 +13691,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     fence_gate: {
         break: {
@@ -12863,8 +13753,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     fern: {
         break: {
@@ -12935,8 +13839,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     fire_coral: {
         break: {
@@ -13089,8 +14007,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     flowering_azalea: {
         break: {
@@ -15201,8 +16133,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     jungle_button: {
         break: {
@@ -15249,8 +16195,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     jungle_door: {
         break: {
@@ -15297,8 +16257,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     jungle_double_slab: {
         break: {
@@ -15345,8 +16319,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     jungle_fence: {
         break: {
@@ -15393,8 +16381,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     jungle_fence_gate: {
         break: {
@@ -15441,8 +16443,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     jungle_hanging_sign: {
         break: {
@@ -15537,8 +16553,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     jungle_planks: {
         break: {
@@ -15585,8 +16615,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     jungle_pressure_plate: {
         break: {
@@ -15633,8 +16677,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     jungle_sapling: {
         break: {
@@ -15715,8 +16773,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     jungle_stairs: {
         break: {
@@ -15763,8 +16835,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     jungle_standing_sign: {
         break: {
@@ -15811,8 +16897,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     jungle_trapdoor: {
         break: {
@@ -15859,8 +16959,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     jungle_wall_sign: {
         break: {
@@ -15907,8 +17021,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     jungle_wood: {
         break: {
@@ -15955,8 +17083,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     kelp: {
         break: {
@@ -16226,8 +17368,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     lever: {
         break: {
@@ -18011,8 +19167,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     lit_redstone_lamp: {
         break: {
@@ -18155,8 +19325,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     log2: {
         break: {
@@ -18203,8 +19387,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     loom: {
         break: {
@@ -18251,8 +19449,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     magenta_candle: {
         break: {
@@ -18711,8 +19923,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     mangrove_door: {
         break: {
@@ -18759,8 +19985,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     mangrove_double_slab: {
         break: {
@@ -18807,8 +20047,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     mangrove_fence: {
         break: {
@@ -18855,8 +20109,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     mangrove_fence_gate: {
         break: {
@@ -18903,8 +20171,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     mangrove_hanging_sign: {
         break: {
@@ -18999,8 +20281,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     mangrove_planks: {
         break: {
@@ -19047,8 +20343,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     mangrove_pressure_plate: {
         break: {
@@ -19095,8 +20405,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     mangrove_propagule: {
         break: {
@@ -19201,8 +20525,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     mangrove_stairs: {
         break: {
@@ -19249,8 +20587,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     mangrove_standing_sign: {
         break: {
@@ -19297,8 +20649,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     mangrove_trapdoor: {
         break: {
@@ -19345,8 +20711,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     mangrove_wall_sign: {
         break: {
@@ -19393,8 +20773,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     mangrove_wood: {
         break: {
@@ -19441,8 +20835,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     medium_amethyst_bud: {
         break: {
@@ -19504,8 +20912,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     melon_stem: {
         break: {
@@ -19552,8 +20974,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     mob_spawner: {
         break: {
@@ -20056,8 +21492,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     mycelium: {
         break: {
@@ -20524,8 +21974,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     oak_double_slab: {
         break: {
@@ -20572,8 +22036,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     oak_fence: {
         break: {
@@ -20620,8 +22098,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     oak_hanging_sign: {
         break: {
@@ -20716,8 +22208,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     oak_planks: {
         break: {
@@ -20764,8 +22270,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     oak_sapling: {
         break: {
@@ -20846,8 +22366,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     oak_stairs: {
         break: {
@@ -20894,8 +22428,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     oak_wood: {
         break: {
@@ -20942,8 +22490,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     observer: {
         break: {
@@ -21637,7 +23199,13 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "block.copper_chest.oxidized.open"
         },
-        "chest.close": null
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "block.copper_chest.oxidized.closed"
+        }
     },
     oxidized_copper_door: {
         break: {
@@ -22057,8 +23625,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     pale_oak_door: {
         break: {
@@ -22105,8 +23687,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     pale_oak_double_slab: {
         break: {
@@ -22153,8 +23749,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     pale_oak_fence: {
         break: {
@@ -22201,8 +23811,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     pale_oak_fence_gate: {
         break: {
@@ -22249,8 +23873,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     pale_oak_hanging_sign: {
         break: {
@@ -22345,8 +23983,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     pale_oak_planks: {
         break: {
@@ -22393,8 +24045,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     pale_oak_pressure_plate: {
         break: {
@@ -22441,8 +24107,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     pale_oak_sapling: {
         break: {
@@ -22523,8 +24203,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     pale_oak_stairs: {
         break: {
@@ -22571,8 +24265,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     pale_oak_standing_sign: {
         break: {
@@ -22619,8 +24327,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     pale_oak_trapdoor: {
         break: {
@@ -22667,8 +24389,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     pale_oak_wall_sign: {
         break: {
@@ -22715,8 +24451,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     pale_oak_wood: {
         break: {
@@ -22763,8 +24513,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     pearlescent_froglight: {
         break: {
@@ -23423,8 +25187,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     player_head: {
         break: {
@@ -24503,8 +26281,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     poplar_door: {
         break: {
@@ -24551,8 +26343,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     poplar_double_slab: {
         break: {
@@ -24599,8 +26405,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     poplar_fence: {
         break: {
@@ -24647,8 +26467,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     poplar_fence_gate: {
         break: {
@@ -24695,8 +26529,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     poplar_hanging_sign: {
         break: {
@@ -24767,8 +26615,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     poplar_planks: {
         break: {
@@ -24815,8 +26677,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     poplar_pressure_plate: {
         break: {
@@ -24863,8 +26739,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     poplar_sapling: {
         break: {
@@ -24945,8 +26835,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     poplar_stairs: {
         break: {
@@ -24993,8 +26897,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     poplar_standing_sign: {
         break: {
@@ -25041,8 +26959,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     poplar_trapdoor: {
         break: {
@@ -25089,8 +27021,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     poplar_wall_sign: {
         break: {
@@ -25137,8 +27083,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     poplar_wood: {
         break: {
@@ -25185,8 +27145,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     poppy: {
         break: {
@@ -25345,8 +27319,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     powered_repeater: {
         break: {
@@ -25393,8 +27381,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     prismarine: {
         break: {
@@ -25657,8 +27659,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     pumpkin_stem: {
         break: {
@@ -25705,8 +27721,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     purple_candle: {
         break: {
@@ -26747,8 +28777,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     red_nether_brick: {
         break: {
@@ -27343,8 +29387,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     reeds: {
         break: {
@@ -28269,8 +30327,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     smoker: {
         break: {
@@ -28809,8 +30881,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     soul_fire: {
         break: {
@@ -28953,8 +31039,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     sponge: {
         break: {
@@ -29043,8 +31143,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     spruce_door: {
         break: {
@@ -29091,8 +31205,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     spruce_double_slab: {
         break: {
@@ -29139,8 +31267,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     spruce_fence: {
         break: {
@@ -29187,8 +31329,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     spruce_fence_gate: {
         break: {
@@ -29235,8 +31391,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     spruce_hanging_sign: {
         break: {
@@ -29331,8 +31501,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     spruce_planks: {
         break: {
@@ -29379,8 +31563,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     spruce_pressure_plate: {
         break: {
@@ -29427,8 +31625,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     spruce_sapling: {
         break: {
@@ -29509,8 +31721,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     spruce_stairs: {
         break: {
@@ -29557,8 +31783,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     spruce_standing_sign: {
         break: {
@@ -29605,8 +31845,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     spruce_trapdoor: {
         break: {
@@ -29653,8 +31907,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     spruce_wall_sign: {
         break: {
@@ -29701,8 +31969,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     spruce_wood: {
         break: {
@@ -29749,8 +32031,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     stained_glass: {
         break: {
@@ -29869,8 +32165,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     standing_sign: {
         break: {
@@ -29917,8 +32227,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     sticky_piston: {
         break: {
@@ -30342,8 +32666,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     stripped_acacia_wood: {
         break: {
@@ -30390,8 +32728,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     stripped_bamboo_block: {
         break: {
@@ -30486,8 +32838,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     stripped_birch_wood: {
         break: {
@@ -30534,8 +32900,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     stripped_cherry_log: {
         break: {
@@ -30726,8 +33106,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     stripped_dark_oak_wood: {
         break: {
@@ -30774,8 +33168,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     stripped_jungle_log: {
         break: {
@@ -30822,8 +33230,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     stripped_jungle_wood: {
         break: {
@@ -30870,8 +33292,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     stripped_mangrove_log: {
         break: {
@@ -30918,8 +33354,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     stripped_mangrove_wood: {
         break: {
@@ -30966,8 +33416,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     stripped_oak_log: {
         break: {
@@ -31014,8 +33478,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     stripped_oak_wood: {
         break: {
@@ -31062,8 +33540,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     stripped_pale_oak_log: {
         break: {
@@ -31110,8 +33602,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     stripped_pale_oak_wood: {
         break: {
@@ -31158,8 +33664,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     stripped_poplar_log: {
         break: {
@@ -31206,8 +33726,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     stripped_poplar_wood: {
         break: {
@@ -31254,8 +33788,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     stripped_spruce_log: {
         break: {
@@ -31302,8 +33850,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     stripped_spruce_wood: {
         break: {
@@ -31350,8 +33912,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     stripped_warped_hyphae: {
         break: {
@@ -31864,8 +34440,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     torchflower: {
         break: {
@@ -31960,8 +34550,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     trapped_chest: {
         break: {
@@ -32008,8 +34612,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     trial_spawner: {
         break: {
@@ -32422,8 +35040,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     unpowered_comparator: {
         break: {
@@ -32494,8 +35126,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     vault: {
         break: {
@@ -32600,8 +35246,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     wall_sign: {
         break: {
@@ -32648,8 +35308,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     warped_button: {
         break: {
@@ -33582,7 +36256,13 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "block.copper_chest.open"
         },
-        "chest.close": null
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "block.copper_chest.closed"
+        }
     },
     waxed_copper_door: {
         break: {
@@ -33987,7 +36667,13 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "block.copper_chest.open"
         },
-        "chest.close": null
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "block.copper_chest.closed"
+        }
     },
     waxed_exposed_copper_door: {
         break: {
@@ -34458,7 +37144,13 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "block.copper_chest.oxidized.open"
         },
-        "chest.close": null
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "block.copper_chest.oxidized.closed"
+        }
     },
     waxed_oxidized_copper_door: {
         break: {
@@ -34896,7 +37588,13 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "block.copper_chest.weathered.open"
         },
-        "chest.close": null
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "block.copper_chest.weathered.closed"
+        }
     },
     waxed_weathered_copper_door: {
         break: {
@@ -35334,7 +38032,13 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "block.copper_chest.weathered.open"
         },
-        "chest.close": null
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "block.copper_chest.weathered.closed"
+        }
     },
     weathered_copper_door: {
         break: {
@@ -36220,8 +38924,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     wooden_button: {
         break: {
@@ -36268,8 +38986,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     wooden_door: {
         break: {
@@ -36316,8 +39048,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     wooden_pressure_plate: {
         break: {
@@ -36364,8 +39110,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     wooden_slab: {
         break: {
@@ -36412,8 +39172,22 @@ export const blockSounds: Record<string, BlockSounds> = {
             ],
             sound: "close.wooden_door"
         },
-        "chest.open": null,
-        "chest.close": null
+        "chest.open": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestopen",
+            volume: 0.5
+        },
+        "chest.close": {
+            pitch: [
+                0.9,
+                1.0
+            ],
+            sound: "random.chestclosed",
+            volume: 0.5
+        }
     },
     wool: {
         break: {

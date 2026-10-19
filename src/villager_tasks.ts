@@ -1,86 +1,231 @@
+import {
+    ItemStack,
+    type Container
+} from "@minecraft/server"
+
 import { Registry } from "./registry"
 
 import { randomInt } from "./utils"
 
-import type { DepositPlan } from "./minecraft_extensions"
+import type { CraftStep } from "./recipes"
 
 import type { Village } from "./village"
 
 import type { Villager } from "./villager"
 
-import type { Container } from "@minecraft/server"
+const CROP_SEEDS: Record<string, string> = {
+    "minecraft:wheat": "minecraft:wheat_seeds",
+    "minecraft:beetroot": "minecraft:beetroot_seeds",
+    "minecraft:carrots": "minecraft:carrot",
+    "minecraft:potatoes": "minecraft:potato",
+    "minecraft:melon_stem": "minecraft:melon_seeds",
+    "minecraft:pumpkin_stem": "minecraft:pumpkin_seeds"
+}
+
+export const SEED_ITEMS: readonly string[] = [...new Set(Object.values(CROP_SEEDS))]
+
+export const SEED_CARRY_AMOUNT = 8
+
+export const SEED_KEEP: Readonly<Record<string, number>> = Object.fromEntries(
+    SEED_ITEMS.map(seed => [seed, SEED_CARRY_AMOUNT])
+)
+
+export type UpgradableToolType = (typeof upgradableToolTypes)[number]
+
+export type ArmorType = (typeof armorTypes)[number]
+
+export type VillagerToolType = ArmorType | UpgradableToolType | "shears"
+
+export const upgradableToolTypes = ["axe", "hoe", "sword", "pickaxe"] as const
+export const armorTypes = ["helmet", "chestplate", "leggings", "boots"] as const
+
+export type DepositPlan = Record<string, number>
+
+export interface ToolUpgradePlan {
+    newId: string
+    oldId: string | undefined
+}
+
+export interface ToolCraftPlan {
+    itemId: string
+    crafting?: {
+        plan: CraftStep[]
+        items: Record<string, number>
+        doneSteps?: number[]
+        haveItems?: boolean
+    }
+}
+
+const toolMaterials = [
+    "wooden",
+    "golden",
+    "stone",
+    "copper",
+    "iron",
+    "diamond",
+    "netherite"
+] as const
+
+const armorMaterials = [
+    "leather",
+    "copper",
+    "golden",
+    "chainmail",
+    "iron",
+    "diamond",
+    "netherite"
+] as const
+
+export function getToolCategory(toolType: VillagerToolType) {
+    if (upgradableToolTypes.includes(toolType as UpgradableToolType)) {
+        return "tool"
+    }
+    if (armorTypes.includes(toolType as ArmorType)) {
+        return "armor"
+    }
+    return "item"
+}
+
+export function getToolItems(toolType: VillagerToolType) {
+    const toolCategory = getToolCategory(toolType)
+    if (toolCategory === "tool") {
+        return toolMaterials.map(material => `minecraft:${material}_${toolType}`)
+    }
+    else if (toolCategory === "armor") {
+        return armorMaterials.map(material => `minecraft:${material}_${toolType}`)
+    }
+    return [`minecraft:${toolType}`]
+}
+
+ItemStack.prototype.getToolRank = function () {
+    for (const toolType of upgradableToolTypes) {
+        const toolItems = getToolItems(toolType)
+        const rank = toolItems.indexOf(this.typeId)
+        if (rank >= 0) {
+            return rank
+        }
+    }
+    for (const armorType of armorTypes) {
+        const armorItems = getToolItems(armorType)
+        const rank = armorItems.indexOf(this.typeId)
+        if (rank >= 0) {
+            return rank
+        }
+    }
+    return 0
+}
 
 interface VillagerConfig {
     customTasks: Task[]
     pickupItems: string[] | (() => string[])
     depositItems: (inventory: Container) => DepositPlan | undefined
+    sleepTime: {
+        tired: number
+        startSleep: number
+        endSleep: number
+        working: number
+    }
+    tool: VillagerToolType | VillagerToolType[] | undefined
 }
 
-interface Task {
+export interface Task {
     id: string
     name: string
-    required: boolean
-    // Higher priority tasks are checked first; tasks sharing a priority are picked in random order
     priority: number
     condition: (villager: Villager, village: Village) => boolean
     interruptible?: boolean
     tick?: (villager: Villager, village: Village) => void
+    requiresTool: boolean
 }
+
+// Items villagers craft with (and pick up while crafting). Any of these in a villager's inventory gets deposited.
+export const CRAFTING_ITEMS: VillagerConfig["pickupItems"] = () => [
+    "minecraft:stick",
+    ...Registry.plankTypes
+]
 
 function createDepositPlan(
     inventory: Container,
     pickupItems: VillagerConfig["pickupItems"],
-    shouldDeposit: (counts: Record<string, number>) => boolean
+    shouldDeposit: (counts: Record<string, number>) => boolean,
+    keep?: Readonly<Record<string, number>>,
+    craftingItems?: VillagerConfig["pickupItems"]
 ): DepositPlan | undefined {
     const counts = inventory.getItemCounts({
         includesTypes: resolvePickupItems(pickupItems)
     })
 
-    if (!inventory.isFull && !shouldDeposit(counts)) {
+    // Crafting items are always deposited when the villager has any, regardless of keep or thresholds
+    const craftingCounts = craftingItems !== undefined
+        ? inventory.getItemCounts({ includesTypes: resolvePickupItems(craftingItems) })
+        : {}
+    const hasCraftingItems = Object.values(craftingCounts).some(count => count > 0)
+
+    if (keep !== undefined) {
+        for (const [typeId, amount] of Object.entries(keep)) {
+            const count = counts[typeId]
+
+            if (count !== undefined) {
+                counts[typeId] = Math.max(0, count - amount)
+            }
+        }
+    }
+
+    if (!hasCraftingItems && !inventory.isFull && !shouldDeposit(counts)) {
         return undefined
     }
 
     const plan: DepositPlan = {}
 
     for (const [typeId, count] of Object.entries(counts)) {
-        plan[typeId] = count
+        if (count > 0) {
+            plan[typeId] = count
+        }
+    }
+
+    for (const [typeId, count] of Object.entries(craftingCounts)) {
+        if (count > 0) {
+            plan[typeId] = count
+        }
     }
 
     return Object.keys(plan).length > 0 ? plan : undefined
 }
 
+const NEARBY_ORE_STAND_DISTANCE = 5
+
 export const tektopiaVillagers: Record<string, VillagerConfig> = {
-    "tektopia:farmer": {
+    "tektopia:villager_farmer": {
         customTasks: [
             {
                 id: "till",
                 name: "Till",
-                required: false,
                 priority: 10,
-                condition: (villager: Villager, village: Village) =>
-                    villager.findTillLocation(village) !== undefined,
-                tick: (villager: Villager, village: Village) =>
-                    villager.tickTill(village)
+                condition: (villager, village) =>
+                    villager.findTillLocation(village),
+                tick: (villager, village) =>
+                    villager.tickTill(village),
+                requiresTool: true
             },
             {
                 id: "plant",
                 name: "Plant",
-                required: false,
                 priority: 10,
-                condition: (villager: Villager, village: Village) =>
-                    villager.findPlantLocation(village) !== undefined,
-                tick: (villager: Villager, village: Village) =>
-                    villager.tickPlant(village)
+                condition: (villager, village) =>
+                    villager.findPlantLocation(village),
+                tick: (villager, village) =>
+                    villager.tickPlant(village),
+                requiresTool: false
             },
             {
                 id: "harvest",
                 name: "Harvest",
-                required: false,
                 priority: 10,
-                condition: (villager: Villager, village: Village) =>
-                    villager.findHarvestLocation(village) !== undefined,
-                tick: (villager: Villager, village: Village) =>
-                    villager.tickHarvest(village)
+                condition: (villager, village) =>
+                    villager.findHarvestLocation(village),
+                tick: (villager, village) =>
+                    villager.tickHarvest(village),
+                requiresTool: false
             }
         ],
         pickupItems: [
@@ -101,22 +246,31 @@ export const tektopiaVillagers: Record<string, VillagerConfig> = {
             return createDepositPlan(
                 inventory,
                 this.pickupItems,
-                counts => Object.values(counts).some(count => count > 3)
+                counts => Object.entries(counts).some(([key, count]) => !key.includes("_seeds") && count > 5),
+                SEED_KEEP,
+                CRAFTING_ITEMS
             )
-        }
+        },
+        sleepTime: {
+            tired: 11400,
+            startSleep: 13000,
+            endSleep: 0,
+            working: 600
+        },
+        tool: "hoe"
     },
 
-    "tektopia:lumberjack": {
+    "tektopia:villager_lumberjack": {
         customTasks: [
             {
                 id: "chop",
                 name: "Chop Trees",
-                required: false,
                 priority: 10,
-                condition: (villager: Villager, village: Village) =>
-                    villager.findTree(village) !== undefined,
-                tick: (villager: Villager, village: Village) =>
-                    villager.tickChop(village)
+                condition: (villager, village) =>
+                    villager.findTree(village),
+                tick: (villager, village) =>
+                    villager.tickChopTree(village),
+                requiresTool: true
             }
         ],
         pickupItems: () => [
@@ -128,32 +282,51 @@ export const tektopiaVillagers: Record<string, VillagerConfig> = {
             return createDepositPlan(
                 inventory,
                 this.pickupItems,
-                counts => Object.values(counts).some(count => count > 8)
+                counts => Object.values(counts).some(count => count > 8),
+                undefined,
+                CRAFTING_ITEMS
             )
-        }
+        },
+        sleepTime: {
+            tired: 11400,
+            startSleep: 13000,
+            endSleep: 0,
+            working: 600
+        },
+        tool: "axe"
     },
 
-    "tektopia:miner": {
+    "tektopia:villager_miner": {
         customTasks: [
+            {
+                id: "mine_nearby_ore",
+                name: "Mine Nearby Ore",
+                priority: 12,
+                condition: (villager, village) =>
+                    villager.findOre(village, undefined, NEARBY_ORE_STAND_DISTANCE),
+                tick: (villager, village) =>
+                    villager.tickMineOre(village),
+                requiresTool: true
+            },
             {
                 id: "mine",
                 name: "Mine",
-                required: false,
-                priority: 10,
-                condition: (villager: Villager, village: Village) =>
-                    villager.findMine(village) !== undefined,
-                tick: (villager: Villager, village: Village) =>
-                    villager.tickMine(village)
+                priority: 11,
+                condition: (villager, village) =>
+                    villager.findMine(village, false, false),
+                tick: (villager, village) =>
+                    villager.tickMine(village),
+                requiresTool: true
             },
             {
                 id: "mine_ore",
                 name: "Mine Ore",
-                required: false,
-                priority: 11,
-                condition: (villager: Villager, village: Village) =>
-                    villager.findOre(village) !== undefined,
-                tick: (villager: Villager, village: Village) =>
-                    villager.tickMineOre(village)
+                priority: 10,
+                condition: (villager, village) =>
+                    villager.findOre(village),
+                tick: (villager, village) =>
+                    villager.tickMineOre(village),
+                requiresTool: true
             }
         ],
         pickupItems: () => [
@@ -186,53 +359,60 @@ export const tektopiaVillagers: Record<string, VillagerConfig> = {
                     }
 
                     return total >= 192
-                }
+                },
+                undefined,
+                CRAFTING_ITEMS
             )
-        }
+        },
+        sleepTime: {
+            tired: 10800,
+            startSleep: 12400,
+            endSleep: 23400,
+            working: 0
+        },
+        tool: "pickaxe"
     },
 
-    "tektopia:rancher": {
+    "tektopia:villager_rancher": {
         customTasks: [
             {
                 id: "herd",
                 name: "Herd",
-                required: false,
                 priority: 40,
-                condition: (villager: Villager, village: Village) =>
-                    villager.findHerdEntity(village) !== undefined
+                condition: (villager, village) =>
+                    villager.findHerdEntity(village)
                     || villager.isHoldingLeash,
-                tick: (villager: Villager, village: Village) =>
-                    villager.tickHerdEntity(village)
+                tick: (villager, village) =>
+                    villager.tickHerdEntity(village),
+                requiresTool: false
             },
             {
                 id: "close_gate",
                 name: "Close Gate",
-                required: false,
                 priority: 50,
-                condition: (villager: Villager, village: Village) =>
-                    villager.findOpenGate(village) !== undefined,
-                tick: (villager: Villager) =>
-                    villager.tickCloseGate()
+                condition: (villager, village) =>
+                    villager.findOpenGate(village),
+                tick: villager => villager.tickCloseGate(),
+                requiresTool: false
             },
             {
                 id: "breed",
                 name: "Breed",
-                required: false,
                 priority: 20,
-                condition: (villager: Villager, village: Village) =>
-                    villager.findBreedableEntity(village) !== undefined,
-                tick: (villager: Villager) =>
-                    villager.tickBreedEntity()
+                condition: (villager, village) =>
+                    villager.findBreedableEntity(village),
+                tick: villager => villager.tickBreedEntity(),
+                requiresTool: false
             },
             {
                 id: "shear",
                 name: "Shear",
-                required: false,
                 priority: 20,
-                condition: (villager: Villager, village: Village) =>
-                    villager.findShearableEntity(village) !== undefined,
-                tick: (villager: Villager) =>
-                    villager.tickShearEntity()
+                condition: (villager, village) =>
+                    villager.findShearableEntity(village),
+                tick: villager =>
+                    villager.tickShearEntity(),
+                requiresTool: true
             }
         ],
         pickupItems: () => [
@@ -243,50 +423,66 @@ export const tektopiaVillagers: Record<string, VillagerConfig> = {
             return createDepositPlan(
                 inventory,
                 this.pickupItems,
-                counts => Object.values(counts).some(count => count > 3)
+                counts => Object.values(counts).some(count => count > 6),
+                undefined,
+                CRAFTING_ITEMS
             )
-        }
+        },
+        sleepTime: {
+            tired: 11400,
+            startSleep: 13000,
+            endSleep: 0,
+            working: 600
+        },
+        tool: "shears"
     },
 
-    "tektopia:guard": {
+    "tektopia:villager_guard": {
         customTasks: [
             {
                 id: "guard_post",
                 name: "Guard Post",
-                required: false,
                 priority: 20,
-                condition: (villager: Villager, village: Village) =>
-                    villager.findGuardPost(village) !== undefined,
-                tick: (villager: Villager, village: Village) =>
-                    villager.tickGuardPost(village)
+                condition: (villager, village) =>
+                    villager.findGuardPost(village),
+                tick: (villager, village) =>
+                    villager.tickGuardPost(village),
+                requiresTool: false
             },
             {
                 id: "guard_village",
                 name: "Guard Village",
-                required: false,
                 priority: 0,
                 interruptible: true,
                 condition: () => true,
-                tick: (villager: Villager, village: Village) =>
-                    villager.tickGuardVillage(village)
+                tick: (villager, village) =>
+                    villager.tickGuardVillage(village),
+                requiresTool: false
             }
         ],
         pickupItems: () => [],
-        depositItems: () => undefined
+        depositItems: () => undefined,
+        sleepTime: {
+            tired: 1400,
+            startSleep: 3000,
+            endSleep: 13000,
+            working: 13600
+        },
+        tool: ["sword", "helmet", "chestplate", "leggings", "boots"]
     },
 
-    "tektopia:butcher": {
+    "tektopia:villager_butcher": {
         customTasks: [
             {
                 id: "butcher_animal",
                 name: "Butcher Animal",
-                required: false,
                 priority: 10,
-                condition: (villager: Villager, village: Village) =>
-                    villager.findFullPen(village) !== undefined
-                    && villager.findButcherStructure(village) !== undefined,
-                tick: (villager: Villager, village: Village) =>
-                    villager.tickButcher(village)
+                condition: (villager, village) =>
+                    villager.findFullPen(village)
+                    && villager.findButcherStructure(village),
+                tick: (villager, village) =>
+                    villager.tickButcher(village),
+                requiresTool: true
             }
         ],
         pickupItems: () => [
@@ -302,80 +498,122 @@ export const tektopiaVillagers: Record<string, VillagerConfig> = {
             return createDepositPlan(
                 inventory,
                 this.pickupItems,
-                counts => Object.values(counts).some(count => count > 6)
+                counts => Object.values(counts).some(count => count > 6),
+                undefined,
+                CRAFTING_ITEMS
             )
-        }
+        },
+        sleepTime: {
+            tired: 11400,
+            startSleep: 13000,
+            endSleep: 0,
+            working: 600
+        },
+        tool: "axe"
     },
 
-    "tektopia:druid": {
+    "tektopia:villager_druid": {
         customTasks: [
             {
                 id: "refill_mine",
                 name: "Refill Mine",
-                required: false,
                 priority: 10,
-                condition: (villager: Villager, village: Village) => villager.findMine(village, true) !== undefined,
-                tick: (villager: Villager) => villager.tickRefillMine()
+                condition: (villager, village) => villager.findMine(village, true, true),
+                tick: (villager, village) => villager.tickRefillMine(village),
+                requiresTool: false
             },
-             {
+            {
                 id: "grow_crop",
                 name: "Grow Crop",
-                required: false,
                 priority: 10,
-                condition: (villager: Villager, village: Village) => villager.findGrowableCrop(village) !== undefined,
-                tick: (villager: Villager) => villager.tickGrowCrop()
+                condition: (villager, village) => villager.findGrowableCrop(village),
+                tick: (villager, village) => villager.tickGrowCrop(village),
+                requiresTool: false
+            },
+            {
+                id: "grow_sapling",
+                name: "Grow Sapling",
+                priority: 10,
+                condition: (villager, village) => villager.findSapling(village),
+                tick: villager => villager.tickGrowSapling(),
+                requiresTool: false
             }
         ],
         pickupItems: () => [],
-        depositItems: () => undefined
+        depositItems: () => undefined,
+        sleepTime: {
+            tired: 11400,
+            startSleep: 13000,
+            endSleep: 0,
+            working: 600
+        },
+        tool: undefined
+    },
+
+    "tektopia:villager_blacksmith": {
+        customTasks: [
+
+        ],
+        pickupItems: () => [],
+        depositItems: () => undefined,
+        sleepTime: {
+            tired: 11400,
+            startSleep: 13000,
+            endSleep: 0,
+            working: 600
+        },
+        tool: undefined
     }
 }
 
 export const globalTasks: Task[] = [
     {
-        id: "eat",
-        name: "Eat",
-        required: true,
-        priority: 100,
-        condition: () => false,
-        interruptible: true
-    },
-    {
         id: "sleep",
         name: "Sleep",
-        required: true,
         priority: 90,
-        condition: () => false
+        condition: villager => villager.bedTime() !== "working",
+        tick: villager => villager.tickSleep(),
+        requiresTool: false
     },
     {
         id: "item",
         name: "Pickup Items",
-        required: true,
         priority: 80,
-        condition: (villager: Villager, village: Village) => villager.findItem(village) !== undefined,
-        tick: (villager: Villager) => villager.tickPickupItem()
+        condition: (villager, village) => villager.findItem(village),
+        tick: villager => villager.tickPickupItem(),
+        requiresTool: false
     },
     {
         id: "deposit",
         name: "Deposit Items",
-        required: false,
         priority: 70,
-        condition: (villager, village) => villager.findDepositTarget(village) !== undefined,
-        tick: (villager, village) => villager.tickDeposit(village)
+        condition: (villager, village) => villager.checkDepositTask(village),
+        tick: (villager, village) => villager.tickDepositTask(village),
+        requiresTool: false
     },
     {
-        id: "tool",
+        id: "deposit_tool",
+        name: "Deposit Tool",
+        priority: 66,
+        condition: (villager, village) => villager.checkDepositToolTask(village),
+        tick: (villager, village) => villager.tickDepositToolTask(village),
+        requiresTool: false
+    },
+    {
+        id: "get_tool",
         name: "Get Tool",
-        required: true,
-        priority: 60,
-        condition: () => false
+        priority: 65,
+        condition: (villager, village) => villager.checkGetToolTask(village),
+        tick: (villager, village) => villager.tickGetToolTask(village),
+        requiresTool: false
     },
     {
-        id: "craft",
-        name: "Craft Tools",
-        required: false,
-        priority: 50,
-        condition: () => false
+        id: "craft_tool",
+        name: "Craft Tool",
+        priority: 64,
+        condition: (villager, village) => villager.checkCraftToolTask(village),
+        tick: (villager, village) => villager.tickCraftToolTask(village),
+        requiresTool: false
     }
 ]
 
@@ -389,13 +627,10 @@ export function resolvePickupItems(pickupItems: VillagerConfig["pickupItems"]) {
 
 const tieScratch: Task[] = []
 
-// Sorts tasks so higher priority tasks come first
 export function sortTasksByPriority(tasks: Task[]): Task[] {
     return tasks.slice().sort((a, b) => b.priority - a.priority)
 }
 
-// Walks a priority-sorted task list from the highest priority down and returns the first task accepted by isAvailable.
-// Tasks sharing a priority are tried in random order. Tasks with a priority <= minPriority are ignored.
 export function pickTask(
     sortedTasks: Task[],
     isAvailable: (task: Task) => boolean,
@@ -429,7 +664,6 @@ export function pickTask(
                 }
             }
 
-            // Lazy Fisher-Yates: draw a random remaining task, only evaluating conditions as needed
             let remaining = tieScratch.length
             while (remaining > 0) {
                 const pick = randomInt(0, remaining - 1)

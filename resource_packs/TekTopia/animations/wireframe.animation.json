@@ -1,0 +1,340 @@
+{
+  "format_version": "1.8.0",
+  "animations": {
+    "animation.sheep.wireframe_scale": {
+      "loop": true,
+      "bones": {
+        "head_scaler_0": {
+          "scale": [
+            "(query.is_baby) ? (1 + v.wireframe_t / 2.6) : (((query.is_sheared) == 0) ? (1 + v.wireframe_t / 3.1) : (1 + v.wireframe_t / 3.1))",
+            "(query.is_baby) ? (1 + v.wireframe_t / 2.6) : (((query.is_sheared) == 0) ? (1 + v.wireframe_t / 3.1) : (1 + v.wireframe_t / 3.1))",
+            "(query.is_baby) ? (1 + v.wireframe_t / 2.6) : (((query.is_sheared) == 0) ? (1 + v.wireframe_t / 4.1) : (1 + v.wireframe_t / 4.1))"
+          ]
+        },
+        "leg0_scaler_0": {
+          "scale": [
+            "(query.is_baby) ? (1 + v.wireframe_t / 1.1) : (((query.is_sheared) == 0) ? (1 + v.wireframe_t / 2.1) : (1 + v.wireframe_t / 2.1))",
+            "(query.is_baby) ? (1 + v.wireframe_t / 2.6) : (((query.is_sheared) == 0) ? (1 + v.wireframe_t / 6.1) : (1 + v.wireframe_t / 6.1))",
+            "(query.is_baby) ? (1 + v.wireframe_t / 1.1) : (((query.is_sheared) == 0) ? (1 + v.wireframe_t / 2.1) : (1 + v.wireframe_t / 2.1))"
+          ]
+        },
+        "leg1_scaler_0": {
+          "scale": [
+            "(query.is_baby) ? (1 + v.wireframe_t / 1.1) : (((query.is_sheared) == 0) ? (1 + v.wireframe_t / 2.1) : (1 + v.wireframe_t / 2.1))",
+            "(query.is_baby) ? (1 + v.wireframe_t / 2.6) : (((query.is_sheared) == 0) ? (1 + v.wireframe_t / 6.1) : (1 + v.wireframe_t / 6.1))",
+            "(query.is_baby) ? (1 + v.wireframe_t / 1.1) : (((query.is_sheared) == 0) ? (1 + v.wireframe_t / 2.1) : (1 + v.wireframe_t / 2.1))"
+          ]
+        },
+        "leg2_scaler_0": {
+          "scale": [
+            "(query.is_baby) ? (1 + v.wireframe_t / 1.1) : (((query.is_sheared) == 0) ? (1 + v.wireframe_t / 2.1) : (1 + v.wireframe_t / 2.1))",
+            "(query.is_baby) ? (1 + v.wireframe_t / 2.6) : (((query.is_sheared) == 0) ? (1 + v.wireframe_t / 6.1) : (1 + v.wireframe_t / 6.1))",
+            "(query.is_baby) ? (1 + v.wireframe_t / 1.1) : (((query.is_sheared) == 0) ? (1 + v.wireframe_t / 2.1) : (1 + v.wireframe_t / 2.1))"
+          ]
+        },
+        "leg3_scaler_0": {
+          "scale": [
+            "(query.is_baby) ? (1 + v.wireframe_t / 1.1) : (((query.is_sheared) == 0) ? (1 + v.wireframe_t / 2.1) : (1 + v.wireframe_t / 2.1))",
+            "(query.is_baby) ? (1 + v.wireframe_t / 2.6) : (((query.is_sheared) == 0) ? (1 + v.wireframe_t / 6.1) : (1 + v.wireframe_t / 6.1))",
+            "(query.is_baby) ? (1 + v.wireframe_t / 1.1) : (((query.is_sheared) == 0) ? (1 + v.wireframe_t / 2.1) : (1 + v.wireframe_t / 2.1))"
+          ]
+        },
+        "body_scaler_0": {
+          "scale": [
+            "(query.is_baby) ? (1 + v.wireframe_t / 3.1) : (((query.is_sheared) == 0) ? (1 + v.wireframe_t / 4.1) : (1 + v.wireframe_t / 4.1))",
+            "(query.is_baby) ? (1 + v.wireframe_t / 2.1) : (((query.is_sheared) == 0) ? (1 + v.wireframe_t / 8.1) : (1 + v.wireframe_t / 8.1))",
+            "(query.is_baby) ? (1 + v.wireframe_t / 4.6) : (((query.is_sheared) == 0) ? (1 + v.wireframe_t / 3.1) : (1 + v.wireframe_t / 3.1))"
+          ]
+        },
+        "body_scaler_1": {
+          "scale": [
+            "(query.is_baby) ? (1) : (((query.is_sheared) == 0) ? (1 + v.wireframe_t / 5.85) : (1))",
+            "(query.is_baby) ? (1) : (((query.is_sheared) == 0) ? (1 + v.wireframe_t / 9.85) : (1))",
+            "(query.is_baby) ? (1) : (((query.is_sheared) == 0) ? (1 + v.wireframe_t / 4.85) : (1))"
+          ]
+        },
+        "head_scaler_1": {
+          "scale": [
+            "(query.is_baby) ? (1) : (((query.is_sheared) == 0) ? (1 + v.wireframe_t / 3.7) : (1))",
+            "(query.is_baby) ? (1) : (((query.is_sheared) == 0) ? (1 + v.wireframe_t / 3.7) : (1))",
+            "(query.is_baby) ? (1) : (((query.is_sheared) == 0) ? (1 + v.wireframe_t / 3.7) : (1))"
+          ]
+        },
+        "leg0_scaler_1": {
+          "scale": [
+            "(query.is_baby) ? (1) : (((query.is_sheared) == 0) ? (1 + v.wireframe_t / 2.6) : (1))",
+            "(query.is_baby) ? (1) : (((query.is_sheared) == 0) ? (1 + v.wireframe_t / 3.6) : (1))",
+            "(query.is_baby) ? (1) : (((query.is_sheared) == 0) ? (1 + v.wireframe_t / 2.6) : (1))"
+          ]
+        },
+        "leg1_scaler_1": {
+          "scale": [
+            "(query.is_baby) ? (1) : (((query.is_sheared) == 0) ? (1 + v.wireframe_t / 2.6) : (1))",
+            "(query.is_baby) ? (1) : (((query.is_sheared) == 0) ? (1 + v.wireframe_t / 3.6) : (1))",
+            "(query.is_baby) ? (1) : (((query.is_sheared) == 0) ? (1 + v.wireframe_t / 2.6) : (1))"
+          ]
+        },
+        "leg2_scaler_1": {
+          "scale": [
+            "(query.is_baby) ? (1) : (((query.is_sheared) == 0) ? (1 + v.wireframe_t / 2.6) : (1))",
+            "(query.is_baby) ? (1) : (((query.is_sheared) == 0) ? (1 + v.wireframe_t / 3.6) : (1))",
+            "(query.is_baby) ? (1) : (((query.is_sheared) == 0) ? (1 + v.wireframe_t / 2.6) : (1))"
+          ]
+        },
+        "leg3_scaler_1": {
+          "scale": [
+            "(query.is_baby) ? (1) : (((query.is_sheared) == 0) ? (1 + v.wireframe_t / 2.6) : (1))",
+            "(query.is_baby) ? (1) : (((query.is_sheared) == 0) ? (1 + v.wireframe_t / 3.6) : (1))",
+            "(query.is_baby) ? (1) : (((query.is_sheared) == 0) ? (1 + v.wireframe_t / 2.6) : (1))"
+          ]
+        }
+      }
+    },
+    "animation.chicken.wireframe_scale": {
+      "loop": true,
+      "bones": {
+        "body_scaler_0": {
+          "scale": [
+            "(query.is_baby) ? (1 + v.wireframe_t / 2.1) : (((v.index) == 0) ? (1 + v.wireframe_t / 3.1) : (((v.index) == 1) ? (1 + v.wireframe_t / 3.1) : (1 + v.wireframe_t / 3.1)))",
+            "(query.is_baby) ? (1 + v.wireframe_t / 2.1) : (((v.index) == 0) ? (1 + v.wireframe_t / 4.1) : (((v.index) == 1) ? (1 + v.wireframe_t / 4.1) : (1 + v.wireframe_t / 4.1)))",
+            "(query.is_baby) ? (1 + v.wireframe_t / 2.1) : (((v.index) == 0) ? (1 + v.wireframe_t / 3.1) : (((v.index) == 1) ? (1 + v.wireframe_t / 3.1) : (1 + v.wireframe_t / 3.1)))"
+          ]
+        },
+        "body_scaler_1": {
+          "scale": [
+            "(query.is_baby) ? (1 + v.wireframe_t / 1.1) : (((v.index) == 0) ? (1) : (((v.index) == 1) ? (1) : (1 + v.wireframe_t / 0.1)))",
+            "(query.is_baby) ? (1 + v.wireframe_t / 0.6) : (((v.index) == 0) ? (1) : (((v.index) == 1) ? (1) : (1 + v.wireframe_t / 1.6)))",
+            "(query.is_baby) ? (1 + v.wireframe_t / 0.6) : (((v.index) == 0) ? (1) : (((v.index) == 1) ? (1) : (1 + v.wireframe_t / 2.6)))"
+          ]
+        },
+        "leg0_scaler_0": {
+          "scale": [
+            "(query.is_baby) ? (1 + v.wireframe_t / 0.6) : (((v.index) == 0) ? (1 + v.wireframe_t / 1.6) : (((v.index) == 1) ? (1 + v.wireframe_t / 1.6) : (1 + v.wireframe_t / 1.6)))",
+            "(query.is_baby) ? (1 + v.wireframe_t / 1.1) : (((v.index) == 0) ? (1 + v.wireframe_t / 2.6) : (((v.index) == 1) ? (1 + v.wireframe_t / 2.6) : (1 + v.wireframe_t / 2.6)))",
+            "(query.is_baby) ? (1 + v.wireframe_t / 0.1) : (((v.index) == 0) ? (1 + v.wireframe_t / 1.6) : (((v.index) == 1) ? (1 + v.wireframe_t / 1.6) : (1 + v.wireframe_t / 1.6)))"
+          ]
+        },
+        "leg0_scaler_1": {
+          "scale": [
+            "(query.is_baby) ? (1 + v.wireframe_t / 0.6) : (((v.index) == 0) ? (1) : (((v.index) == 1) ? (1) : (1)))",
+            "(query.is_baby) ? (1 + v.wireframe_t / 0.1) : (((v.index) == 0) ? (1) : (((v.index) == 1) ? (1) : (1)))",
+            "(query.is_baby) ? (1 + v.wireframe_t / 0.6) : (((v.index) == 0) ? (1) : (((v.index) == 1) ? (1) : (1)))"
+          ]
+        },
+        "leg1_scaler_0": {
+          "scale": [
+            "(query.is_baby) ? (1 + v.wireframe_t / 0.6) : (((v.index) == 0) ? (1 + v.wireframe_t / 1.6) : (((v.index) == 1) ? (1 + v.wireframe_t / 1.6) : (1 + v.wireframe_t / 1.6)))",
+            "(query.is_baby) ? (1 + v.wireframe_t / 1.1) : (((v.index) == 0) ? (1 + v.wireframe_t / 2.6) : (((v.index) == 1) ? (1 + v.wireframe_t / 2.6) : (1 + v.wireframe_t / 2.6)))",
+            "(query.is_baby) ? (1 + v.wireframe_t / 0.1) : (((v.index) == 0) ? (1 + v.wireframe_t / 1.6) : (((v.index) == 1) ? (1 + v.wireframe_t / 1.6) : (1 + v.wireframe_t / 1.6)))"
+          ]
+        },
+        "leg1_scaler_1": {
+          "scale": [
+            "(query.is_baby) ? (1 + v.wireframe_t / 0.6) : (((v.index) == 0) ? (1) : (((v.index) == 1) ? (1) : (1)))",
+            "(query.is_baby) ? (1 + v.wireframe_t / 0.1) : (((v.index) == 0) ? (1) : (((v.index) == 1) ? (1) : (1)))",
+            "(query.is_baby) ? (1 + v.wireframe_t / 0.6) : (((v.index) == 0) ? (1) : (((v.index) == 1) ? (1) : (1)))"
+          ]
+        },
+        "wing0_scaler_0": {
+          "scale": [
+            "1 + v.wireframe_t / 0.6",
+            "(query.is_baby) ? (1 + v.wireframe_t / 0.1) : (((v.index) == 0) ? (1 + v.wireframe_t / 2.1) : (((v.index) == 1) ? (1 + v.wireframe_t / 2.1) : (1 + v.wireframe_t / 2.1)))",
+            "(query.is_baby) ? (1 + v.wireframe_t / 1.1) : (((v.index) == 0) ? (1 + v.wireframe_t / 3.1) : (((v.index) == 1) ? (1 + v.wireframe_t / 3.1) : (1 + v.wireframe_t / 3.1)))"
+          ]
+        },
+        "wing1_scaler_0": {
+          "scale": [
+            "1 + v.wireframe_t / 0.6",
+            "(query.is_baby) ? (1 + v.wireframe_t / 0.1) : (((v.index) == 0) ? (1 + v.wireframe_t / 2.1) : (((v.index) == 1) ? (1 + v.wireframe_t / 2.1) : (1 + v.wireframe_t / 2.1)))",
+            "(query.is_baby) ? (1 + v.wireframe_t / 1.1) : (((v.index) == 0) ? (1 + v.wireframe_t / 3.1) : (((v.index) == 1) ? (1 + v.wireframe_t / 3.1) : (1 + v.wireframe_t / 3.1)))"
+          ]
+        },
+        "head_scaler_0": {
+          "scale": [
+            "(query.is_baby) ? (1) : (((v.index) == 0) ? (1 + v.wireframe_t / 2.1) : (((v.index) == 1) ? (1 + v.wireframe_t / 2.1) : (1 + v.wireframe_t / 2.1)))",
+            "(query.is_baby) ? (1) : (((v.index) == 0) ? (1 + v.wireframe_t / 3.1) : (((v.index) == 1) ? (1 + v.wireframe_t / 3.1) : (1 + v.wireframe_t / 3.1)))",
+            "(query.is_baby) ? (1) : (((v.index) == 0) ? (1 + v.wireframe_t / 1.6) : (((v.index) == 1) ? (1 + v.wireframe_t / 1.6) : (1 + v.wireframe_t / 1.6)))"
+          ]
+        },
+        "head_scaler_1": {
+          "scale": [
+            "(query.is_baby) ? (1) : (((v.index) == 0) ? (1) : (((v.index) == 1) ? (1) : (1 + v.wireframe_t / 3.1)))",
+            "(query.is_baby) ? (1) : (((v.index) == 0) ? (1) : (((v.index) == 1) ? (1) : (1 + v.wireframe_t / 1.6)))",
+            "(query.is_baby) ? (1) : (((v.index) == 0) ? (1) : (((v.index) == 1) ? (1) : (1 + v.wireframe_t / 2.1)))"
+          ]
+        },
+        "comb_scaler_0": {
+          "scale": [
+            "(query.is_baby) ? (1) : (((v.index) == 0) ? (1 + v.wireframe_t / 1.1) : (((v.index) == 1) ? (1 + v.wireframe_t / 1.1) : (1 + v.wireframe_t / 1.1)))",
+            "(query.is_baby) ? (1) : (((v.index) == 0) ? (1 + v.wireframe_t / 1.1) : (((v.index) == 1) ? (1 + v.wireframe_t / 1.1) : (1 + v.wireframe_t / 1.1)))",
+            "(query.is_baby) ? (1) : (((v.index) == 0) ? (1 + v.wireframe_t / 1.1) : (((v.index) == 1) ? (1 + v.wireframe_t / 1.1) : (1 + v.wireframe_t / 1.1)))"
+          ]
+        },
+        "beak_scaler_0": {
+          "scale": [
+            "(query.is_baby) ? (1) : (((v.index) == 0) ? (1 + v.wireframe_t / 2.1) : (((v.index) == 1) ? (1 + v.wireframe_t / 2.1) : (1 + v.wireframe_t / 2.1)))",
+            "(query.is_baby) ? (1) : (((v.index) == 0) ? (1 + v.wireframe_t / 1.1) : (((v.index) == 1) ? (1 + v.wireframe_t / 1.1) : (1 + v.wireframe_t / 1.1)))",
+            "(query.is_baby) ? (1) : (((v.index) == 0) ? (1 + v.wireframe_t / 1.1) : (((v.index) == 1) ? (1 + v.wireframe_t / 1.1) : (1 + v.wireframe_t / 1.1)))"
+          ]
+        }
+      }
+    },
+    "animation.cow.wireframe_scale": {
+      "loop": true,
+      "bones": {
+        "head_scaler_0": {
+          "scale": [
+            "(query.is_baby) ? (1 + v.wireframe_t / 3.1) : (((v.index) == 0) ? (1 + v.wireframe_t / 4.1) : (((v.index) == 1) ? (1 + v.wireframe_t / 4.1) : (1 + v.wireframe_t / 4.1)))",
+            "(query.is_baby) ? (1 + v.wireframe_t / 3.1) : (((v.index) == 0) ? (1 + v.wireframe_t / 4.1) : (((v.index) == 1) ? (1 + v.wireframe_t / 4.1) : (1 + v.wireframe_t / 4.1)))",
+            "(query.is_baby) ? (1 + v.wireframe_t / 2.6) : (((v.index) == 0) ? (1 + v.wireframe_t / 3.1) : (((v.index) == 1) ? (1 + v.wireframe_t / 3.1) : (1 + v.wireframe_t / 3.1)))"
+          ]
+        },
+        "head_scaler_1": {
+          "scale": [
+            "(query.is_baby) ? (1 + v.wireframe_t / 0.6) : (((v.index) == 0) ? (1 + v.wireframe_t / 3.1) : (((v.index) == 1) ? (1 + v.wireframe_t / 2.1) : (1 + v.wireframe_t / 1.1)))",
+            "(query.is_baby) ? (1 + v.wireframe_t / 1.1) : (((v.index) == 0) ? (1 + v.wireframe_t / 1.6) : (((v.index) == 1) ? (1 + v.wireframe_t / 1.1) : (1 + v.wireframe_t / 3.1)))",
+            "(query.is_baby) ? (1 + v.wireframe_t / 0.6) : (((v.index) == 0) ? (1 + v.wireframe_t / 0.6) : (((v.index) == 1) ? (1 + v.wireframe_t / 1.1) : (1 + v.wireframe_t / 1.1)))"
+          ]
+        },
+        "head_scaler_2": {
+          "scale": [
+            "(query.is_baby) ? (1 + v.wireframe_t / 0.6) : (((v.index) == 0) ? (1 + v.wireframe_t / 0.6) : (((v.index) == 1) ? (1 + v.wireframe_t / 1.1) : (1 + v.wireframe_t / 3.1)))",
+            "(query.is_baby) ? (1 + v.wireframe_t / 1.1) : (((v.index) == 0) ? (1 + v.wireframe_t / 1.6) : (((v.index) == 1) ? (1 + v.wireframe_t / 1.1) : (1 + v.wireframe_t / 1.6)))",
+            "(query.is_baby) ? (1 + v.wireframe_t / 0.6) : (((v.index) == 0) ? (1 + v.wireframe_t / 0.6) : (((v.index) == 1) ? (1 + v.wireframe_t / 1.1) : (1 + v.wireframe_t / 0.6)))"
+          ]
+        },
+        "head_scaler_3": {
+          "scale": [
+            "(query.is_baby) ? (1 + v.wireframe_t / 2.1) : (((v.index) == 0) ? (1 + v.wireframe_t / 0.6) : (((v.index) == 1) ? (1 + v.wireframe_t / 2.1) : (1 + v.wireframe_t / 1.1)))",
+            "(query.is_baby) ? (1 + v.wireframe_t / 1.6) : (((v.index) == 0) ? (1 + v.wireframe_t / 1.6) : (((v.index) == 1) ? (1 + v.wireframe_t / 1.1) : (1 + v.wireframe_t / 3.1)))",
+            "(query.is_baby) ? (1 + v.wireframe_t / 0.6) : (((v.index) == 0) ? (1 + v.wireframe_t / 0.6) : (((v.index) == 1) ? (1 + v.wireframe_t / 1.1) : (1 + v.wireframe_t / 1.1)))"
+          ]
+        },
+        "body_scaler_0": {
+          "scale": [
+            "(query.is_baby) ? (1 + v.wireframe_t / 4.1) : (((v.index) == 0) ? (1 + v.wireframe_t / 6.1) : (((v.index) == 1) ? (1 + v.wireframe_t / 6.1) : (1 + v.wireframe_t / 6.6)))",
+            "(query.is_baby) ? (1 + v.wireframe_t / 3.1) : (((v.index) == 0) ? (1 + v.wireframe_t / 9.1) : (((v.index) == 1) ? (1 + v.wireframe_t / 9.1) : (1 + v.wireframe_t / 9.6)))",
+            "(query.is_baby) ? (1 + v.wireframe_t / 6.1) : (((v.index) == 0) ? (1 + v.wireframe_t / 5.1) : (((v.index) == 1) ? (1 + v.wireframe_t / 5.1) : (1 + v.wireframe_t / 5.6)))"
+          ]
+        },
+        "leg0_scaler_0": {
+          "scale": [
+            "(query.is_baby) ? (1 + v.wireframe_t / 1.6) : (((v.index) == 0) ? (1 + v.wireframe_t / 2.1) : (((v.index) == 1) ? (1 + v.wireframe_t / 2.1) : (1 + v.wireframe_t / 2.1)))",
+            "(query.is_baby) ? (1 + v.wireframe_t / 3.1) : (((v.index) == 0) ? (1 + v.wireframe_t / 6.1) : (((v.index) == 1) ? (1 + v.wireframe_t / 6.1) : (1 + v.wireframe_t / 6.1)))",
+            "(query.is_baby) ? (1 + v.wireframe_t / 1.6) : (((v.index) == 0) ? (1 + v.wireframe_t / 2.1) : (((v.index) == 1) ? (1 + v.wireframe_t / 2.1) : (1 + v.wireframe_t / 2.1)))"
+          ]
+        },
+        "leg1_scaler_0": {
+          "scale": [
+            "(query.is_baby) ? (1 + v.wireframe_t / 1.6) : (((v.index) == 0) ? (1 + v.wireframe_t / 2.1) : (((v.index) == 1) ? (1 + v.wireframe_t / 2.1) : (1 + v.wireframe_t / 2.1)))",
+            "(query.is_baby) ? (1 + v.wireframe_t / 3.1) : (((v.index) == 0) ? (1 + v.wireframe_t / 6.1) : (((v.index) == 1) ? (1 + v.wireframe_t / 6.1) : (1 + v.wireframe_t / 6.1)))",
+            "(query.is_baby) ? (1 + v.wireframe_t / 1.6) : (((v.index) == 0) ? (1 + v.wireframe_t / 2.1) : (((v.index) == 1) ? (1 + v.wireframe_t / 2.1) : (1 + v.wireframe_t / 2.1)))"
+          ]
+        },
+        "leg2_scaler_0": {
+          "scale": [
+            "(query.is_baby) ? (1 + v.wireframe_t / 1.6) : (((v.index) == 0) ? (1 + v.wireframe_t / 2.1) : (((v.index) == 1) ? (1 + v.wireframe_t / 2.1) : (1 + v.wireframe_t / 2.1)))",
+            "(query.is_baby) ? (1 + v.wireframe_t / 3.1) : (((v.index) == 0) ? (1 + v.wireframe_t / 6.1) : (((v.index) == 1) ? (1 + v.wireframe_t / 6.1) : (1 + v.wireframe_t / 6.1)))",
+            "(query.is_baby) ? (1 + v.wireframe_t / 1.6) : (((v.index) == 0) ? (1 + v.wireframe_t / 2.1) : (((v.index) == 1) ? (1 + v.wireframe_t / 2.1) : (1 + v.wireframe_t / 2.1)))"
+          ]
+        },
+        "leg3_scaler_0": {
+          "scale": [
+            "(query.is_baby) ? (1 + v.wireframe_t / 1.6) : (((v.index) == 0) ? (1 + v.wireframe_t / 2.1) : (((v.index) == 1) ? (1 + v.wireframe_t / 2.1) : (1 + v.wireframe_t / 2.1)))",
+            "(query.is_baby) ? (1 + v.wireframe_t / 3.1) : (((v.index) == 0) ? (1 + v.wireframe_t / 6.1) : (((v.index) == 1) ? (1 + v.wireframe_t / 6.1) : (1 + v.wireframe_t / 6.1)))",
+            "(query.is_baby) ? (1 + v.wireframe_t / 1.6) : (((v.index) == 0) ? (1 + v.wireframe_t / 2.1) : (((v.index) == 1) ? (1 + v.wireframe_t / 2.1) : (1 + v.wireframe_t / 2.1)))"
+          ]
+        },
+        "body_scaler_1": {
+          "scale": [
+            "(query.is_baby) ? (1) : (((v.index) == 0) ? (1 + v.wireframe_t / 2.1) : (((v.index) == 1) ? (1 + v.wireframe_t / 2.1) : (1 + v.wireframe_t / 6.1)))",
+            "(query.is_baby) ? (1) : (((v.index) == 0) ? (1 + v.wireframe_t / 3.1) : (((v.index) == 1) ? (1 + v.wireframe_t / 3.1) : (1 + v.wireframe_t / 9.1)))",
+            "(query.is_baby) ? (1) : (((v.index) == 0) ? (1 + v.wireframe_t / 0.6) : (((v.index) == 1) ? (1 + v.wireframe_t / 0.6) : (1 + v.wireframe_t / 5.1)))"
+          ]
+        },
+        "body_scaler_2": {
+          "scale": [
+            "(query.is_baby) ? (1) : (((v.index) == 0) ? (1) : (((v.index) == 1) ? (1) : (1 + v.wireframe_t / 2.1)))",
+            "(query.is_baby) ? (1) : (((v.index) == 0) ? (1) : (((v.index) == 1) ? (1) : (1 + v.wireframe_t / 3.1)))",
+            "(query.is_baby) ? (1) : (((v.index) == 0) ? (1) : (((v.index) == 1) ? (1) : (1 + v.wireframe_t / 0.6)))"
+          ]
+        },
+        "head_scaler_4": {
+          "scale": [
+            "(query.is_baby) ? (1) : (((v.index) == 0) ? (1) : (((v.index) == 1) ? (1 + v.wireframe_t / 1.1) : (1)))",
+            "(query.is_baby) ? (1) : (((v.index) == 0) ? (1) : (((v.index) == 1) ? (1 + v.wireframe_t / 1.1) : (1)))",
+            "(query.is_baby) ? (1) : (((v.index) == 0) ? (1) : (((v.index) == 1) ? (1 + v.wireframe_t / 1.1) : (1)))"
+          ]
+        },
+        "head_scaler_5": {
+          "scale": [
+            "(query.is_baby) ? (1) : (((v.index) == 0) ? (1) : (((v.index) == 1) ? (1 + v.wireframe_t / 3.1) : (1)))",
+            "(query.is_baby) ? (1) : (((v.index) == 0) ? (1) : (((v.index) == 1) ? (1 + v.wireframe_t / 1.6) : (1)))",
+            "(query.is_baby) ? (1) : (((v.index) == 0) ? (1) : (((v.index) == 1) ? (1 + v.wireframe_t / 0.6) : (1)))"
+          ]
+        }
+      }
+    },
+    "animation.pig.wireframe_scale": {
+      "loop": true,
+      "bones": {
+        "body_scaler_0": {
+          "scale": [
+            "(query.is_baby) ? (1 + v.wireframe_t / 3.6) : (1 + v.wireframe_t / 5.6)",
+            "(query.is_baby) ? (1 + v.wireframe_t / 3.1) : (1 + v.wireframe_t / 8.6)",
+            "1 + v.wireframe_t / 4.6"
+          ]
+        },
+        "head_scaler_0": {
+          "scale": [
+            "(query.is_baby) ? (1 + v.wireframe_t / 3.61) : (1 + v.wireframe_t / 4.1)",
+            "(query.is_baby) ? (1 + v.wireframe_t / 3.1) : (1 + v.wireframe_t / 4.1)",
+            "(query.is_baby) ? (1 + v.wireframe_t / 3.1) : (1 + v.wireframe_t / 4.1)"
+          ]
+        },
+        "head_scaler_1": {
+          "scale": [
+            "(query.is_baby) ? (1 + v.wireframe_t / 1.6) : (1 + v.wireframe_t / 2.1)",
+            "(query.is_baby) ? (1 + v.wireframe_t / 1.1) : (1 + v.wireframe_t / 1.6)",
+            "1 + v.wireframe_t / 0.6"
+          ]
+        },
+        "leg0_scaler_0": {
+          "scale": [
+            "(query.is_baby) ? (1 + v.wireframe_t / 1.1) : (1 + v.wireframe_t / 2.1)",
+            "(query.is_baby) ? (1 + v.wireframe_t / 1.1) : (1 + v.wireframe_t / 3.1)",
+            "(query.is_baby) ? (1 + v.wireframe_t / 1.1) : (1 + v.wireframe_t / 2.1)"
+          ]
+        },
+        "leg1_scaler_0": {
+          "scale": [
+            "(query.is_baby) ? (1 + v.wireframe_t / 1.1) : (1 + v.wireframe_t / 2.1)",
+            "(query.is_baby) ? (1 + v.wireframe_t / 1.1) : (1 + v.wireframe_t / 3.1)",
+            "(query.is_baby) ? (1 + v.wireframe_t / 1.1) : (1 + v.wireframe_t / 2.1)"
+          ]
+        },
+        "leg3_scaler_0": {
+          "scale": [
+            "(query.is_baby) ? (1 + v.wireframe_t / 1.1) : (1 + v.wireframe_t / 2.1)",
+            "(query.is_baby) ? (1 + v.wireframe_t / 1.1) : (1 + v.wireframe_t / 3.1)",
+            "(query.is_baby) ? (1 + v.wireframe_t / 1.1) : (1 + v.wireframe_t / 2.1)"
+          ]
+        },
+        "leg2_scaler_0": {
+          "scale": [
+            "(query.is_baby) ? (1 + v.wireframe_t / 1.1) : (1 + v.wireframe_t / 2.1)",
+            "(query.is_baby) ? (1 + v.wireframe_t / 1.1) : (1 + v.wireframe_t / 3.1)",
+            "(query.is_baby) ? (1 + v.wireframe_t / 1.1) : (1 + v.wireframe_t / 2.1)"
+          ]
+        },
+        "body_scaler_1": {
+          "scale": [
+            "(query.is_baby) ? (1) : (1 + v.wireframe_t / 5.1)",
+            "(query.is_baby) ? (1) : (1 + v.wireframe_t / 8.1)",
+            "(query.is_baby) ? (1) : (1 + v.wireframe_t / 4.1)"
+          ]
+        }
+      }
+    }
+  }
+}

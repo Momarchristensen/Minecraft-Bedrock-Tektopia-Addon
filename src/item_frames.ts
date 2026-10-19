@@ -3,20 +3,37 @@ import {
     Dimension,
     ItemComponentTypes,
     system,
-    world
+    world,
+    type Vector3
 } from "@minecraft/server"
 
 import {
+    BedStructure,
+    StorageStructure,
+    type StructureType
+} from "./structure"
+
+import {
     areVectorsEqual,
+    calculateChebyshevDistance,
     centerVector,
     getItemFrameRotation,
     rotationToStructureRotation,
-    locationToString
+    locationToString,
+    stringToLocation
 } from "./utils"
 
 import { Village } from "./village"
 
-import type { StructureType } from "./structure"
+import type { LocationString } from "./types"
+
+const FRAME_UNCERTAINTY_RADIUS = 8
+type ItemFrameRecord = typeof world.itemFrameList[number]
+const structureLocationsByItemFrame = new WeakMap<ItemFrameRecord, LocationString>()
+
+export function getItemFrameStructureLocation(itemFrame: ItemFrameRecord) {
+    return structureLocationsByItemFrame.get(itemFrame)
+}
 
 function tickScanItemFrames() {
     system.runJob(scanItemFrames(() => system.runTimeout(tickScanItemFrames, 100)))
@@ -27,12 +44,15 @@ system.run(tickScanItemFrames)
 function* scanItemFrames(callback?: () => void) {
     try {
         const villageItemFrameLocations: string[] = []
+        const claimedStructures = new Set<LocationString>()
+        const uncertainFrames: Array<{ dimensionId: string, location: Vector3 }> = []
 
         for (const itemFrame of world.itemFrameList) {
             const dimension = world.getDimension(itemFrame.dimensionId)
             const block = dimension.getBlockSafe(itemFrame.location)
 
             if (block === undefined) {
+                uncertainFrames.push({ dimensionId: itemFrame.dimensionId, location: itemFrame.location })
                 if (itemFrame.structureId === "townhall") {
                     villageItemFrameLocations.push(locationToString(centerVector(itemFrame.location)))
                 }
@@ -46,6 +66,7 @@ function* scanItemFrames(callback?: () => void) {
 
             if (!item?.typeId.startsWith("tektopia:structure_")) {
                 itemFrame.structureId = undefined
+                structureLocationsByItemFrame.delete(itemFrame)
                 yield
                 continue
             }
@@ -55,6 +76,7 @@ function* scanItemFrames(callback?: () => void) {
             const rotation = getItemFrameRotation(facingDirection)
 
             if (rotation === undefined) {
+                uncertainFrames.push({ dimensionId: itemFrame.dimensionId, location: itemFrame.location })
                 if (isTownhall) {
                     villageItemFrameLocations.push(blockCenterString)
                 }
@@ -67,9 +89,10 @@ function* scanItemFrames(callback?: () => void) {
 
             const structureValidation = yield* dimension.validateStructure(block, rotation, structureId)
 
-            const result = structureValidation.result
+            let result = structureValidation.result
 
             if (!block.isValid) {
+                uncertainFrames.push({ dimensionId: itemFrame.dimensionId, location: itemFrame.location })
                 if (isTownhall) {
                     villageItemFrameLocations.push(blockCenterString)
                 }
@@ -81,6 +104,7 @@ function* scanItemFrames(callback?: () => void) {
                 const doorLocation = structureValidation.doorLocation
                 if (result) {
                     if (isTownhall) {
+                        structureLocationsByItemFrame.delete(itemFrame)
                         if (doorLocation !== undefined) {
                             villageItemFrameLocations.push(blockCenterString)
                             const villageStringCenterList = world.getVillages().map(village => village.centerString)
@@ -92,36 +116,67 @@ function* scanItemFrames(callback?: () => void) {
                     else {
                         const village = structureValidation.village
                         if (village !== undefined) {
-                            village.addStructure(doorLocation ?? itemFrame.location, {
+                            const structureLocation = doorLocation ?? itemFrame.location
+                            const structureLocationString = locationToString(structureLocation)
+                            village.addStructure(structureLocation, {
                                 type: structureId,
                                 rotation
                             })
+                            claimedStructures.add(structureLocationString)
+                            structureLocationsByItemFrame.set(itemFrame, structureLocationString)
 
-                            if (structureId === "storage") {
-                                if (structureValidation.floorLocations !== undefined) {
-                                    const chestList = []
-                                    for (const floorLocation of structureValidation.floorLocations) {
-                                        const floorBlock = dimension.getBlockSafe(floorLocation)
-                                        if (floorBlock?.typeId !== "minecraft:chest") {
-                                            continue
-                                        }
+                            const structure = village.getStructure(structureLocation)
+                            const floorLocations = structureValidation.floorLocations
+                            const claimedRoom = structure?.cacheFloorLocations(
+                                floorLocations,
+                                structureValidation.ownRoomFloorCount
+                            ) ?? true
 
-                                        chestList.push(floorBlock)
-                                    }
-
-                                    village.storage.setContainers(chestList)
+                            if (!claimedRoom) {
+                                village.removeStructure(structureLocationString)
+                                claimedStructures.delete(structureLocationString)
+                                structureLocationsByItemFrame.delete(itemFrame)
+                                result = false
+                            }
+                            else if (structure instanceof StorageStructure) {
+                                if (floorLocations !== undefined) {
+                                    village.storage.setContainers(structure.locationString, structure.getChests(structure.loadFloorLocations()))
                                 }
                             }
+                            else if (structure instanceof BedStructure) {
+                                structure.validateBeds(structure.loadFloorLocations())
+                            }
+                        }
+                        else {
+                            structureLocationsByItemFrame.delete(itemFrame)
                         }
                     }
                 }
+                else {
+                    const previousKey = structureLocationsByItemFrame.get(itemFrame)
+                    if (previousKey !== undefined) {
+                        for (const village of world.getVillages()) {
+                            village.getStructure(stringToLocation(previousKey))?.cacheFloorLocations(undefined)
+                            village.releaseFloorClaims(previousKey)
+                            village.storage.clearContainers(previousKey)
+                        }
+                    }
+                    structureLocationsByItemFrame.delete(itemFrame)
+                }
                 dimension.placeStructureFrame(block.location, structureId, result, rotation)
             }
-            else if (isTownhall) {
-                villageItemFrameLocations.push(blockCenterString)
+            else {
+                uncertainFrames.push({ dimensionId: itemFrame.dimensionId, location: itemFrame.location })
+                if (isTownhall) {
+                    villageItemFrameLocations.push(blockCenterString)
+                }
             }
 
             yield
+        }
+
+        if (world.loadedData) {
+            removeStructuresWithoutFrames(claimedStructures, uncertainFrames)
         }
 
         const keep = new Set(villageItemFrameLocations)
@@ -134,6 +189,37 @@ function* scanItemFrames(callback?: () => void) {
     }
     finally {
         callback?.()
+    }
+}
+
+function removeStructuresWithoutFrames(
+    claimedStructures: Set<LocationString>,
+    uncertainFrames: Array<{ dimensionId: string, location: Vector3 }>
+) {
+    for (const village of world.getVillages()) {
+        if (!village.isValid) {
+            continue
+        }
+
+        for (const structure of village.getStructures()) {
+            if (claimedStructures.has(structure.locationString)) {
+                continue
+            }
+
+            if (village.dimension.getBlockSafe(structure.location) === undefined) {
+                continue
+            }
+
+            const mightHaveUnreadFrame = uncertainFrames.some(frame =>
+                frame.dimensionId === village.dimensionId
+                && calculateChebyshevDistance(frame.location, structure.location, true) <= FRAME_UNCERTAINTY_RADIUS
+            )
+            if (mightHaveUnreadFrame) {
+                continue
+            }
+
+            village.removeStructure(structure.locationString)
+        }
     }
 }
 
@@ -263,6 +349,9 @@ function* cleanupItemFrames(): Generator<void, void, void> {
             writeIndex++
         }
         itemFrames.length = writeIndex
+    }
+    catch (error) {
+        console.error(error)
     }
     finally {
         itemFrameCleanupRunning = false

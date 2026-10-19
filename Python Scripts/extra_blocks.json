@@ -1,0 +1,14 @@
+{
+    "format_version": "1.21.40",
+    "ender_chest": {
+        "sound": "ender_chest",
+        "textures": {
+            "down": "ender_chest_inventory_top",
+            "east": "ender_chest_inventory_side",
+            "north": "ender_chest_inventory_side",
+            "south": "ender_chest_inventory_front",
+            "up": "ender_chest_inventory_top",
+            "west": "ender_chest_inventory_side"
+        }
+    }
+}

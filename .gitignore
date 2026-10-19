@@ -25,15 +25,20 @@ build/
 behavior_packs/Tektopia/scripts/*
 src.zip
 Tektopia Files/
-Python Scripts/output.geo.json
-Python Scripts/output.animation.json
+
+# Python Scripts
+Python Scripts/output.*
+Python Scripts/thing.py
+__pycache__/
+*.pyc
+
+# Sync script state
+json_sync_backups
+json_sync_state.json
 
 # Generated dependency graph (make_dep_graph.py)
 dependencies.dot
 dependencies.svg
-
-#Python Scripts
-Python Scripts/thing.py
 
 # Node (if you use the Script API with npm or TypeScript)
 node_modules/
@@ -43,3 +48,6 @@ node_modules/
 *.tmp
 *.bak
 Profiles/
+
+# Local diff dumps
+output.txt

@@ -5,6 +5,7 @@ import {
     EntityComponentTypes,
     EntityDamageCause,
     ItemStack,
+    MolangVariableMap,
     system,
     type Vector3,
     World,
@@ -32,21 +33,29 @@ import {
     type PathTarget
 } from "./path"
 
+import { getRequiredItems } from "./recipes"
+
 import { Registry } from "./registry"
 
 import {
     AnimalPen,
     entityStructures,
+    type BedInfo,
     type StationPost,
     type Mineshaft,
     type Structure,
     getMineshaftMineBlock
 } from "./structure"
 
-import { destroyTree } from "./tree"
+import {
+    destroyTree,
+    getTrunkBlocks
+} from "./tree"
 
 import {
     addVectors,
+    areVectorsEqual,
+    subtractVectors,
     calculateDistance,
     calculateChebyshevDistance,
     centerVector,
@@ -66,18 +75,31 @@ import {
     randomItem,
     stringToLocation,
     type CardinalDirection,
-    randomWeighedItem
+    randomWeighedItem,
+    shuffle,
+    type HorizontalDirection,
+    directionToRotation
 } from "./utils"
 
 import {
+    type ArmorType,
+    armorTypes,
+    type DepositPlan,
+    getToolItems,
     globalTasks,
     pickTask,
     resolvePickupItems,
     sortTasksByPriority,
-    tektopiaVillagers
+    type Task,
+    tektopiaVillagers,
+    type ToolCraftPlan,
+    type ToolUpgradePlan,
+    type UpgradableToolType,
+    upgradableToolTypes,
+    type VillagerToolType
 } from "./villager_tasks"
 
-import type { DepositPlan } from "./minecraft_extensions"
+import type { ItemFilterResult } from "./minecraft_extensions"
 
 import type {
     LocationString,
@@ -85,8 +107,6 @@ import type {
 } from "./types"
 
 import type { Village } from "./village"
-
-import type { StorageChest } from "./village_storage"
 
 const villagerCache = new Map<string, Villager>()
 
@@ -97,10 +117,14 @@ world.afterEvents.entityRemove.subscribe(event => {
 
 const PATH_TIMEOUT_TICKS = 1200
 
-// How far into a block (0-1) an entity has to be before it counts as standing at that edge of the block
+const PATH_PROGRESS_WINDOW_TICKS = 500
+const PATH_PROGRESS_MARGIN = 1.5
+const PATH_PROGRESS_ARRIVED_DISTANCE = 2
+
+const PATH_PROGRESS_REUSE_GAP_TICKS = 40
+
 const BLOCK_EDGE_THRESHOLD = 0.3
 
-// Which side of its block an entity is on, per horizontal axis: centered = 0, near an edge = that side, near a corner = both axes set
 function getBlockSideBias(location: Vector3): SearchBias {
     const side = (position: number): -1 | 0 | 1 => {
         const fraction = position - Math.floor(position)
@@ -112,21 +136,32 @@ function getBlockSideBias(location: Vector3): SearchBias {
     return { x: side(location.x), z: side(location.z) }
 }
 
-// Open ranch gates: how close a player must be to count as using the gate, how close the rancher must be to close it,
-// and how long a gate is skipped after it couldn't be reached or a player was nearby
-// Random pause between idle wanders
 const IDLE_WAIT_MIN_TICKS = 20
 const IDLE_WAIT_MAX_TICKS = 200
 
-// Depositing: how long a trip to a chest may take before giving up, and how long a chest that failed is left alone
-const DEPOSIT_GIVE_UP_TICKS = 2400
-const DEPOSIT_SKIP_TICKS = 1200
+const CHAIR_SIT_CHANCE = 0.25
+const CHAIR_SIT_MIN_TICKS = 10 * 20
+const CHAIR_SIT_MAX_TICKS = 15 * 20
+
+const CHAIR_WALK_GIVE_UP_TICKS = 20 * 20
 
 const GATE_PLAYER_RANGE = 6
 const GATE_REACH = 2.5
 const GATE_UNREACHABLE_TICKS = 1200
 const GATE_PLAYER_COOLDOWN_TICKS = 100
 const RANCH_PEN_TYPES = ["pig_pen", "chicken_coop", "sheep_pen", "cow_pen"] as const
+
+function isPenWorkerType(typeId: string) {
+    return typeId === "tektopia:villager_rancher" || typeId === "tektopia:villager_butcher"
+}
+
+const GATE_OPEN_CLEARANCE = 0.5
+const GATE_CLOSE_TRIGGER = 1
+const GATE_WAIT_TICKS = 100
+const CHEST_OPEN_WAIT_TICKS = 10
+const PEN_SKIP_TICKS = 600
+const BUTCHER_SKIP_TICKS = 1200
+const BUTCHER_GIVE_UP_TICKS = 1200
 const unreachableItemEntities = new Set<Entity>()
 
 Object.defineProperty(Block.prototype, "isDoor", {
@@ -148,15 +183,82 @@ function getOpenableBlock(block: Block): Block | undefined {
     return block
 }
 
+function isOpenFenceGate(block: Block | undefined): block is Block {
+    return block !== undefined
+        && Registry.fenceGateTypes.includes(block.typeId)
+        && block.permutation.getState("open_bit") === true
+}
+
 const SWING_HIT_DELAY_TICKS = 17
 const ATTACK_RANGE = 3
+
 const ATTACK_DAMAGE = 4
 const ATTACK_COOLDOWN_TICKS = 20
 
 const noop = () => { }
 const taskListsByType = new Map<string, typeof globalTasks>()
 
+function isTimeInRange(time: number, start: number, end: number) {
+    return start <= end
+        ? time >= start && time < end
+        : time >= start || time < end
+}
+
+export type BedTime = "sleep" | "waking" | "tired" | "working"
+
 export interface Villager extends Entity { }
+
+let pennedEntityMemoTick = -1
+const pennedEntityMemo = new Map<string, boolean>()
+
+interface TaskFound {
+    item?: Entity
+    tree?: Vector3
+    harvestLocation?: Vector3
+    sapling?: Vector3
+    tillLocation?: Vector3
+    growableCrop?: Vector3
+    plant?: {
+        location: Vector3
+        type: string
+    }
+    herdEntity?: VillageRanchEntity & { id: string }
+    breedableEntity?: VillageRanchEntity & { id: string }
+    breedableMate?: VillageRanchEntity & { id: string }
+    shearableEntity?: VillageRanchEntity & { id: string }
+    openGate?: Vector3
+    mine?: {
+        location: Vector3
+        rotation: CardinalDirection
+    }
+    ore?: {
+        start: Vector3
+        ores: LocationString[]
+    }
+    guardPost?: Vector3
+    fullAnimalPen?: Vector3
+    butcherStructure?: Vector3
+    killingEntity?: string
+    depositPlan?: DepositPlan
+    toolDeposits?: ItemFilterResult[]
+    toolUpgrades?: ToolUpgradePlan[]
+    toolCrafts?: ToolCraftPlan[]
+}
+
+interface VillagerTask {
+    id: string
+    context: TaskFound
+}
+
+function getHighestRankedTool<T extends ItemFilterResult>(itemFilterResults: T[]) {
+    return itemFilterResults.reduce<T | undefined>(
+        (highest, current) =>
+            highest === undefined || current.item.getToolRank() > highest.item.getToolRank()
+                ? current
+                : highest,
+        undefined
+    )
+}
 
 export class Villager {
     public isBlocked = false
@@ -167,55 +269,38 @@ export class Villager {
     public blockingEntityTypeId?: string
     public pathTickId?: number
     public pathError?: string
+    private pathProgress?: {
+        task: string | undefined
+        getTarget: () => Vector3
+        targetLocation: Vector3
+        best: number
+        lastImprovementTick: number
+        lastActiveTick: number
+    }
+
     private nextPathNode?: Vector3
     private taskProgress = 0
-    private currentTask?: string
+    private sitChair?: Vector3
+    private sitTicksLeft = 0
+    private sitWalkTicks = 0
+    private currentTask?: VillagerTask
+    private pendingContext: TaskFound = {}
     private animation?: string
     private lastAnimation?: string
     private attackIntervalId?: number
     private holdingItem?: string
     private lastHoldingItem?: string
     private waiting?: boolean | number
-    private foundItem?: Entity
-    private foundTree?: Vector3
-    private foundHarvestLocation?: Vector3
-    private foundTillLocation?: Vector3
-    private foundGrowableCrop?: Vector3
-    private foundPlant?: {
-        location: Vector3
-        type: string
-    }
-
-    private foundDepositChest?: StorageChest
-    private foundDepositStand?: Vector3
-    private foundDepositPlan?: DepositPlan
-
-    private foundHerdEntity?: VillageRanchEntity & { id: string }
-    private foundBreedableEntity?: VillageRanchEntity & { id: string }
-    private foundBreedableMate?: VillageRanchEntity & { id: string }
-    private foundShearableEntity?: VillageRanchEntity & { id: string }
-    private foundOpenGate?: Vector3
-    private readonly skippedDepositChests = new Map<string, number>()
+    private openedChest?: Vector3
     private herdPathTarget?: { structure: LocationString, location: Vector3 }
     private readonly skippedGates = new Map<LocationString, number>()
+    private gateHold?: { key: LocationString, since: number }
+    private readonly skippedPens = new Map<LocationString, number>()
+    private readonly skippedButcherEntities = new Map<string, number>()
+    private lastButcherLeash?: { id: string, tick: number }
+    private static readonly unleashableTypes = new Set<string>()
 
     private index: number
-
-    private foundMine?: {
-        location: Vector3
-        rotation: CardinalDirection
-    }
-
-    private foundOre?: {
-        start: Vector3
-        ores: LocationString[]
-    }
-
-    private foundGuardPost?: Vector3
-    private foundFullAnimalPen?: Vector3
-    private foundButcherStructure?: Vector3
-
-    private foundKillingEntity?: string
 
     private attackCooldownEndTick = 0
 
@@ -263,6 +348,47 @@ export class Villager {
                 })
             }
         }
+    }
+
+    private static readonly BED_PROPERTY = "tektopia:bed"
+
+    get hasBed(): boolean {
+        return this.getBed() !== undefined
+    }
+
+    getBed(): BedInfo | undefined {
+        const saved = this.entity.getDynamicProperty(Villager.BED_PROPERTY)
+
+        if (typeof saved !== "string") {
+            return undefined
+        }
+
+        try {
+            const bed = JSON.parse(saved) as Partial<BedInfo> | null
+            const location = bed?.location
+
+            if (
+                typeof bed?.home !== "string"
+                || typeof location?.x !== "number"
+                || typeof location.y !== "number"
+                || typeof location.z !== "number"
+            ) {
+                return undefined
+            }
+
+            return { location: { x: location.x, y: location.y, z: location.z }, home: bed.home }
+        }
+        catch {
+            return undefined
+        }
+    }
+
+    claimBed(bed: BedInfo) {
+        this.entity.setDynamicProperty(Villager.BED_PROPERTY, JSON.stringify(bed))
+    }
+
+    releaseBed() {
+        this.entity.setDynamicProperty(Villager.BED_PROPERTY, undefined)
     }
 
     getViewDirection() {
@@ -429,104 +555,227 @@ export class Villager {
         return village.getStructure(stringToLocationCached(structureLocation))
     }
 
-    private findChestStandLocation(village: Village, chest: StorageChest): Vector3 | undefined {
-        const origin = this.location
-        let best: Vector3 | undefined
-        let bestDistance = Infinity
-
-        for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
-            for (const dy of [0, -1, 1]) {
-                const candidate = addVectors(chest.location, { x: dx, y: dy, z: dz })
-                if (village.pathNodes[locationToString(candidate)] === undefined) {
-                    continue
-                }
-
-                const distance = calculateDistance(centerVector(candidate, true), origin)
-                if (distance < bestDistance) {
-                    bestDistance = distance
-                    best = candidate
-                }
-            }
-        }
-
-        return best
+    getConfig() {
+        return tektopiaVillagers[this.typeId]
     }
 
-    private isDepositChestSkipped(chest: StorageChest) {
-        const key = locationToString(chest.location)
-        const skipUntil = this.skippedDepositChests.get(key)
-        if (skipUntil === undefined) {
+    bedTime(): BedTime {
+        const sleepTime = this.getConfig()?.sleepTime
+
+        if (sleepTime === undefined) {
+            return "working"
+        }
+
+        const time = world.getTimeOfDay()
+
+        if (isTimeInRange(time, sleepTime.startSleep, sleepTime.endSleep)) {
+            return "sleep"
+        }
+
+        if (isTimeInRange(time, sleepTime.endSleep, sleepTime.working)) {
+            return "waking"
+        }
+
+        if (isTimeInRange(time, sleepTime.tired, sleepTime.startSleep)) {
+            return "tired"
+        }
+
+        return "working"
+    }
+
+    private getToolContext(village: Village) {
+        const inventory = this.getInventory()
+        if (inventory === undefined) {
+            return undefined
+        }
+
+        const toolTypes = this.getToolTypes()
+        if (toolTypes === undefined) {
+            return undefined
+        }
+
+        const storageStructure = village.findStructures({ includedTypes: ["storage"] })[0]
+        if (storageStructure === undefined) {
+            return undefined
+        }
+
+        return { inventory, toolTypes, storageStructure, storage: village.storage }
+    }
+
+    checkDepositToolTask(village: Village) {
+        const toolContext = this.getToolContext(village)
+        if (toolContext === undefined) {
             return false
         }
-        if (skipUntil > system.currentTick) {
-            return true
-        }
-        this.skippedDepositChests.delete(key)
-        return false
-    }
 
-    private skipDepositChest(chest: StorageChest, reason: string) {
-        this.skippedDepositChests.set(locationToString(chest.location), system.currentTick + DEPOSIT_SKIP_TICKS)
-        if (debugFlags.depositWarnings) {
-            console.warn(`${this.typeId} skipping deposit chest at ${locationToString(chest.location)} for ${DEPOSIT_SKIP_TICKS} ticks: ${reason}`)
-        }
-    }
+        const toolDeposits: ItemFilterResult[] = []
 
-    private canUseDepositChest(village: Village, chest: StorageChest) {
-        return !this.isDepositChestSkipped(chest) && this.findChestStandLocation(village, chest) !== undefined
-    }
+        for (const toolType of toolContext.toolTypes) {
+            const villagerTools = toolContext.inventory
+                .filterItems({ includesTypes: getToolItems(toolType) })
 
-    findDepositTarget(village: Village): StorageChest | undefined {
-        this.foundDepositChest = undefined
-        this.foundDepositStand = undefined
-        this.foundDepositPlan = undefined
+            const bestVillagerTool = getHighestRankedTool(villagerTools)
 
-        const inventory = this.getComponent(EntityComponentTypes.Inventory)?.container
-        const plan = inventory === undefined ? undefined : tektopiaVillagers[this.typeId]?.depositItems(inventory)
-        if (inventory === undefined || plan === undefined) {
-            return undefined
-        }
-
-        const largest = Object.entries(plan).sort((item1, item2) => item2[1] - item1[1])[0]
-        if (largest === undefined) {
-            return undefined
-        }
-
-        const [typeId, amount] = largest
-
-        let probe: ItemStack | undefined
-        for (let slot = 0; slot < inventory.size; slot++) {
-            const item = inventory.getItem(slot)
-            if (item?.typeId === typeId) {
-                probe = item.clone()
-                probe.amount = Math.min(amount, probe.maxAmount)
-                break
+            if (bestVillagerTool !== undefined && villagerTools.length > 1) {
+                toolDeposits.push(...villagerTools.filter(tool => tool.item !== bestVillagerTool.item))
             }
         }
-        probe ??= new ItemStack(typeId, Math.min(amount, 64))
 
-        const chest = village.storage.findDepositChest(
-            probe,
-            this.location,
-            candidate => this.canUseDepositChest(village, candidate)
-        )
-        if (chest === undefined) {
+        if (toolDeposits.length === 0) {
+            return false
+        }
+
+        this.taskContext.toolDeposits = toolDeposits
+        return true
+    }
+
+    checkGetToolTask(village: Village) {
+        const toolContext = this.getToolContext(village)
+        if (toolContext === undefined) {
+            return false
+        }
+
+        const toolUpgrades: ToolUpgradePlan[] = []
+
+        for (const toolType of toolContext.toolTypes) {
+            const toolItems = getToolItems(toolType)
+
+            const bestVillagerTool = getHighestRankedTool(
+                toolContext.inventory.filterItems({ includesTypes: toolItems })
+            )
+            const bestVillagerToolRank = bestVillagerTool?.item.getToolRank() ?? -1
+
+            const bestAvailableTool = getHighestRankedTool(
+                toolContext.storage.filterItems({ includesTypes: toolItems })
+            )
+            const bestAvailableToolRank = bestAvailableTool?.item.getToolRank() ?? -1
+
+            if (bestAvailableTool !== undefined && bestAvailableToolRank > bestVillagerToolRank) {
+                toolUpgrades.push({
+                    newId: bestAvailableTool.item.typeId,
+                    oldId: bestVillagerTool?.item.typeId
+                })
+            }
+        }
+
+        if (toolUpgrades.length === 0) {
+            return false
+        }
+
+        this.taskContext.toolUpgrades = toolUpgrades
+        return true
+    }
+
+    checkCraftToolTask(village: Village) {
+        const toolContext = this.getToolContext(village)
+        if (toolContext === undefined) {
+            return false
+        }
+
+        if (toolContext.storageStructure.getCraftingTables().length === 0) {
+            return false
+        }
+
+        const toolCrafts: ToolCraftPlan[] = []
+
+        for (const toolType of toolContext.toolTypes) {
+            const toolItems = getToolItems(toolType)
+
+            const hasVillagerTool = toolContext.inventory.filterItems({ includesTypes: toolItems }).length > 0
+            if (hasVillagerTool) {
+                continue
+            }
+
+            const hasAvailableTool = toolContext.storage.filterItems({ includesTypes: toolItems }).length > 0
+            if (hasAvailableTool) {
+                continue
+            }
+
+            const toolCraftingMaterial = upgradableToolTypes.includes(toolType as UpgradableToolType) ? "wooden" : armorTypes.includes(toolType as ArmorType) ? "leather" : undefined
+            if (toolCraftingMaterial === undefined) {
+                continue
+            }
+
+            const craftingId = `minecraft:${toolCraftingMaterial}_${toolType}`
+
+            if (toolContext.storage.canCraft(craftingId)) {
+                toolCrafts.push({ itemId: craftingId })
+            }
+        }
+
+        if (toolCrafts.length === 0) {
+            return false
+        }
+
+        this.taskContext.toolCrafts = toolCrafts
+        return true
+    }
+
+    getBestTool(toolType: VillagerToolType) {
+        const villagerInventory = this.getInventory()
+        if (villagerInventory === undefined) {
             return undefined
         }
 
-        this.foundDepositChest = chest
-        this.foundDepositStand = this.findChestStandLocation(village, chest)
-        this.foundDepositPlan = plan
-        return chest
+        const toolItems = getToolItems(toolType)
+
+        const villagerTools = villagerInventory
+            .filterItems({ includesTypes: toolItems })
+
+        return getHighestRankedTool(villagerTools)
     }
 
-    findOre(village: Village, preferredOres?: readonly LocationString[]) {
+    checkDepositTask(village: Village) {
+        const villagerConfig = this.getConfig()
+        if (villagerConfig === undefined) {
+            return false
+        }
+
+        const villagerInventory = this.getInventory()
+        if (villagerInventory === undefined) {
+            return false
+        }
+
+        const depositPlan = villagerConfig.depositItems(villagerInventory)
+        if (depositPlan === undefined) {
+            return false
+        }
+
+        const villageStorage = village.storage
+
+        const canDeposit: DepositPlan = {}
+        for (const [itemId, amount] of Object.entries(depositPlan)) {
+            const items = villagerInventory.filterItems({ includesTypes: [itemId] }).map(itemObject => itemObject.item)
+            for (const item of items) {
+                const itemClone = item.clone()
+                itemClone.amount = Math.min(amount, itemClone.amount)
+                const newAmount = villageStorage.getRoomFor(itemClone)
+                if (newAmount > 0) {
+                    canDeposit[itemClone.typeId] = (canDeposit[itemClone.typeId] ?? 0) + newAmount
+                }
+            }
+        }
+
+        if (Object.keys(canDeposit).length === 0) {
+            return false
+        }
+
+        this.taskContext.depositPlan = canDeposit
+
+        return true
+    }
+
+    getInventory() {
+        return this.getComponent(EntityComponentTypes.Inventory)?.container
+    }
+
+    findOre(village: Village, preferredOres?: readonly LocationString[], maxStandDistance?: number) {
         const takenOres = new Set<string>()
         for (const villager of world.getVillagers()) {
             if (villager.id === this.id) {
                 continue
             }
-            const ore = villager.foundOre
+            const ore = villager.taskContext.ore
             if (ore !== undefined) {
                 for (const key of ore.ores) {
                     takenOres.add(key)
@@ -535,7 +784,7 @@ export class Villager {
         }
 
         const origin = this.location
-        let closestOre: typeof this.foundOre
+        let closestOre: typeof this.taskContext.ore
         let closestDistance = Infinity
         const preferredKeys = preferredOres === undefined ? undefined : new Set(preferredOres)
         const checkedOres = new Set<LocationString>()
@@ -558,12 +807,14 @@ export class Villager {
 
             for (const oreKey of ores) {
                 const location = stringToLocation(oreKey)
-                // Ores that can't be reached from the tunnels yet stay saved for later.
                 const stand = village.findOreStandLocation(location)
                 if (stand === undefined) {
                     continue
                 }
                 const distance = calculateDistance(origin, centerVector(stand, true))
+                if (maxStandDistance !== undefined && distance >= maxStandDistance) {
+                    continue
+                }
                 if (distance < closestDistance) {
                     closestOre = { start: stand, ores }
                     closestDistance = distance
@@ -571,25 +822,34 @@ export class Villager {
             }
         }
 
-        this.foundOre = closestOre
-        return closestOre
+        if (closestOre === undefined) {
+            return false
+        }
+
+        this.taskContext.ore = closestOre
+        return true
     }
 
-    findTree(village: Village): Vector3 | undefined {
+    findTree(village: Village) {
         const takenTrees = new Set<string>()
         for (const villager of world.getVillagers()) {
             if (villager.id === this.id) {
                 continue
             }
-            const tree = villager.foundTree
+            const tree = villager.taskContext.tree
             if (tree !== undefined) {
                 takenTrees.add(locationToString(tree))
             }
         }
 
         const closestTree = village.treeLocations.nearestTo(this.location, key => takenTrees.has(key))
-        this.foundTree = closestTree
-        return closestTree
+
+        if (closestTree === undefined) {
+            return false
+        }
+
+        this.taskContext.tree = closestTree
+        return true
     }
 
     findGrowableCrop(village: Village) {
@@ -598,36 +858,110 @@ export class Villager {
             if (villager.id === this.id) {
                 continue
             }
-            const growableCropLocation = villager.foundGrowableCrop
+            const growableCropLocation = villager.taskContext.growableCrop
             if (growableCropLocation !== undefined) {
                 takenGrowableCropLocations.add(locationToString(growableCropLocation))
             }
         }
 
-        const closestGrowableCropLocation = village.growLocations.nearestTo(this.location, key => takenGrowableCropLocations.has(key))
-        this.foundGrowableCrop = closestGrowableCropLocation
-        return closestGrowableCropLocation
+        let bestGrowableCropLocation: Vector3 | undefined
+        let bestNeighborhoodCount = -1
+        let bestDistance = Infinity
+
+        for (const key of village.growLocations) {
+            if (takenGrowableCropLocations.has(key)) {
+                continue
+            }
+
+            const location = stringToLocationCached(key)
+            let neighborCount = 0
+            for (let x = -1; x <= 1; x++) {
+                for (let z = -1; z <= 1; z++) {
+                    if (village.growLocations.has(locationToString({
+                        x: location.x + x,
+                        y: location.y,
+                        z: location.z + z
+                    }))) {
+                        neighborCount++
+                    }
+                }
+            }
+
+            const distance = calculateDistance(this.location, location)
+            if (neighborCount > bestNeighborhoodCount || (neighborCount === bestNeighborhoodCount && distance < bestDistance)) {
+                bestGrowableCropLocation = location
+                bestNeighborhoodCount = neighborCount
+                bestDistance = distance
+            }
+        }
+
+        if (bestGrowableCropLocation === undefined) {
+            return false
+        }
+
+        this.taskContext.growableCrop = bestGrowableCropLocation
+        return true
     }
 
-    findMine(village: Village, includeInactiveMines = false) {
+    private validateMineFrame(village: Village, block: Block): { rotation: CardinalDirection, doorLocation: Vector3 } | undefined {
+        if (
+            !block.isValid
+            || block.getFrameItem()?.typeId !== "tektopia:structure_mineshaft"
+        ) {
+            return undefined
+        }
+
+        const rotation = getItemFrameRotation(block.permutation.getState("facing_direction"))
+        if (rotation === undefined) {
+            return undefined
+        }
+
+        const validation = village.dimension.validateStructure(
+            block,
+            rotation,
+            "mineshaft",
+            true
+        )
+        let step = validation.next()
+        while (!step.done) {
+            step = validation.next()
+        }
+
+        const result = step.value
+        if (
+            result.result === true
+            && result.village === village
+            && result.doorLocation !== undefined
+        ) {
+            return { rotation, doorLocation: result.doorLocation }
+        }
+        return undefined
+    }
+
+    findMine(village: Village, includeInactiveMines = false, prioritizeDeepMines = false) {
         const takenMines = new Set<string>()
         const villagers = world.getVillagers()
         for (const villager of villagers) {
             if (villager.id === this.id) {
                 continue
             }
-            const mine = villager.foundMine
+            const mine = villager.taskContext.mine
             if (mine !== undefined) {
                 takenMines.add(locationToString(mine.location))
             }
         }
 
         const villagerLocation = this.location
-        let closestMine: typeof this.foundMine
+        let closestMine: typeof this.taskContext.mine
         let minDist = Infinity
+        let closestInactiveMine: typeof this.taskContext.mine
+        let minInactiveDist = Infinity
+        let deepestMine: typeof this.taskContext.mine
+        let deepestMineDepth = 0
+        let deepestMineDist = Infinity
         const consideredMines = new Set<string>()
 
-        const considerMine = (location: Vector3, rotation: CardinalDirection) => {
+        const considerMine = (location: Vector3, rotation: CardinalDirection, inactive = false) => {
             const locationString = locationToString(location)
             if (takenMines.has(locationString) || consideredMines.has(locationString)) {
                 return
@@ -635,7 +969,30 @@ export class Villager {
 
             consideredMines.add(locationString)
             const dist = calculateDistance(villagerLocation, location)
-            if (dist < minDist) {
+
+            if (prioritizeDeepMines) {
+                const mineBlock = getMineshaftMineBlock(village.dimension, location, rotation, false)
+                if (mineBlock === undefined) {
+                    return
+                }
+                const firstMineColumn = addVectors(location, directionToVector(rotation))
+                const depth = calculateDistance(mineBlock.location, firstMineColumn, true)
+                if (depth <= 0) {
+                    return
+                }
+                if (depth > deepestMineDepth || (depth === deepestMineDepth && dist < deepestMineDist)) {
+                    deepestMineDepth = depth
+                    deepestMineDist = dist
+                    deepestMine = { location, rotation }
+                }
+                return
+            }
+
+            if (inactive && dist < minInactiveDist) {
+                minInactiveDist = dist
+                closestInactiveMine = { location, rotation }
+            }
+            else if (!inactive && dist < minDist) {
                 minDist = dist
                 closestMine = { location, rotation }
             }
@@ -656,43 +1013,36 @@ export class Villager {
                 }
 
                 const block = village.dimension.getBlockSafe(itemFrame.location)
-                if (
-                    block === undefined
-                    || !block.isValid
-                    || block.getFrameItem()?.typeId !== "tektopia:structure_mineshaft"
-                ) {
+                if (block === undefined) {
                     continue
                 }
 
-                const rotation = getItemFrameRotation(block.permutation.getState("facing_direction") as CardinalDirection | undefined)
-                if (rotation === undefined) {
-                    continue
-                }
-
-                const validation = village.dimension.validateStructure(
-                    block,
-                    rotation,
-                    "mineshaft",
-                    true
-                )
-                let step = validation.next()
-                while (!step.done) {
-                    step = validation.next()
-                }
-
-                const result = step.value
-                if (
-                    result.result === true
-                    && result.village === village
-                    && result.doorLocation !== undefined
-                ) {
-                    considerMine(result.doorLocation, rotation)
+                const validMine = this.validateMineFrame(village, block)
+                if (validMine !== undefined) {
+                    considerMine(validMine.doorLocation, validMine.rotation, true)
                 }
             }
         }
 
-        this.foundMine = closestMine
-        return closestMine
+        if (prioritizeDeepMines) {
+            if (deepestMine === undefined) {
+                return false
+            }
+
+            this.taskContext.mine = deepestMine
+            return true
+        }
+
+        if (includeInactiveMines && closestInactiveMine !== undefined) {
+            closestMine = closestInactiveMine
+        }
+
+        if (closestMine === undefined) {
+            return false
+        }
+
+        this.taskContext.mine = closestMine
+        return true
     }
 
     findGuardPost(village: Village) {
@@ -702,7 +1052,7 @@ export class Villager {
             if (villager.id === this.id) {
                 continue
             }
-            const guardPost = villager.foundGuardPost
+            const guardPost = villager.taskContext.guardPost
             if (guardPost !== undefined) {
                 takenGuardPosts.add(locationToString(guardPost))
             }
@@ -724,25 +1074,56 @@ export class Villager {
             }
         }
 
-        this.foundGuardPost = closestGuardPost
-        return closestGuardPost
+        if (closestGuardPost === undefined) {
+            return false
+        }
+
+        this.taskContext.guardPost = closestGuardPost
+        return true
     }
 
-    findHarvestLocation(village: Village): Vector3 | undefined {
+    findSapling(village: Village) {
+        const takenSaplings = new Set<string>()
+        for (const villager of world.getVillagers()) {
+            if (villager.id === this.id) {
+                continue
+            }
+            const saplingLocation = villager.taskContext.sapling
+            if (saplingLocation !== undefined) {
+                takenSaplings.add(locationToString(saplingLocation))
+            }
+        }
+
+        const closestHarvestLocation = village.saplingLocations.nearestTo(this.location, key => takenSaplings.has(key))
+
+        if (closestHarvestLocation === undefined) {
+            return false
+        }
+
+        this.taskContext.sapling = closestHarvestLocation
+        return true
+    }
+
+    findHarvestLocation(village: Village) {
         const takenHarvestLocations = new Set<string>()
         for (const villager of world.getVillagers()) {
             if (villager.id === this.id) {
                 continue
             }
-            const harvestLocation = villager.foundHarvestLocation
+            const harvestLocation = villager.taskContext.harvestLocation
             if (harvestLocation !== undefined) {
                 takenHarvestLocations.add(locationToString(harvestLocation))
             }
         }
 
         const closestHarvestLocation = village.harvestLocations.nearestTo(this.location, key => takenHarvestLocations.has(key))
-        this.foundHarvestLocation = closestHarvestLocation
-        return closestHarvestLocation
+
+        if (closestHarvestLocation === undefined) {
+            false
+        }
+
+        this.taskContext.harvestLocation = closestHarvestLocation
+        return true
     }
 
     findButcherStructure(village: Village) {
@@ -752,7 +1133,7 @@ export class Villager {
             if (villager.id === this.id) {
                 continue
             }
-            const butcherStructure = villager.foundButcherStructure
+            const butcherStructure = villager.taskContext.butcherStructure
             if (butcherStructure !== undefined) {
                 takenButcherStructures.add(locationToString(butcherStructure))
             }
@@ -774,8 +1155,12 @@ export class Villager {
             }
         }
 
-        this.foundButcherStructure = closestButcherStructure
-        return closestButcherStructure
+        if (closestButcherStructure === undefined) {
+            return false
+        }
+
+        this.taskContext.butcherStructure = closestButcherStructure
+        return true
     }
 
     findFullPen(village: Village) {
@@ -785,7 +1170,7 @@ export class Villager {
             if (villager.id === this.id) {
                 continue
             }
-            const animalPen = villager.foundFullAnimalPen
+            const animalPen = villager.taskContext.fullAnimalPen
             if (animalPen !== undefined) {
                 takenAnimalPen.add(locationToString(animalPen))
             }
@@ -800,6 +1185,9 @@ export class Villager {
             if (takenAnimalPen.has(animalPen.locationString) || !animalPen.isFull || animalPen.getAnimalCount(true) <= 2) {
                 continue
             }
+            if (this.isPenSkipped(animalPen.locationString) || this.pickButcherEntity(village, animalPen) === undefined) {
+                continue
+            }
             const dist = calculateDistance(villagerLocation, animalPen.location)
             if (dist < minDist) {
                 minDist = dist
@@ -807,8 +1195,12 @@ export class Villager {
             }
         }
 
-        this.foundFullAnimalPen = closestAnimalPen
-        return closestAnimalPen
+        if (closestAnimalPen === undefined) {
+            return false
+        }
+
+        this.taskContext.fullAnimalPen = closestAnimalPen
+        return true
     }
 
     findShearableEntity(village: Village) {
@@ -817,7 +1209,7 @@ export class Villager {
             if (villager.id === this.id) {
                 continue
             }
-            const ranchEntity = villager.foundShearableEntity
+            const ranchEntity = villager.taskContext.shearableEntity
             if (ranchEntity !== undefined) {
                 takenRanchEntities.add(ranchEntity.id)
             }
@@ -831,6 +1223,10 @@ export class Villager {
                 continue
             }
 
+            if (entityData.structure !== undefined && this.isPenSkipped(entityData.structure)) {
+                continue
+            }
+
             const distance = calculateDistance(entityData.location, this.location)
 
             if (distance < closestDistance) {
@@ -839,8 +1235,12 @@ export class Villager {
             }
         }
 
-        this.foundShearableEntity = closestEntity
-        return closestEntity
+        if (closestEntity === undefined) {
+            return false
+        }
+
+        this.taskContext.shearableEntity = closestEntity
+        return true
     }
 
     findBreedableEntity(village: Village) {
@@ -849,11 +1249,11 @@ export class Villager {
             if (villager.id === this.id) {
                 continue
             }
-            if (villager.foundBreedableEntity !== undefined) {
-                takenRanchEntities.add(villager.foundBreedableEntity.id)
+            if (villager.taskContext.breedableEntity !== undefined) {
+                takenRanchEntities.add(villager.taskContext.breedableEntity.id)
             }
-            if (villager.foundBreedableMate !== undefined) {
-                takenRanchEntities.add(villager.foundBreedableMate.id)
+            if (villager.taskContext.breedableMate !== undefined) {
+                takenRanchEntities.add(villager.taskContext.breedableMate.id)
             }
         }
 
@@ -866,6 +1266,7 @@ export class Villager {
             && entityData.inPen
             && entityData.breedable
             && entityData.structure !== undefined
+            && !this.isPenSkipped(entityData.structure)
 
         for (const [entityId, entityData] of Object.entries(village.ranchEntities)) {
             if (!isCandidate(entityId, entityData) || entityData.structure === undefined) {
@@ -888,7 +1289,6 @@ export class Villager {
                 continue
             }
 
-            // A second entity of the same type in the same pen is required to breed with
             let mate: (VillageRanchEntity & { id: string }) | undefined
             let mateDistance = Infinity
             for (const [mateId, mateData] of Object.entries(village.ranchEntities)) {
@@ -916,9 +1316,13 @@ export class Villager {
             closestMate = mate
         }
 
-        this.foundBreedableEntity = closestEntity
-        this.foundBreedableMate = closestMate
-        return closestEntity
+        if (closestEntity === undefined || closestMate === undefined) {
+            return false
+        }
+
+        this.taskContext.breedableEntity = closestEntity
+        this.taskContext.breedableMate = closestMate
+        return true
     }
 
     findHerdEntity(village: Village) {
@@ -927,7 +1331,7 @@ export class Villager {
             if (villager.id === this.id) {
                 continue
             }
-            const ranchEntity = villager.foundHerdEntity
+            const ranchEntity = villager.taskContext.herdEntity
             if (ranchEntity !== undefined) {
                 takenRanchEntities.add(ranchEntity.id)
             }
@@ -950,7 +1354,7 @@ export class Villager {
 
             let foundStructure = false
             for (const structure of structures) {
-                if ((structure.isUnderpopulated || entityData.villagerEntity) && !structure.isFull) {
+                if ((structure.isUnderpopulated || entityData.villagerEntity) && !structure.isFull && !this.isPenSkipped(structure.locationString)) {
                     foundStructure = true
                     break
                 }
@@ -968,25 +1372,34 @@ export class Villager {
             }
         }
 
-        this.foundHerdEntity = closestEntity
-        return closestEntity
+        if (closestEntity === undefined) {
+            return false
+        }
+
+        this.taskContext.herdEntity = closestEntity
+        return true
     }
 
-    findTillLocation(village: Village): Vector3 | undefined {
+    findTillLocation(village: Village) {
         const takenTillLocations = new Set<string>()
         for (const villager of world.getVillagers()) {
             if (villager.id === this.id) {
                 continue
             }
-            const tillLocation = villager.foundTillLocation
+            const tillLocation = villager.taskContext.tillLocation
             if (tillLocation !== undefined) {
                 takenTillLocations.add(locationToString(tillLocation))
             }
         }
 
         const closestTillLocation = village.tillLocations.nearestTo(this.location, key => takenTillLocations.has(key))
-        this.foundTillLocation = closestTillLocation
-        return closestTillLocation
+
+        if (closestTillLocation === undefined) {
+            return false
+        }
+
+        this.taskContext.tillLocation = closestTillLocation
+        return true
     }
 
     findPlantLocation(village: Village) {
@@ -996,7 +1409,7 @@ export class Villager {
             if (villager.id === this.id) {
                 continue
             }
-            const plantLocation = villager.foundPlant
+            const plantLocation = villager.taskContext.plant
             if (plantLocation !== undefined) {
                 takenPlantLocation.add(locationToString(plantLocation.location))
             }
@@ -1013,6 +1426,7 @@ export class Villager {
             if (takenPlantLocation.has(plantLocationStr)) {
                 continue
             }
+
             const plantLocationLocation = stringToLocationCached(plantLocationStr as LocationString)
             const dist = calculateDistance(villagerLocation, plantLocationLocation)
             if (dist < minDist) {
@@ -1021,15 +1435,19 @@ export class Villager {
             }
         }
 
-        this.foundPlant = closestPlant
-        return closestPlant
+        if (closestPlant === undefined) {
+            return false
+        }
+
+        this.taskContext.plant = closestPlant
+        return true
     }
 
-    findItem(village: Village): Entity | undefined {
-        let pickupItems = tektopiaVillagers[this.typeId]?.pickupItems
+    findItem(village: Village) {
+        let pickupItems = this.getConfig()?.pickupItems
         if (pickupItems === undefined) {
-            this.foundItem = undefined
-            return undefined
+            this.taskContext.item = undefined
+            return false
         }
 
         pickupItems = resolvePickupItems(pickupItems)
@@ -1064,8 +1482,66 @@ export class Villager {
             }
         }
 
-        this.foundItem = closestItem
-        return closestItem
+        if (closestItem === undefined) {
+            return false
+        }
+
+        this.taskContext.item = closestItem
+        return true
+    }
+
+    private beginPathProgress(getTarget: () => Vector3) {
+        const now = system.currentTick
+        const targetLocation = getTarget()
+        const previous = this.pathProgress
+
+        const isSameWalk = previous !== undefined
+            && previous.task === this.currentTask?.id
+            && now - previous.lastActiveTick <= PATH_PROGRESS_REUSE_GAP_TICKS
+            && calculateDistance(previous.targetLocation, targetLocation) <= PATH_PROGRESS_MARGIN
+
+        if (isSameWalk) {
+            previous.getTarget = getTarget
+            previous.targetLocation = targetLocation
+            previous.lastActiveTick = now
+            return
+        }
+
+        this.pathProgress = {
+            task: this.currentTask?.id,
+            getTarget,
+            targetLocation,
+            best: calculateDistance(this.location, targetLocation),
+            lastImprovementTick: now,
+            lastActiveTick: now
+        }
+    }
+
+    private checkPathProgress() {
+        const tracker = this.pathProgress
+        if (tracker === undefined) {
+            return
+        }
+        if (!this.isPathing) {
+            return
+        }
+
+        const now = system.currentTick
+        tracker.lastActiveTick = now
+        tracker.targetLocation = tracker.getTarget()
+
+        const distance = calculateDistance(this.location, tracker.targetLocation)
+        if (distance < PATH_PROGRESS_ARRIVED_DISTANCE || distance < tracker.best - PATH_PROGRESS_MARGIN) {
+            tracker.best = Math.min(tracker.best, distance)
+            tracker.lastImprovementTick = now
+            return
+        }
+
+        if (now - tracker.lastImprovementTick >= PATH_PROGRESS_WINDOW_TICKS) {
+            this.pathProgress = undefined
+            this.pathError = "timeout"
+            this.stopPath()
+        }
     }
 
     pathFindTo(target: PathTarget) {
@@ -1077,7 +1553,6 @@ export class Villager {
         if (isEntityTarget(target) && !target.isValid) {
             return
         }
-        // The entity being walked to must never count as something blocking the way to itself
         const targetId = isEntityTarget(target) ? target.id : undefined
         let lastTargetLocation: Vector3 = isEntityTarget(target) ? target.location : target
         const getTargetLocation = () => {
@@ -1091,6 +1566,8 @@ export class Villager {
         if (village === undefined) {
             return
         }
+
+        villager.beginPathProgress(getTargetLocation)
 
         villager.isPathing = true
         startPathSnapshot(villager)
@@ -1143,8 +1620,6 @@ export class Villager {
             }
 
             if (village.pathNodes[locationToString(startLocation)] === undefined) {
-                // Look on the side of the block the villager is standing towards: everywhere when centered, one side at an edge, a quadrant at a corner.
-                // If nothing is found there, fall back to searching all around so pathing can still start.
                 const nearest = findNearestNodeLocation(village.pathNodes, startLocation, 3, getBlockSideBias(villager.location))
                     ?? findNearestNodeLocation(village.pathNodes, startLocation, 3)
                 if (nearest !== undefined) {
@@ -1165,7 +1640,6 @@ export class Villager {
                 }
             }
 
-            // Following starts right away; nodes arrive in the stream while the path is still being generated.
             const stream = createPathStream()
             villager.followPath(stream, getTargetLocation, cancelPath, () => finished, targetId)
 
@@ -1173,7 +1647,6 @@ export class Villager {
                 if (finished || typeof result !== "string") {
                     return
                 }
-                // Nodes that were already streamed stay valid: the follower finishes them and then reports the failure.
                 if ((stream.head ?? 0) >= stream.nodes.length) {
                     if (result !== "cancelled") {
                         villager.pathError = result
@@ -1201,8 +1674,12 @@ export class Villager {
             return
         }
 
-        if ((system.currentTick + villager.index) % 10 === 0) {
+        const doorCheckInterval = villager.openedDoors.length > 0 && isPenWorkerType(villager.typeId) ? 2 : 10
+        if ((system.currentTick + villager.index) % doorCheckInterval === 0) {
             villager.closeFarDoors()
+        }
+        if ((system.currentTick + villager.index) % 10 === 0 && debugFlags.rancherAvoidedGateParticles) {
+            villager.showAvoidedGateParticles()
         }
 
         const village = villager.getVillage()
@@ -1212,6 +1689,7 @@ export class Villager {
             villager.updateDebugNameTag()
             return
         }
+        villager.checkPathProgress()
         const pathError = villager.pathError
 
         if (villager.isWaiting && pathError === undefined) {
@@ -1222,7 +1700,6 @@ export class Villager {
                 }
             }
 
-            // Idle villagers must never be stuck waiting: a new task cancels the wait (trySelectTask resets it)
             if (villager.currentTask === undefined) {
                 const allTaskList = villager.getTaskList()
                 if (allTaskList !== undefined) {
@@ -1250,11 +1727,11 @@ export class Villager {
             return
         }
 
-        const villagerProps = tektopiaVillagers[this.typeId]
-        let taskName = this.currentTask ?? "Idle"
+        const villagerConfig = this.getConfig()
+        let taskName = this.currentTask?.id ?? "Idle"
         if (this.currentTask !== undefined) {
-            const task = globalTasks.find(candidate => candidate.id === this.currentTask)
-                ?? villagerProps?.customTasks.find(candidate => candidate.id === this.currentTask)
+            const task = globalTasks.find(candidate => candidate.id === this.currentTask?.id)
+                ?? villagerConfig?.customTasks.find(candidate => candidate.id === this.currentTask?.id)
 
             taskName = task?.name ?? taskName
         }
@@ -1266,64 +1743,58 @@ export class Villager {
         }
         let target = "None"
         let targetLocation: Vector3 | undefined
-        switch (this.currentTask) {
+        switch (this.currentTask?.id) {
             case "chop":
-                targetLocation = this.foundTree
+                targetLocation = this.taskContext.tree
                 if (targetLocation !== undefined) {
                     target = "Tree"
                 }
                 break
             case "harvest":
-                targetLocation = this.foundHarvestLocation
+                targetLocation = this.taskContext.harvestLocation
                 if (targetLocation !== undefined) {
                     target = "Harvest"
                 }
                 break
             case "item":
-                if (this.foundItem?.isValid) {
-                    targetLocation = this.foundItem.location
-                    target = `Item ${formatTypeId(this.foundItem.typeId)}`
+                if (this.taskContext.item?.isValid) {
+                    targetLocation = this.taskContext.item.location
+                    target = `Item ${formatTypeId(this.taskContext.item.typeId)}`
                 }
                 break
             case "plant":
-                if (this.foundPlant !== undefined) {
-                    targetLocation = this.foundPlant.location
-                    target = `Plant ${formatTypeId(this.foundPlant.type)}`
+                if (this.taskContext.plant !== undefined) {
+                    targetLocation = this.taskContext.plant.location
+                    target = `Plant ${formatTypeId(this.taskContext.plant.type)}`
                 }
                 break
             case "till":
-                targetLocation = this.foundTillLocation
+                targetLocation = this.taskContext.tillLocation
                 if (targetLocation !== undefined) {
                     target = "Till"
                 }
                 break
             case "mine":
             case "refill_mine":
-                targetLocation = this.foundMine?.location
+                targetLocation = this.taskContext.mine?.location
                 if (targetLocation !== undefined) {
-                    target = this.currentTask === "refill_mine" ? "Mine to refill" : "Mine"
+                    target = this.currentTask.id === "refill_mine" ? "Mine to refill" : "Mine"
                 }
                 break
             case "mine_ore":
-                targetLocation = this.foundOre?.start
+                targetLocation = this.taskContext.ore?.start
                 if (targetLocation !== undefined) {
                     target = "Ore"
                 }
                 break
             case "herd":
-                if (this.foundHerdEntity !== undefined) {
-                    targetLocation = world.getEntity(this.foundHerdEntity.id)?.location ?? this.foundHerdEntity.location
-                    target = `Herd ${formatTypeId(this.foundHerdEntity.typeId)}`
-                }
-                break
-            case "deposit":
-                targetLocation = this.foundDepositChest?.location
-                if (targetLocation !== undefined) {
-                    target = "Deposit chest"
+                if (this.taskContext.herdEntity !== undefined) {
+                    targetLocation = world.getEntity(this.taskContext.herdEntity.id)?.location ?? this.taskContext.herdEntity.location
+                    target = `Herd ${formatTypeId(this.taskContext.herdEntity.typeId)}`
                 }
                 break
             case "close_gate":
-                targetLocation = this.foundOpenGate
+                targetLocation = this.taskContext.openGate
                 if (targetLocation !== undefined) {
                     target = "Gate"
                 }
@@ -1347,18 +1818,15 @@ export class Villager {
 
         const nameTag = village === undefined ? "No Village" : [
             `Villager: ${formatTypeId(this.typeId)}`,
-            `Village: ${village.centerString}`,
             `Task: ${taskName}`,
             `Progress: ${this.taskProgress}`,
+            `Waiting: ${waiting}`,
             `Pathing: ${this.isPathing ? "Yes" : "No"}`,
             `Blocked: ${this.isBlocked ? "Yes" : "No"}`,
-            `Blocking entity: ${this.blockingEntityTypeId ?? "None"}`,
-            `Blocked timer: ${this.blockedTimer}`,
-            `Unblock timer: ${this.unblockTimer}`,
-            `Total Block Timer: ${this.totalBlockTimer}`,
-            `Waiting: ${waiting}`,
             `Target: ${target}`,
             `Target distance: ${targetDistance === undefined ? "None" : `${fix(targetDistance, 2)} blocks`}`,
+            `Blocked timer: ${this.blockedTimer}`,
+            `Blocking entity: ${this.blockingEntityTypeId ?? "None"}`,
             `Next path node distance: ${nextPathNodeDistance === undefined ? "None" : `${fix(nextPathNodeDistance, 2)} blocks`}`,
             `Path error: ${pathError ?? "None"}`
         ].join("\n")
@@ -1373,25 +1841,23 @@ export class Villager {
     }
 
     private getTaskList() {
-        const villagerProps = tektopiaVillagers[this.typeId]
-        if (villagerProps === undefined) {
+        const villagerConfig = this.getConfig()
+        if (villagerConfig === undefined) {
             return undefined
         }
 
         let allTaskList = taskListsByType.get(this.typeId)
         if (allTaskList === undefined) {
-            allTaskList = sortTasksByPriority(globalTasks.concat(villagerProps.customTasks))
+            allTaskList = sortTasksByPriority(globalTasks.concat(villagerConfig.customTasks))
             taskListsByType.set(this.typeId, allTaskList)
         }
         return allTaskList
     }
 
-    // Picks a new task when the villager is idle or running an interruptible task. This runs on its own (not only from
-    // tickTasks) so an idle villager can be interrupted even while a post-task wait would otherwise freeze its AI.
     private trySelectTask(village: Village, allTaskList: typeof globalTasks) {
         const villager = this
 
-        const currentTask = allTaskList.find(task => task.id === villager.currentTask)
+        const currentTask = allTaskList.find(task => task.id === villager.currentTask?.id)
         const canPickTask = villager.currentTask === undefined || currentTask?.interruptible === true
 
         if (!canPickTask || (system.currentTick + villager.index) % 20 !== 0) {
@@ -1403,20 +1869,18 @@ export class Villager {
             leashedEntity.getComponent(EntityComponentTypes.Leashable)?.unleash()
         }
 
-        // An idle villager considers every task; an interruptible one is only interrupted by strictly higher priorities
         const newTask = pickTask(
             allTaskList,
-            task => task.condition(villager, village),
+            task => villager.canDoTask(task, village),
             currentTask?.priority
         )
 
         if (newTask !== undefined) {
-            villager.foundTree = undefined
-            villager.foundItem = undefined
-            villager.foundHarvestLocation = undefined
+            villager.pendingContext = {}
+            villager.currentTask = { id: newTask.id, context: {} }
             newTask.condition(villager, village)
 
-            villager.currentTask = newTask.id
+            villager.closeChest()
             villager.stopPath()
             villager.taskProgress = 0
             villager.waiting = 0
@@ -1426,10 +1890,32 @@ export class Villager {
             }
         }
         else if (villager.currentTask === undefined) {
-            villager.foundTree = undefined
-            villager.foundItem = undefined
-            villager.foundHarvestLocation = undefined
+            villager.pendingContext = {}
         }
+    }
+
+    hasToolForTask(task: Task) {
+        if (task.requiresTool) {
+            const villagerToolTypes = this.getToolTypes()
+            if (villagerToolTypes !== undefined) {
+                for (const toolType of villagerToolTypes) {
+                    if (this.getBestTool(toolType) === undefined) {
+                        return false
+                    }
+                }
+            }
+        }
+
+        return true
+    }
+
+    canDoTask(task: Task, village: Village) {
+        const hasTool = this.hasToolForTask(task)
+        if (!hasTool) {
+            return false
+        }
+
+        return task.condition(this, village)
     }
 
     tickTasks(village: Village) {
@@ -1446,8 +1932,18 @@ export class Villager {
         villager.trySelectTask(village, allTaskList)
 
         if (villager.currentTask !== undefined) {
-            const task = allTaskList.find(checkTask => checkTask.id === villager.currentTask)
-            task?.tick?.(villager, village)
+            let task = allTaskList.find(checkTask => checkTask.id === villager.currentTask?.id)
+
+            if (task !== undefined) {
+                if (!this.hasToolForTask(task)) {
+                    villager.cancelTask()
+                    task = undefined
+                }
+            }
+
+            if (task !== undefined) {
+                task.tick?.(villager, village)
+            }
 
             if (!villager.hasTask && !villager.isWaiting) {
                 if (villager.animation !== "walking") {
@@ -1455,10 +1951,9 @@ export class Villager {
                 }
                 villager.holdingItem = undefined
                 villager.stopPath()
-                // Idle wait before the first wander after a task; the next task resets this to 0 when it starts
                 villager.taskProgress = randomInt(IDLE_WAIT_MIN_TICKS, IDLE_WAIT_MAX_TICKS)
-                villager.foundTree = undefined
-                villager.foundHarvestLocation = undefined
+                villager.taskContext.tree = undefined
+                villager.taskContext.harvestLocation = undefined
             }
         }
         else if (!villager.isPathing) {
@@ -1472,7 +1967,6 @@ export class Villager {
                 villager.taskProgress--
             }
             else {
-                // Always roll the wait, even when no walkable spot is found, so a failed attempt can't be retried every tick
                 villager.taskProgress = randomInt(IDLE_WAIT_MIN_TICKS, IDLE_WAIT_MAX_TICKS)
                 let block = dimension.getBlockSafe(randomLocation)
                 if (block !== undefined) {
@@ -1495,7 +1989,7 @@ export class Villager {
                 }
             }
         }
-        if (villager.isPathing && villager.typeId === "tektopia:lumberjack" && (system.currentTick + villager.index) % 20 === 0) {
+        if (villager.isPathing && villager.typeId === "tektopia:villager_lumberjack" && (system.currentTick + villager.index) % 20 === 0) {
             const minVector = addVectors(villagerLocation, { x: -2, y: -1, z: -2 })
             const maxVector = addVectors(villagerLocation, { x: 2, y: 2, z: 2 })
             const blocksToUpdate = []
@@ -1508,7 +2002,7 @@ export class Villager {
                             continue
                         }
                         if (block.permutation.getState("persistent_bit") === false) {
-                            block.destroy()
+                            block.destroy(true)
                             const blockList = [block, block.aboveSafe(), block.belowSafe()]
                             for (const neighbor of blockList) {
                                 if (neighbor === undefined) {
@@ -1528,51 +2022,12 @@ export class Villager {
         }
     }
 
-    tickDeposit(village: Village) {
-        const chest = this.foundDepositChest
-        const plan = this.foundDepositPlan
-        const inventory = this.getComponent(EntityComponentTypes.Inventory)?.container
+    private get taskContext(): TaskFound {
+        return this.currentTask?.context ?? this.pendingContext
+    }
 
-        if (chest === undefined || plan === undefined || inventory === undefined || !chest.container.isValid) {
-            this.currentTask = undefined
-            return
-        }
-
-        const distance = calculateDistance(centerVector(chest.location, true), this.location)
-        if (distance < 1.5 || (!this.isPathing && distance < 2.5)) {
-            let moved = village.storage.depositPlanInto(chest, inventory, plan, c => this.canUseDepositChest(village, c))
-            if (moved === 0) {
-                moved = village.storage.depositPlanInto(chest, inventory, plan, undefined, false)
-            }
-            if (moved === 0) {
-                this.skipDepositChest(chest, `deposited nothing (plan: ${JSON.stringify(plan)})`)
-            }
-            this.waiting = 10
-            this.currentTask = undefined
-            this.stopPath()
-            return
-        }
-
-        let stand = this.foundDepositStand
-        if (stand === undefined || village.pathNodes[locationToString(stand)] === undefined) {
-            stand = this.findChestStandLocation(village, chest)
-            this.foundDepositStand = stand
-        }
-
-        // Paths can also be cancelled silently (blocked, node became invalid), which just restarts them here, so the trip is capped
-        if (stand === undefined || this.pathError !== undefined || this.taskProgress++ > DEPOSIT_GIVE_UP_TICKS) {
-            const reason = stand === undefined
-                ? "no walkable tile next to the chest"
-                : this.pathError !== undefined
-                    ? `path error ${this.pathError}`
-                    : `trip took more than ${DEPOSIT_GIVE_UP_TICKS} ticks (distance ${fix(distance, 2)})`
-            this.skipDepositChest(chest, reason)
-            this.stopPath()
-            this.currentTask = undefined
-            return
-        }
-
-        this.pathFindTo(stand)
+    get currentTaskId() {
+        return this.currentTask?.id
     }
 
     get hasTask() {
@@ -1600,17 +2055,326 @@ export class Villager {
         return undefined
     }
 
+    tickDepositToolTask(village: Village) {
+        if (this.isWaiting) {
+            return
+        }
+
+        const toolDeposits = this.taskContext.toolDeposits
+        if (toolDeposits === undefined) {
+            this.cancelTask()
+            return
+        }
+
+        const villagerInventory = this.getInventory()
+        if (villagerInventory === undefined) {
+            this.cancelTask()
+            return
+        }
+
+        const villageStorage = village.storage
+
+        const toolDeposit = toolDeposits[0]
+        if (toolDeposit === undefined) {
+            this.cancelTask()
+            return
+        }
+
+        const item = villagerInventory.getItem(toolDeposit.slotIndex)
+        if (item?.typeId !== toolDeposit.item.typeId) {
+            toolDeposits.shift()
+            return
+        }
+
+        const chest = villageStorage.findDepositChest(item, this.location)
+        if (chest === undefined) {
+            toolDeposits.shift()
+            return
+        }
+
+        const chestLocation = chest.location
+
+        const chestDistance = calculateDistance(centerVector(chestLocation, true), this.location)
+        if (chestDistance > 1.5) {
+            this.pathFindTo(chestLocation)
+            return
+        }
+
+        this.stopPath()
+        if (!this.openChest(chestLocation)) {
+            return
+        }
+
+        villagerInventory.transferItem(toolDeposit.slotIndex, chest.container)
+        this.closeChest()
+        toolDeposits.shift()
+    }
+
+    tickGetToolTask(village: Village) {
+        if (this.isWaiting) {
+            return
+        }
+
+        const toolUpgrades = this.taskContext.toolUpgrades
+        const toolUpgrade = toolUpgrades?.[0]
+        if (toolUpgrades === undefined || toolUpgrade === undefined) {
+            this.cancelTask()
+            return
+        }
+
+        const villagerInventory = this.getInventory()
+        if (villagerInventory === undefined) {
+            this.cancelTask()
+            return
+        }
+
+        const villageStorage = village.storage
+
+        const itemResult = villageStorage.findItem({ includesTypes: [toolUpgrade.newId] })
+        if (itemResult === undefined) {
+            toolUpgrades.shift()
+            return
+        }
+
+        const chestLocation = itemResult.chest.location
+        const chestDistance = calculateDistance(centerVector(chestLocation, true), this.location)
+
+        if (chestDistance > 1.5) {
+            this.pathFindTo(chestLocation)
+            return
+        }
+
+        this.stopPath()
+        if (!this.openChest(chestLocation)) {
+            return
+        }
+
+        const currentTool = toolUpgrade.oldId !== undefined ? villagerInventory.findItem({ includesTypes: [toolUpgrade.oldId] }) : undefined
+        if (currentTool === undefined) {
+            itemResult.chest.container.transferItem(itemResult.slotIndex, villagerInventory)
+        }
+        else {
+            itemResult.chest.container.swapItems(itemResult.slotIndex, currentTool.slotIndex, villagerInventory)
+        }
+
+        this.closeChest()
+        toolUpgrades.shift()
+    }
+
+    tickCraftToolTask(village: Village) {
+        if (this.isWaiting) {
+            return
+        }
+
+        const toolCrafts = this.taskContext.toolCrafts
+        const craftTask = toolCrafts?.[0]
+        if (toolCrafts === undefined || craftTask === undefined) {
+            this.cancelTask()
+            return
+        }
+
+        const villagerInventory = this.getInventory()
+        if (villagerInventory === undefined) {
+            this.cancelTask()
+            return
+        }
+
+        const villageStorageStructure = village.findStructures({ includedTypes: ["storage"] })[0]
+        if (villageStorageStructure === undefined) {
+            this.cancelTask()
+            return
+        }
+
+        const villageStorage = village.storage
+
+        if (craftTask.crafting === undefined) {
+            const craftingPlan = villageStorage.getCraftingPlan(craftTask.itemId)
+            if (craftingPlan === undefined) {
+                toolCrafts.shift()
+                return
+            }
+
+            craftTask.crafting = { plan: craftingPlan, items: getRequiredItems(craftingPlan), doneSteps: [] }
+        }
+
+        const craftingContext = craftTask.crafting
+
+        if (!craftingContext.haveItems) {
+            const villagerItemCounts = villagerInventory.getItemCounts()
+
+            for (const [itemId, amount] of Object.entries(craftingContext.items)) {
+                const amountNeeded = amount - (villagerItemCounts[itemId] ?? 0)
+                if (amountNeeded > 0) {
+                    const itemResults = villageStorage.findItems({ includesTypes: [itemId] }, amountNeeded)
+                    const targetItem = itemResults[0]
+                    if (targetItem === undefined) {
+                        toolCrafts.shift()
+                        return
+                    }
+
+                    const chestLocation = targetItem.chest.location
+                    const chestDistance = calculateDistance(centerVector(chestLocation, true), this.location)
+
+                    if (chestDistance > 1.5) {
+                        this.pathFindTo(chestLocation)
+                        return
+                    }
+
+                    this.stopPath()
+                    if (!this.openChest(chestLocation)) {
+                        return
+                    }
+
+                    targetItem.chest.container.transferItemStack(targetItem.slotIndex, villagerInventory, targetItem.item.amount)
+                    this.closeChest()
+                    return
+                }
+            }
+        }
+
+        craftingContext.haveItems = true
+
+        const craftingTables = villageStorageStructure.getCraftingTables()
+
+        if (craftingTables.length === 0) {
+            toolCrafts.shift()
+            return
+        }
+
+        const closestCraftingTable = craftingTables.reduce((closest, table) =>
+            calculateDistance(table.bottomCenter(), this.location)
+                < calculateDistance(closest.bottomCenter(), this.location)
+                ? table
+                : closest
+        )
+
+        const craftingTableDistance = calculateDistance(closestCraftingTable.bottomCenter(), this.location)
+        if (craftingTableDistance > 1.5) {
+            this.pathFindTo(closestCraftingTable.location)
+            return
+        }
+
+        let currentCraftingStep
+
+        craftingContext.doneSteps ??= []
+
+        for (const [index, step] of craftingContext.plan.entries()) {
+            const doneStep = craftingContext.doneSteps[index]
+            if (doneStep === undefined || doneStep < step.times) {
+                currentCraftingStep = { ...step, index }
+                break
+            }
+        }
+
+        if (currentCraftingStep === undefined) {
+            toolCrafts.shift()
+            return
+        }
+
+        this.stopPath()
+        this.setAnimation("crafting")
+        this.lookAt(closestCraftingTable.center())
+        this.holdingItem = currentCraftingStep.output.id
+
+        this.taskProgress++
+
+        if (this.taskProgress <= 100) {
+            return
+        }
+
+        this.taskProgress = 0
+
+        const successful = villagerInventory.removeItems(currentCraftingStep.input.map(input => ({ itemFilter: { includesTypes: [input.id] }, amount: input.amount })), true)
+
+        if (!successful) {
+            toolCrafts.shift()
+            return
+        }
+
+        const outputItem = new ItemStack(currentCraftingStep.output.id, currentCraftingStep.output.amount)
+        outputItem.makeVillagerItem() //fix
+        villagerInventory.addItem(outputItem)
+
+        craftingContext.doneSteps[currentCraftingStep.index] = (craftingContext.doneSteps[currentCraftingStep.index] ?? 0) + 1
+    }
+
+    tickDepositTask(village: Village) {
+        const depositPlan = this.taskContext.depositPlan
+        if (depositPlan === undefined) {
+            this.cancelTask()
+            return
+        }
+
+        const villagerInventory = this.getInventory()
+        if (villagerInventory === undefined) {
+            this.cancelTask()
+            return
+        }
+
+        if (this.isWaiting) {
+            return
+        }
+
+        const villageStorage = village.storage
+        for (const [itemId, amount] of Object.entries(depositPlan)) {
+            if (amount === 0) {
+                continue
+            }
+            const items = villagerInventory.filterItems({ includesTypes: [itemId] })
+            for (const itemResult of items) {
+                const item = itemResult.item.clone()
+                item.amount = Math.min(item.amount, amount)
+                const chest = villageStorage.findDepositChest(item, this.location)
+                if (chest === undefined) {
+                    continue
+                }
+
+                const chestLocation = chest.location
+
+                const chestBlock = this.dimension.getBlock(chestLocation)
+                if (chestBlock === undefined) {
+                    return
+                }
+
+                const chestDistance = calculateDistance(centerVector(chestLocation, true), this.location)
+
+                if (chestDistance > 1.5) {
+                    this.pathFindTo(chestLocation)
+                    return
+                }
+
+                this.stopPath()
+                if (!this.openChest(chestLocation)) {
+                    return
+                }
+
+                const chestInventory = chest.container
+
+                const moved = villagerInventory.transferItemStack(itemResult.slotIndex, chestInventory, item.amount)
+
+                // Count what the chest actually took; if it took nothing, stop trying to deposit this item
+                if (depositPlan[itemId] !== undefined) {
+                    depositPlan[itemId] = moved > 0 ? depositPlan[itemId] - moved : 0
+                }
+
+                this.waiting = 5
+                return
+            }
+        }
+
+        this.cancelTask()
+    }
+
     tickBreedEntity() {
         const villager = this
 
-        if (villager.foundBreedableEntity === undefined || villager.foundBreedableMate === undefined) {
+        if (villager.taskContext.breedableEntity === undefined || villager.taskContext.breedableMate === undefined) {
             villager.endBreedTask()
             return
         }
 
-        // Both entities must still be in the pen and able to breed; entities already started this task are skipped
         const pending: Entity[] = []
-        for (const found of [villager.foundBreedableEntity, villager.foundBreedableMate]) {
+        for (const found of [villager.taskContext.breedableEntity, villager.taskContext.breedableMate]) {
             const ranchEntity = world.getEntity(found.id)
             if (ranchEntity === undefined || !found.inPen) {
                 villager.endBreedTask()
@@ -1641,34 +2405,33 @@ export class Villager {
 
         ranchEntity.breeding?.start()
 
-        // Stay on the task until the second entity has been started too
         if (pending.length <= 1) {
             villager.endBreedTask()
         }
     }
 
     private endBreedTask() {
-        this.foundBreedableEntity = undefined
-        this.foundBreedableMate = undefined
-        this.currentTask = undefined
+        this.taskContext.breedableEntity = undefined
+        this.taskContext.breedableMate = undefined
+        this.cancelTask()
     }
 
     tickShearEntity() {
         const villager = this
 
-        if (villager.foundShearableEntity === undefined) {
-            villager.currentTask = undefined
+        if (villager.taskContext.shearableEntity === undefined) {
+            villager.cancelTask()
             return
         }
 
-        const ranchEntity = world.getEntity(villager.foundShearableEntity.id)
+        const ranchEntity = world.getEntity(villager.taskContext.shearableEntity.id)
         if (ranchEntity === undefined) {
-            villager.currentTask = undefined
+            villager.cancelTask()
             return
         }
 
         if (!ranchEntity.isShearable) {
-            villager.currentTask = undefined
+            villager.cancelTask()
             return
         }
 
@@ -1681,6 +2444,7 @@ export class Villager {
         }
 
         villager.playAnimation("animation.tektopia_villager.take")
+        villager.holdingItem = "tool"
 
         const woolItem = ranchEntity.getWoolItem()
 
@@ -1696,26 +2460,25 @@ export class Villager {
         }
 
         ranchEntity.triggerEvent("minecraft:on_sheared")
+        ranchEntity.dimension.playSound("mob.sheep.shear", ranchEntity.location)
+
+        villager.waiting = 5
     }
 
-    // True when another villager has this gate in their close list or is currently on their way to close it
-    private isGateClaimedByOthers(key: LocationString) {
+    private getGatesClaimedByOthers() {
+        const claimed = new Set<string>()
         for (const villager of world.getVillagers()) {
             if (villager.id === this.id) {
                 continue
             }
-            if (villager.openedDoors.includes(key)) {
-                return true
+            for (const key of villager.openedDoors) {
+                claimed.add(key)
             }
-            if (
-                villager.currentTask === "close_gate"
-                && villager.foundOpenGate !== undefined
-                && locationToString(villager.foundOpenGate) === key
-            ) {
-                return true
+            if (villager.currentTask?.id === "close_gate" && villager.taskContext.openGate !== undefined) {
+                claimed.add(locationToString(villager.taskContext.openGate))
             }
         }
-        return false
+        return claimed
     }
 
     private hasPlayerNearGate(gateLocation: Vector3) {
@@ -1725,140 +2488,469 @@ export class Villager {
         }).length > 0
     }
 
-    private skipGate(key: LocationString, ticks: number) {
-        this.skippedGates.set(key, system.currentTick + ticks)
+    private isPenSkipped(penKey: LocationString) {
+        return this.isSkipped(this.skippedPens, penKey)
+    }
+
+    private isSkipped(skipList: Map<LocationString, number>, key: LocationString) {
+        const skipUntil = skipList.get(key)
+        if (skipUntil === undefined) {
+            return false
+        }
+        if (skipUntil > system.currentTick) {
+            return true
+        }
+        skipList.delete(key)
+        return false
+    }
+
+    private hasPennedEntityNear(village: Village, center: Vector3, range: number, penKey?: LocationString, ignoreEntityId?: string) {
+        const tick = system.currentTick
+        if (pennedEntityMemoTick !== tick) {
+            pennedEntityMemo.clear()
+            pennedEntityMemoTick = tick
+        }
+        const memoKey = `${village.centerString}|${center.x},${center.y},${center.z}|${range}|${penKey ?? ""}|${ignoreEntityId ?? ""}`
+        let result = pennedEntityMemo.get(memoKey)
+        if (result === undefined) {
+            result = this.computeHasPennedEntityNear(village, center, range, penKey, ignoreEntityId)
+            pennedEntityMemo.set(memoKey, result)
+        }
+        return result
+    }
+
+    private computeHasPennedEntityNear(village: Village, center: Vector3, range: number, penKey?: LocationString, ignoreEntityId?: string) {
+        for (const [id, data] of Object.entries(village.ranchEntities)) {
+            if (id === ignoreEntityId || !data.inPen || (penKey !== undefined && data.structure !== penKey)) {
+                continue
+            }
+            if (calculateDistance(center, data.location) > range + 4) {
+                continue
+            }
+            const entity = world.getEntity(id)
+            if (entity === undefined) {
+                continue
+            }
+            if (calculateDistance(center, entity.location) <= range) {
+                return true
+            }
+        }
+        return false
+    }
+
+    private isGateBlocked(village: Village, gate: Block, ignoreEntityId?: string) {
+        if (gate.permutation.getState("open_bit") === true) {
+            return false
+        }
+        const penKey = village.penTiles.get(locationToString(gate.location))
+        if (penKey === undefined) {
+            return false
+        }
+        return this.hasPennedEntityNear(village, centerVector(gate.location), GATE_OPEN_CLEARANCE, penKey, ignoreEntityId)
+    }
+
+    private hasUnblockedOtherGate(village: Village, penKey: LocationString, gateKey: LocationString, ignoreEntityId?: string) {
+        for (const other of village.getPenGates(penKey)) {
+            const otherKey = locationToString(other)
+            if (otherKey === gateKey) {
+                continue
+            }
+            const node = village.pathNodes[otherKey]
+            if (node === undefined || node.neighbors.length === 0) {
+                continue
+            }
+            const block = this.dimension.getBlockSafe(other)
+            if (block === undefined || !Registry.fenceGateTypes.includes(block.typeId)) {
+                continue
+            }
+            if (!this.isGateBlocked(village, block, ignoreEntityId)) {
+                return true
+            }
+        }
+        return false
+    }
+
+    getAvoidedNodes(): ReadonlySet<LocationString> | undefined {
+        if (!isPenWorkerType(this.typeId)) {
+            return undefined
+        }
+        const village = this.getVillage()
+        if (village === undefined) {
+            return undefined
+        }
+
+        const ignoreEntityId = this.getLeashedEntity()?.id
+        let avoided: Set<LocationString> | undefined
+        for (const penKey of village.penCache.keys()) {
+            const gates = village.getPenGates(penKey)
+            if (gates.length < 2) {
+                continue
+            }
+
+            const blocked: LocationString[] = []
+            for (const gate of gates) {
+                const block = this.dimension.getBlockSafe(gate)
+                if (block !== undefined && this.isGateBlocked(village, block, ignoreEntityId)) {
+                    blocked.push(locationToString(gate))
+                }
+            }
+
+            if (blocked.length === 0 || blocked.length === gates.length) {
+                continue
+            }
+            avoided ??= new Set()
+            for (const key of blocked) {
+                avoided.add(key)
+            }
+        }
+        return avoided
+    }
+
+    private showAvoidedGateParticles() {
+        const avoided = this.getAvoidedNodes()
+        if (avoided === undefined) {
+            return
+        }
+        for (const key of avoided) {
+            const center = centerVector(stringToLocationCached(key))
+            for (const yOffset of [0, 0.5, 1, 1.5]) {
+                try {
+                    this.dimension.spawnParticle("minecraft:villager_angry", addVector(center, "y", yOffset))
+                }
+                catch { }
+            }
+        }
+    }
+
+    holdForEscapingEntity(village: Village, gate: Block) {
+        if (!isPenWorkerType(this.typeId)) {
+            return false
+        }
+
+        const key = locationToString(gate.location)
+        const ignoreEntityId = this.getLeashedEntity()?.id
+        if (!this.isGateBlocked(village, gate, ignoreEntityId)) {
+            this.gateHold = undefined
+            return false
+        }
+
+        const now = system.currentTick
+        if (this.gateHold?.key !== key) {
+            this.gateHold = { key, since: now }
+        }
+        if (now - this.gateHold.since < GATE_WAIT_TICKS) {
+            return true
+        }
+
+        this.gateHold = undefined
+        const penKey = village.penTiles.get(key)
+        if (penKey !== undefined && this.hasUnblockedOtherGate(village, penKey, key, ignoreEntityId)) {
+            this.stopPath()
+        }
+        else {
+            if (penKey !== undefined) {
+                this.skippedPens.set(penKey, now + PEN_SKIP_TICKS)
+            }
+            this.abandonGateBlockedTask()
+        }
+        return true
+    }
+
+    private abandonGateBlockedTask() {
+        this.getLeashedEntity()?.getComponent(EntityComponentTypes.Leashable)?.unleash()
+        this.stopPath()
+        this.taskContext.herdEntity = undefined
+        this.taskContext.breedableEntity = undefined
+        this.taskContext.breedableMate = undefined
+        this.taskContext.shearableEntity = undefined
+        this.taskContext.killingEntity = undefined
+        this.taskContext.fullAnimalPen = undefined
+        this.lastButcherLeash = undefined
+        this.cancelTask()
     }
 
     findOpenGate(village: Village) {
-        const takenGates = new Set<string>()
-        for (const villager of world.getVillagers()) {
-            if (villager.id === this.id) {
-                continue
-            }
-            for (const key of villager.openedDoors) {
-                takenGates.add(key)
-            }
-            if (villager.currentTask === "close_gate" && villager.foundOpenGate !== undefined) {
-                takenGates.add(locationToString(villager.foundOpenGate))
-            }
-        }
-        // Gates this rancher opened itself are closed by closeFarDoors once it walks away
+        const unavailable = this.getGatesClaimedByOthers()
         for (const key of this.openedDoors) {
-            takenGates.add(key)
+            unavailable.add(key)
         }
 
-        const dimension = this.dimension
         const villagerLocation = this.location
-
         let closestGate: Vector3 | undefined
         let closestDistance = Infinity
 
+        const checkedGates = new Set<LocationString>()
         for (const pen of village.findStructures({ includedTypes: [...RANCH_PEN_TYPES] })) {
-            const key = pen.locationString
-
-            if (takenGates.has(key)) {
-                continue
-            }
-
-            const skipUntil = this.skippedGates.get(key)
-            if (skipUntil !== undefined) {
-                if (skipUntil > system.currentTick) {
+            // Every gate on the ranch needs closing, not just the one next to the item frame
+            for (const gateLocation of village.getPenGates(pen.locationString)) {
+                const key = locationToString(gateLocation)
+                if (checkedGates.has(key)) {
                     continue
                 }
-                this.skippedGates.delete(key)
-            }
+                checkedGates.add(key)
 
-            const gate = dimension.getBlockSafe(pen.location)
-            if (
-                gate === undefined
-                || !Registry.fenceGateTypes.includes(gate.typeId)
-                || gate.permutation.getState("open_bit") !== true
-            ) {
-                continue
-            }
+                if (unavailable.has(key) || this.isSkipped(this.skippedGates, key)) {
+                    continue
+                }
+                if (!isOpenFenceGate(this.dimension.getBlockSafe(gateLocation))) {
+                    continue
+                }
 
-            // Accessible: the gate is part of the path network and its requirement lets this villager type through
-            const node = village.pathNodes[key]
-            if (node === undefined || node.neighbors.length === 0 || !checkRequirement(this.typeId, node.requirement)) {
-                continue
-            }
+                const node = village.pathNodes[key]
+                if (node === undefined || node.neighbors.length === 0 || !checkRequirement(this.typeId, node.requirement)) {
+                    continue
+                }
 
-            const distance = calculateDistance(villagerLocation, pen.location)
-            if (distance >= closestDistance) {
-                continue
-            }
+                const distance = calculateDistance(villagerLocation, gateLocation)
+                if (distance >= closestDistance) {
+                    continue
+                }
 
-            // The player lookup is the most expensive check, so it only runs for gates that would become the new closest
-            if (this.hasPlayerNearGate(pen.location)) {
-                continue
-            }
+                if (this.hasPlayerNearGate(gateLocation)) {
+                    continue
+                }
 
-            closestDistance = distance
-            closestGate = pen.location
+                closestDistance = distance
+                closestGate = gateLocation
+            }
         }
 
-        this.foundOpenGate = closestGate
-        return closestGate
+        if (closestGate === undefined) {
+            return false
+        }
+
+        this.taskContext.openGate = closestGate
+        return true
+    }
+
+    tickSleep() {
+        const villager = this
+
+        const bedTime = villager.bedTime()
+
+        if (villager.sitChair !== undefined && bedTime !== "waking" && bedTime !== "tired") {
+            villager.stopChairSit()
+        }
+
+        if (bedTime === "sleep") {
+            const bed = villager.getBed()
+            if (bed === undefined) {
+                villager.setAnimation(undefined)
+                return
+            }
+
+            const bedBlock = villager.dimension.getBlock(bed.location)
+            if (bedBlock === undefined) {
+                return
+            }
+
+            const bedDirection = bedBlock.permutation.getState("direction")
+            if (bedDirection === undefined) {
+                return
+            }
+
+            const bedDistance = calculateDistance(centerVector(bed.location, true), villager.location)
+
+            if (bedDistance > 3 || villager.isPathing) {
+                villager.pathFindTo(bed.location)
+                return
+            }
+
+            villager.setAnimation("sleeping")
+
+            const offsetList = [
+                { x: 0, y: 0.5625, z: -0.65 },
+                { x: 0.65, y: 0.5625, z: 0 },
+                { x: 0, y: 0.5625, z: 0.65 },
+                { x: -0.65, y: 0.5625, z: 0 }
+            ]
+
+            const offset = offsetList[bedDirection]
+            if (offset === undefined) {
+                return
+            }
+
+            villager.teleport(
+                addVectors(centerVector(bed.location, true), offset),
+                { rotation: { x: 0, y: (bedDirection * 90) - 180 } }
+            )
+        }
+        else if (bedTime === "waking" || bedTime === "tired") {
+            villager.setAnimation(undefined)
+
+            if (villager.sitChair !== undefined) {
+                villager.tickChairSit()
+                return
+            }
+
+            if (villager.isPathing) {
+                return
+            }
+
+            if (villager.taskProgress > 0) {
+                villager.taskProgress--
+                return
+            }
+
+            villager.taskProgress = randomInt(IDLE_WAIT_MIN_TICKS, IDLE_WAIT_MAX_TICKS)
+
+            const village = villager.getVillage()
+            const bed = villager.getBed()
+            const structure = bed === undefined ? undefined : village?.getStructure(stringToLocationCached(bed.home))
+
+            const floorLocations = structure?.loadFloorLocations()
+
+            if (floorLocations === undefined || floorLocations.length === 0) {
+                return
+            }
+
+            if (Math.random() < CHAIR_SIT_CHANCE) {
+                const chair = villager.findChair(floorLocations)
+                if (chair !== undefined) {
+                    villager.startChairSit(chair)
+                    return
+                }
+            }
+
+            const target = randomItem(floorLocations)
+            if (target !== undefined) {
+                villager.pathFindTo(target)
+            }
+        }
+        else {
+            villager.cancelTask()
+        }
+    }
+
+    private getClaimedChairs() {
+        const claimedChairs = new Set<LocationString>()
+        for (const villager of world.getVillagers()) {
+            if (villager.id === this.id || villager.sitChair === undefined) {
+                continue
+            }
+            if (villager.dimension.id !== this.dimension.id) {
+                continue
+            }
+            claimedChairs.add(locationToString(villager.sitChair))
+        }
+        return claimedChairs
+    }
+
+    private findChair(floorLocations: readonly Vector3[]): Vector3 | undefined {
+        const claimedChairs = this.getClaimedChairs()
+        const chairs: Vector3[] = []
+        for (const location of floorLocations) {
+            if (claimedChairs.has(locationToString(location))) {
+                continue
+            }
+            if (this.dimension.getBlockSafe(location)?.typeId === "tektopia:chair") {
+                chairs.push(location)
+            }
+        }
+        return randomItem(chairs)
+    }
+
+    private startChairSit(chair: Vector3) {
+        this.sitChair = chair
+        this.sitTicksLeft = randomInt(CHAIR_SIT_MIN_TICKS, CHAIR_SIT_MAX_TICKS)
+        this.sitWalkTicks = 0
+    }
+
+    private stopChairSit() {
+        this.sitChair = undefined
+        this.sitTicksLeft = 0
+        this.sitWalkTicks = 0
+        this.taskProgress = randomInt(IDLE_WAIT_MIN_TICKS, IDLE_WAIT_MAX_TICKS)
+        this.setAnimation(undefined)
+    }
+
+    private tickChairSit() {
+        const villager = this
+        const chairLocation = villager.sitChair
+        if (chairLocation === undefined) {
+            return
+        }
+
+        const chair = villager.dimension.getBlockSafe(chairLocation)
+        const status = villager.sitInChair(chair)
+
+        if (status === "unavailable" || villager.pathError !== undefined) {
+            villager.stopChairSit()
+            return
+        }
+
+        if (status === "walking") {
+            if (villager.sitWalkTicks++ > CHAIR_WALK_GIVE_UP_TICKS) {
+                villager.stopPath()
+                villager.stopChairSit()
+            }
+            return
+        }
+
+        villager.sitTicksLeft--
+        if (villager.sitTicksLeft <= 0) {
+            villager.stopChairSit()
+        }
+    }
+
+    sitInChair(chair: Block | undefined): "unavailable" | "walking" | "sitting" {
+        const villager = this
+        if (chair?.typeId !== "tektopia:chair") {
+            return "unavailable"
+        }
+
+        const chairDistance = calculateDistance(centerVector(chair.location, true), villager.location)
+
+        if (chairDistance > 1.5) {
+            if (!villager.isPathing) {
+                villager.pathFindTo(chair.location)
+            }
+            return "walking"
+        }
+
+        const chairDirection = chair.permutation.getState("minecraft:cardinal_direction") as HorizontalDirection | undefined
+        if (chairDirection === undefined) {
+            return "unavailable"
+        }
+
+        const rotation = directionToRotation(chairDirection)
+        villager.teleport(centerVector(chair.location, true), { rotation })
+        villager.setAnimation("sitting")
+
+        return "sitting"
     }
 
     tickCloseGate() {
         const villager = this
 
-        const gateLocation = villager.foundOpenGate
-        if (gateLocation === undefined) {
+        const gateLocation = villager.taskContext.openGate
+        const gate = gateLocation === undefined ? undefined : villager.dimension.getBlockSafe(gateLocation)
+        if (gateLocation === undefined || !isOpenFenceGate(gate)) {
             villager.endCloseGateTask()
             return
         }
 
         const key = locationToString(gateLocation)
-
-        const gate = villager.dimension.getBlockSafe(gateLocation)
-        if (
-            gate === undefined
-            || !Registry.fenceGateTypes.includes(gate.typeId)
-            || gate.permutation.getState("open_bit") !== true
-        ) {
-            // Someone else already closed it (or it's gone)
-            villager.endCloseGateTask()
-            return
-        }
-
         if (villager.pathError !== undefined) {
-            villager.skipGate(key, GATE_UNREACHABLE_TICKS)
-            villager.endCloseGateTask()
+            villager.giveUpClosingGate(key, GATE_UNREACHABLE_TICKS)
             return
-        }
-
-        if ((system.currentTick + villager.index) % 10 === 0) {
-            if (villager.hasPlayerNearGate(gateLocation)) {
-                villager.skipGate(key, GATE_PLAYER_COOLDOWN_TICKS)
-                villager.stopPath()
-                villager.endCloseGateTask()
-                return
-            }
-            if (villager.isGateClaimedByOthers(key)) {
-                villager.stopPath()
-                villager.endCloseGateTask()
-                return
-            }
         }
 
         const gateCenter = centerVector(gateLocation)
-        if (calculateDistance(gateCenter, villager.location) > GATE_REACH) {
-            villager.pathFindTo(gateLocation)
-            return
+        const arrived = calculateDistance(gateCenter, villager.location) <= GATE_REACH
+        if (arrived || (system.currentTick + villager.index) % 10 === 0) {
+            if (villager.hasPlayerNearGate(gateLocation)) {
+                villager.giveUpClosingGate(key, GATE_PLAYER_COOLDOWN_TICKS)
+                return
+            }
+            if (villager.getGatesClaimedByOthers().has(key)) {
+                villager.giveUpClosingGate(key)
+                return
+            }
         }
 
-        // Last check before acting, so a player or villager that showed up since the last throttled check is respected
-        if (villager.hasPlayerNearGate(gateLocation)) {
-            villager.skipGate(key, GATE_PLAYER_COOLDOWN_TICKS)
-            villager.stopPath()
-            villager.endCloseGateTask()
-            return
-        }
-        if (villager.isGateClaimedByOthers(key)) {
-            villager.stopPath()
-            villager.endCloseGateTask()
+        if (!arrived) {
+            villager.pathFindTo(gateLocation)
             return
         }
 
@@ -1873,23 +2965,68 @@ export class Villager {
         villager.endCloseGateTask()
     }
 
+    private giveUpClosingGate(key: LocationString, skipTicks?: number) {
+        if (skipTicks !== undefined) {
+            this.skippedGates.set(key, system.currentTick + skipTicks)
+        }
+        this.stopPath()
+        this.endCloseGateTask()
+    }
+
     private endCloseGateTask() {
-        this.foundOpenGate = undefined
-        this.currentTask = undefined
+        this.taskContext.openGate = undefined
+        this.cancelTask()
+    }
+
+    private isButcherEntitySkipped(entityId: string) {
+        const skipUntil = this.skippedButcherEntities.get(entityId)
+        if (skipUntil === undefined) {
+            return false
+        }
+        if (skipUntil > system.currentTick) {
+            return true
+        }
+        this.skippedButcherEntities.delete(entityId)
+        return false
+    }
+
+    private pickButcherEntity(village: Village, pen: AnimalPen) {
+        return pen.getEntities(true)
+            .filter(entity =>
+                village.ranchEntities[entity.id] !== undefined
+                && !Villager.unleashableTypes.has(entity.typeId)
+                && !this.isButcherEntitySkipped(entity.id)
+            )
+            .sort((entity1, entity2) =>
+                Number(entity1.villagerEntity ?? false) - Number(entity2.villagerEntity ?? false)
+            )[0]
+    }
+
+    private failButcherTarget(penLocation: Vector3 | undefined, entityId?: string) {
+        const until = system.currentTick + BUTCHER_SKIP_TICKS
+        if (entityId !== undefined) {
+            this.skippedButcherEntities.set(entityId, until)
+        }
+        else if (penLocation !== undefined) {
+            this.skippedPens.set(locationToString(penLocation), until)
+        }
+        this.lastButcherLeash = undefined
+        this.stopPath()
+        this.endButcherTask()
     }
 
     private endButcherTask() {
-        this.foundHerdEntity = undefined
-        this.foundKillingEntity = undefined
-        this.foundFullAnimalPen = undefined
-        this.currentTask = undefined
+        this.taskContext.herdEntity = undefined
+        this.taskContext.killingEntity = undefined
+        this.taskContext.fullAnimalPen = undefined
+        this.cancelTask()
     }
 
     tickButcher(village: Village) {
         const villager = this
 
-        if (villager.foundKillingEntity !== undefined) {
-            const killingEntity = world.getEntity(villager.foundKillingEntity)
+        if (villager.taskContext.killingEntity !== undefined) {
+            const killingEntity = world.getEntity(villager.taskContext.killingEntity)
             if (killingEntity === undefined) {
                 villager.endButcherTask()
                 return
@@ -1901,19 +3038,19 @@ export class Villager {
                 return
             }
 
-            villager.holdingItem = "minecraft:wooden_axe"
+            villager.holdingItem = "tool"
 
             villager.stopPath()
             villager.attack(killingEntity)
             return
         }
 
-        if (villager.foundButcherStructure === undefined) {
+        if (villager.taskContext.butcherStructure === undefined) {
             villager.endButcherTask()
             return
         }
 
-        const butcherStructure = village.getStructure(villager.foundButcherStructure)
+        const butcherStructure = village.getStructure(villager.taskContext.butcherStructure)
         if (butcherStructure === undefined) {
             villager.endButcherTask()
             return
@@ -1925,7 +3062,7 @@ export class Villager {
                 leashedEntity.teleport(villager.location)
             }
 
-            const floorLocations = butcherStructure.getFloorLocations()
+            const floorLocations = butcherStructure.loadFloorLocations()
 
             const minX = Math.min(...floorLocations.map(location => location.x))
             const maxX = Math.max(...floorLocations.map(location => location.x))
@@ -1965,20 +3102,25 @@ export class Villager {
             }
 
             leashedEntity.getComponent(EntityComponentTypes.Leashable)?.unleash()
-            villager.foundKillingEntity = leashedEntity.id
-            villager.foundHerdEntity = undefined
+            villager.taskContext.killingEntity = leashedEntity.id
+            villager.taskContext.herdEntity = undefined
             return
         }
 
-        if (villager.foundFullAnimalPen === undefined) {
+        if (villager.taskContext.fullAnimalPen === undefined) {
             villager.endButcherTask()
             return
         }
 
-        const animalPen = village.getStructure(villager.foundFullAnimalPen) as AnimalPen | undefined
+        const animalPen = village.getStructure(villager.taskContext.fullAnimalPen) as AnimalPen | undefined
 
         if (animalPen === undefined) {
             villager.endButcherTask()
+            return
+        }
+
+        if (villager.pathError !== undefined || villager.taskProgress++ > BUTCHER_GIVE_UP_TICKS) {
+            villager.failButcherTarget(animalPen.location, villager.taskContext.herdEntity?.id)
             return
         }
 
@@ -1990,28 +3132,25 @@ export class Villager {
             return
         }
 
-        if (villager.foundHerdEntity === undefined) {
-            const entities = animalPen.getEntities(true).sort((entity1, entity2) =>
-                Number(entity1.villagerEntity ?? false) - Number(entity2.villagerEntity ?? false)
-            )
-
-            for (const entity of entities) {
-                const ranchEntity = village.ranchEntities[entity.id]
-                if (ranchEntity === undefined) {
-                    continue
+        if (villager.taskContext.herdEntity === undefined) {
+            const entity = villager.pickButcherEntity(village, animalPen)
+            const ranchEntity = entity === undefined ? undefined : village.ranchEntities[entity.id]
+            if (entity !== undefined && ranchEntity !== undefined) {
+                const lastLeash = villager.lastButcherLeash
+                if (lastLeash?.id === entity.id && system.currentTick - lastLeash.tick < 100) {
+                    villager.failButcherTarget(animalPen.location, entity.id)
+                    return
                 }
-
-                villager.foundHerdEntity = { ...ranchEntity, id: entity.id }
-                break
+                villager.taskContext.herdEntity = { ...ranchEntity, id: entity.id }
             }
         }
 
-        if (villager.foundHerdEntity === undefined) {
+        if (villager.taskContext.herdEntity === undefined) {
             villager.endButcherTask()
             return
         }
 
-        const ranchEntity = world.getEntity(villager.foundHerdEntity.id)
+        const ranchEntity = world.getEntity(villager.taskContext.herdEntity.id)
         if (ranchEntity === undefined) {
             villager.endButcherTask()
             return
@@ -2027,7 +3166,8 @@ export class Villager {
 
         const ranchEntityLeashableComponent = ranchEntity.getComponent(EntityComponentTypes.Leashable)
         if (ranchEntityLeashableComponent === undefined) {
-            villager.endButcherTask()
+            Villager.unleashableTypes.add(ranchEntity.typeId)
+            villager.failButcherTarget(animalPen.location, ranchEntity.id)
             return
         }
 
@@ -2035,14 +3175,19 @@ export class Villager {
 
         villager.playAnimation("animation.tektopia_villager.take")
 
-        ranchEntityLeashableComponent.leashTo(villager.entity)
-        villager.foundHerdEntity = undefined
+        try {
+            ranchEntityLeashableComponent.leashTo(villager.entity)
+        }
+        catch {
+            villager.failButcherTarget(animalPen.location, ranchEntity.id)
+            return
+        }
+        villager.lastButcherLeash = { id: ranchEntity.id, tick: system.currentTick }
+        villager.taskContext.herdEntity = undefined
 
         villager.waiting = 20
     }
 
-    // A floor tile is blocked when it (or the space above it) is no longer passable, or another entity is standing on it.
-    // The rancher itself, the animal it is leading and animals already penned don't count, since they never block the way in.
     private isFloorLocationBlocked(village: Village, location: Vector3, leashedEntity: Entity) {
         const block = this.dimension.getBlockSafe(location)
         if (block === undefined || !block.canPathThrough() || block.aboveSafe()?.canPathThrough() !== true) {
@@ -2061,11 +3206,9 @@ export class Villager {
         )
     }
 
-    // The unblocked floor tile closest to the middle of the pen. The choice is kept while it stays unblocked so the
-    // rancher doesn't change its mind every tick as entities move around.
     private findHerdPathLocation(
         village: Village,
-        structure: { locationString: LocationString, getFloorLocations(): Vector3[] },
+        structure: { locationString: LocationString, loadFloorLocations(): readonly Vector3[] },
         leashedEntity: Entity
     ) {
         const cached = this.herdPathTarget
@@ -2076,7 +3219,7 @@ export class Villager {
             return cached.location
         }
 
-        const floorLocations = structure.getFloorLocations()
+        const floorLocations = structure.loadFloorLocations()
         if (floorLocations.length === 0) {
             this.herdPathTarget = undefined
             return undefined
@@ -2103,7 +3246,6 @@ export class Villager {
             }))
             .sort((a, b) => a.distance - b.distance)
 
-        // If every tile is blocked, fall back to the most central one rather than not herding at all
         let chosen = byDistanceToCenter[0]?.location
         for (const { location } of byDistanceToCenter) {
             if (!this.isFloorLocationBlocked(village, location, leashedEntity)) {
@@ -2125,7 +3267,7 @@ export class Villager {
             const structureType = entityStructures[leashedEntity.typeId]
             if (structureType === undefined) {
                 leashedEntity.getComponent(EntityComponentTypes.Leashable)?.unleash()
-                villager.currentTask = undefined
+                villager.cancelTask()
                 return
             }
 
@@ -2138,7 +3280,7 @@ export class Villager {
             let foundStructure = false
 
             for (const structure of structures) {
-                if ((!structure.isUnderpopulated && !leashedEntity.villagerEntity) || structure.isFull) {
+                if ((!structure.isUnderpopulated && !leashedEntity.villagerEntity) || structure.isFull || villager.isPenSkipped(structure.locationString)) {
                     continue
                 }
 
@@ -2183,18 +3325,18 @@ export class Villager {
                 }
                 catch { }
 
-                villager.currentTask = undefined
+                villager.cancelTask()
                 break
             }
 
             if (!foundStructure) {
                 leashedEntity.getComponent(EntityComponentTypes.Leashable)?.unleash()
-                villager.currentTask = undefined
+                villager.cancelTask()
             }
             return
         }
 
-        if (villager.foundHerdEntity === undefined) {
+        if (villager.taskContext.herdEntity === undefined) {
             const inStructure = villager.getCurrentStructure()
             if (inStructure !== undefined) {
                 if (["pig_pen", "chicken_coop", "sheep_pen", "cow_pen"].includes(inStructure.type)) {
@@ -2207,18 +3349,18 @@ export class Villager {
                     }
                 }
             }
-            villager.currentTask = undefined
+            villager.cancelTask()
             return
         }
 
-        const ranchEntity = world.getEntity(villager.foundHerdEntity.id)
+        const ranchEntity = world.getEntity(villager.taskContext.herdEntity.id)
         if (ranchEntity === undefined) {
-            villager.currentTask = undefined
+            villager.cancelTask()
             return
         }
 
         if (!village.isInBounds(ranchEntity.location)) {
-            villager.currentTask = undefined
+            villager.cancelTask()
             return
         }
 
@@ -2232,7 +3374,7 @@ export class Villager {
 
         const ranchEntityLeashableComponent = ranchEntity.getComponent(EntityComponentTypes.Leashable)
         if (ranchEntityLeashableComponent === undefined) {
-            villager.currentTask = undefined
+            villager.cancelTask()
             return
         }
 
@@ -2247,15 +3389,15 @@ export class Villager {
 
     tickMine(village: Village) {
         const villager = this
-        if (villager.foundMine === undefined) {
-            villager.currentTask = undefined
+        if (villager.taskContext.mine === undefined) {
+            villager.cancelTask()
             return
         }
 
-        const structure = village.getStructure(villager.foundMine.location) as Mineshaft | undefined
+        const structure = village.getStructure(villager.taskContext.mine.location) as Mineshaft | undefined
 
         if (structure === undefined) {
-            villager.currentTask = undefined
+            villager.cancelTask()
             return
         }
 
@@ -2263,14 +3405,14 @@ export class Villager {
         const oppositeRotation = getOppositeDirection(rotation)
 
         if (oppositeRotation === undefined) {
-            villager.currentTask = undefined
+            villager.cancelTask()
             return
         }
 
         const mineTask = structure.getNextTask()
 
         if (mineTask === undefined) {
-            villager.currentTask = undefined
+            villager.cancelTask()
             return
         }
 
@@ -2281,7 +3423,7 @@ export class Villager {
 
             const pathLocationBelow = this.dimension.getBlockSafe(addVector(pathLocation, "y", -1))
             if (pathLocationBelow === undefined) {
-                villager.currentTask = undefined
+                villager.cancelTask()
                 return
             }
 
@@ -2299,7 +3441,7 @@ export class Villager {
             villager.lookAt(mineBlock.center(), false)
 
             villager.setAnimation("mining")
-            villager.holdingItem = "wooden_pickaxe"
+            villager.holdingItem = "tool"
             villager.stopPath()
 
             villager.taskProgress++
@@ -2308,26 +3450,17 @@ export class Villager {
                 return
             }
 
-            // Must be checked before the block is destroyed
-            const minedOre = mineBlock.isOre
             const minedLocation = mineBlock.location
 
-            mineBlock.destroy()
+            mineBlock.destroy(true)
 
-            let oreKeys: LocationString[] = []
-            if (minedOre) {
-                oreKeys = village.scanOreVein(villager.dimension, minedLocation)
-            }
+            village.scanOreVein(villager.dimension, minedLocation)
 
             villager.waiting = 15
             villager.setAnimation(undefined)
             updatePathNodes([mineBlock, mineBlock.aboveSafe(), mineBlock.belowSafe()].filter(checkBlock => checkBlock !== undefined))
-            if (oreKeys.length > 0 && villager.findOre(village, oreKeys) !== undefined) {
-                villager.currentTask = "mine_ore"
-                villager.taskProgress = 0
-                return
-            }
-            villager.currentTask = undefined
+
+            villager.cancelTask()
         }
         else if (mineTask.type === "light") {
             const torchBlock = mineTask.block
@@ -2347,6 +3480,17 @@ export class Villager {
 
             const pathLocationDistance = calculateDistance(pathLocation, villager.location)
 
+            if (!structure.isInTunnel(villager.location)) {
+                if (villager.pathError !== undefined) {
+                    villager.stopPath()
+                    villager.taskProgress = 0
+                    villager.cancelTask()
+                    return
+                }
+                villager.pathFindTo(pathLocation)
+                return
+            }
+
             if (pathLocationDistance >= 1 && (villager.isPathing || pathLocationDistance >= 3)) {
                 villager.pathFindTo(pathLocation)
                 return
@@ -2354,18 +3498,35 @@ export class Villager {
 
             fillBlock.replace("cobblestone")
             villager.waiting = 5
-            villager.currentTask = undefined
 
             updatePathNodes([fillBlock, fillBlock.aboveSafe(), fillBlock.belowSafe()].filter(checkBlock => checkBlock !== undefined))
         }
+
+        villager.taskProgress = 0
     }
 
     tickMineOre(village: Village) {
         const villager = this
-        const foundOre = villager.foundOre
+        const foundOre = villager.taskContext.ore
 
         if (foundOre === undefined) {
-            villager.currentTask = undefined
+            villager.cancelTask()
+            return
+        }
+
+        if (villager.pathError !== undefined) {
+            if (villager.pathError === "no_path" || villager.pathError === "timeout") {
+                for (const key of foundOre.ores) {
+                    const stand = village.findOreStandLocation(stringToLocation(key))
+                    if (stand !== undefined && areVectorsEqual(stand, foundOre.start)) {
+                        village.oreLocations.remove(key)
+                    }
+                }
+            }
+            villager.stopPath()
+            villager.taskContext.ore = undefined
+            villager.taskProgress = 0
+            villager.cancelTask()
             return
         }
 
@@ -2391,15 +3552,15 @@ export class Villager {
             }
         }
         if (oreBlock === undefined || oreKey === undefined) {
-            villager.foundOre = undefined
-            villager.currentTask = undefined
+            villager.taskContext.ore = undefined
+            villager.cancelTask()
             return
         }
 
         villager.lookAt(oreBlock.center(), false)
 
         villager.setAnimation("mining")
-        villager.holdingItem = "wooden_pickaxe"
+        villager.holdingItem = "tool"
         villager.stopPath()
 
         villager.taskProgress++
@@ -2411,7 +3572,7 @@ export class Villager {
         const oreLocation = oreBlock.location
         village.oreLocations.remove(oreKey)
         foundOre.ores.splice(foundOre.ores.indexOf(oreKey), 1)
-        oreBlock.destroy()
+        oreBlock.destroy(true)
 
         const newlyFoundOres = village.scanOreVein(villager.dimension, oreLocation)
         for (const key of newlyFoundOres) {
@@ -2427,18 +3588,49 @@ export class Villager {
         updatePathNodes([oreBlock, oreBlock.aboveSafe(), oreBlock.belowSafe()].filter(checkBlock => checkBlock !== undefined))
     }
 
-    tickRefillMine() {
+    tickRefillMine(village: Village) {
         const villager = this
 
-        if (villager.foundMine === undefined) {
-            villager.currentTask = undefined
+        if (villager.taskContext.mine === undefined) {
+            villager.cancelTask()
             return
         }
 
-        const direction = directionToVector(villager.foundMine.rotation)
+        const direction = directionToVector(villager.taskContext.mine.rotation)
+
+        const mine = villager.taskContext.mine
+        const frameBlock = villager.dimension.getBlockSafe(
+            addVectors(subtractVectors(mine.location, direction), { x: 0, y: 2, z: 0 })
+        )
+        if (frameBlock === undefined) {
+            return
+        }
+
+        const isMineStillValid = () => {
+            if (!frameBlock.isValid || frameBlock.getFrameItem()?.typeId !== "tektopia:structure_mineshaft") {
+                return false
+            }
+            const validMine = villager.validateMineFrame(village, frameBlock)
+            return validMine?.rotation === mine.rotation
+                && locationToString(validMine.doorLocation) === locationToString(mine.location)
+        }
+
+        const cancelRefill = () => {
+            villager.taskContext.mine = undefined
+            villager.taskProgress = 0
+            villager.stopPath()
+            villager.setAnimation(undefined)
+            villager.cancelTask()
+        }
+
+        if (!frameBlock.isValid || frameBlock.getFrameItem()?.typeId !== "tektopia:structure_mineshaft") {
+            cancelRefill()
+            return
+        }
+
         const reversedDirection = multiplyVector(direction, "xyz", -1)
 
-        const pathLocation = addVectors(villager.foundMine.location, multiplyVector(reversedDirection, "xyz", 2))
+        const pathLocation = addVectors(villager.taskContext.mine.location, multiplyVector(reversedDirection, "xyz", 2))
 
         const pathLocationDistance = calculateDistance(centerVector(pathLocation, true), villager.location)
 
@@ -2447,21 +3639,53 @@ export class Villager {
             return
         }
 
+        if (villager.taskProgress === 0 && !isMineStillValid()) {
+            cancelRefill()
+            return
+        }
+
         villager.lookAt(addVectors(villager.location, direction))
 
         villager.setAnimation("refilling")
 
-        const dimension = villager.dimension
-        const block = getMineshaftMineBlock(dimension, villager.foundMine.location, villager.foundMine.rotation, false)
+        villager.taskProgress++
+        villager.stopPath()
 
-        if (block === undefined) {
-            villager.currentTask = undefined
+        if (villager.taskProgress === 55) {
+            const molangVars = new MolangVariableMap
+            molangVars.setVector3("direction", direction)
+            villager.dimension.spawnParticle("tektopia:cast_forward_beam", villager.location, molangVars)
+        }
+
+        if (villager.taskProgress <= 70 || villager.isWaiting) {
             return
         }
 
-        let currentLocation = { x: block.x, y: villager.foundMine.location.y, z: block.z }
+        if (!isMineStillValid()) {
+            cancelRefill()
+            return
+        }
 
-        const columnAmount = randomInt(1, 4)
+        const dimension = villager.dimension
+        const block = getMineshaftMineBlock(dimension, villager.taskContext.mine.location, villager.taskContext.mine.rotation, false)
+
+        if (block === undefined) {
+            villager.cancelTask()
+            return
+        }
+
+        let currentLocation = { x: block.x, y: villager.taskContext.mine.location.y, z: block.z }
+
+        const firstMineColumn = addVectors(villager.taskContext.mine.location, direction)
+        const refillColumnLimit = calculateDistance(block.location, firstMineColumn, true)
+
+        if (refillColumnLimit <= 0) {
+            villager.cancelTask()
+            return
+        }
+
+        const columnAmount = Math.min(randomInt(1, 4), refillColumnLimit)
+        const updateBlockList = []
 
         for (let i = 0; i < columnAmount; i++) {
             currentLocation = addVectors(currentLocation, reversedDirection)
@@ -2472,9 +3696,11 @@ export class Villager {
                 currentBlock?.aboveSafe()
             ]
 
+            updateBlockList.push(...fillBlockList)
+
             for (const fillBlock of fillBlockList) {
                 if (fillBlock === undefined) {
-                    villager.currentTask = undefined
+                    villager.cancelTask()
                     return
                 }
 
@@ -2494,34 +3720,44 @@ export class Villager {
 
                 const blockType = randomWeighedItem(possibleBlockWeights)
                 if (blockType === undefined) {
-                    villager.currentTask = undefined
+                    villager.cancelTask()
                     return
                 }
 
                 fillBlock.setType(blockType)
             }
         }
+
+        updatePathNodes(updateBlockList.filter(checkBlock => checkBlock !== undefined))
+
+        villager.taskProgress = 0
     }
 
-    tickChop(village: Village) {
+    tickChopTree(village: Village) {
         const villager = this
 
         const dimension = villager.dimension
-        const foundTree = villager.foundTree
+        const foundTree = villager.taskContext.tree
 
         if (foundTree !== undefined) {
             const treeBlock = dimension.getBlockSafe(foundTree)
-            if (treeBlock?.isTree) {
-                const treeDist = calculateDistance(centerVector(foundTree, true), villager.location)
+            if (treeBlock?.isTree()) {
+                const trunkBlocks = getTrunkBlocks(treeBlock)
+                const trunkCenter = {
+                    x: trunkBlocks.reduce((sum, block) => sum + block.location.x + 0.5, 0) / trunkBlocks.length,
+                    y: treeBlock.location.y,
+                    z: trunkBlocks.reduce((sum, block) => sum + block.location.z + 0.5, 0) / trunkBlocks.length
+                }
+                const treeDist = calculateDistance(trunkCenter, villager.location)
                 if (treeDist <= 5) {
-                    villager.holdingItem = "wooden_axe"
+                    villager.holdingItem = "tool"
                 }
                 else {
                     villager.holdingItem = undefined
                 }
                 if (treeDist < 0.5 || (!villager.isPathing && treeDist < 3)) {
                     villager.setAnimation("chopping")
-                    villager.lookAt(centerVector(foundTree))
+                    villager.lookAt({ x: trunkCenter.x, y: trunkCenter.y + 0.5, z: trunkCenter.z })
                     villager.taskProgress++
                     villager.stopPath()
 
@@ -2533,16 +3769,21 @@ export class Villager {
                         villager.waiting = true
                         villager.setAnimation(undefined)
 
-                        const treeKey = locationToString(treeBlock)
+                        const trunkKeys = trunkBlocks.map(block => locationToString(block.location))
                         destroyTree(treeBlock, () => {
-                            village.treeLocations.remove(treeKey)
-                            village.saplingLocations.add(treeKey)
-                            villager.currentTask = undefined
-                            villager.waiting = 20
-                            if (!treeBlock.isValid) {
-                                return
+                            village.treeLocations.remove(locationToString(foundTree))
+                            for (const key of trunkKeys) {
+                                village.treeLocations.remove(key)
+                                village.saplingLocations.add(key)
                             }
-                            treeBlock.replace(saplingTypeId)
+                            villager.cancelTask()
+                            villager.waiting = 30
+                            for (const trunkBlock of trunkBlocks) {
+                                if (!trunkBlock.isValid) {
+                                    continue
+                                }
+                                trunkBlock.replace(saplingTypeId)
+                            }
                         })
                     }
                 }
@@ -2552,59 +3793,180 @@ export class Villager {
             }
             else {
                 village.treeLocations.remove(locationToString(foundTree))
-                villager.currentTask = undefined
+                villager.cancelTask()
             }
         }
         else {
-            villager.currentTask = undefined
+            villager.cancelTask()
         }
+    }
+
+    tickGrowSapling() {
+        const villager = this
+
+        const foundSapling = villager.taskContext.sapling
+        if (foundSapling === undefined) {
+            villager.cancelTask()
+            return
+        }
+
+        const saplingBlock = this.dimension.getBlockSafe(foundSapling)
+        if (saplingBlock === undefined) {
+            villager.cancelTask()
+            return
+        }
+
+        if (!Registry.saplingTypes.includes(saplingBlock.typeId)) {
+            villager.cancelTask()
+            return
+        }
+
+        const saplingDistance = calculateDistance(centerVector(foundSapling, true), villager.location)
+        if (saplingDistance >= 7 && (villager.isPathing || saplingDistance >= 10)) {
+            villager.pathFindTo(foundSapling)
+            return
+        }
+
+        villager.stopPath()
+        if (villager.taskProgress === 0) {
+            villager.playAnimation("animation.tektopia_villager.cast_grow")
+        }
+
+        villager.lookAt(centerVector(foundSapling))
+
+        villager.taskProgress++
+
+        villager.dimension.spawnParticle("tektopia:cast_grow_crop_charge", centerVector(foundSapling, true))
+
+        if (villager.taskProgress === 70) {
+            villager.dimension.spawnParticle("tektopia:cast_grow_crop_grow", centerVector(foundSapling, true))
+        }
+
+        if (villager.taskProgress <= 80 || villager.isWaiting) {
+            return
+        }
+
+        saplingBlock.growTree() //fix: blacklist sapling
+
+        villager.cancelTask()
+        villager.waiting = 10
     }
 
     tickGrowCrop(village: Village) {
         const villager = this
 
-        const foundGrowableCrop = villager.foundGrowableCrop
+        const foundGrowableCrop = villager.taskContext.growableCrop
         if (foundGrowableCrop === undefined) {
-            villager.currentTask = undefined
+            villager.cancelTask()
             return
         }
 
         const cropBlock = this.dimension.getBlockSafe(foundGrowableCrop)
         if (cropBlock === undefined) {
-            villager.currentTask = undefined
+            villager.cancelTask()
             return
         }
 
-        if (!cropBlock.isCrop || cropBlock.isHarvestableCrop) {
+        if (cropBlock.isAir || cropBlock.isHarvestableCrop) {
             const cropBlockLocationString = locationToString(cropBlock)
-            village.harvestLocations.remove(cropBlockLocationString)
-            villager.currentTask = undefined
+            village.growLocations.remove(cropBlockLocationString)
+            villager.cancelTask()
             return
         }
 
         const cropBlockDistance = calculateDistance(centerVector(foundGrowableCrop, true), villager.location)
-        if (cropBlockDistance >= 10 && (villager.isPathing || cropBlockDistance >= 15)) {
+        if ((cropBlockDistance >= 7 && (villager.isPathing || cropBlockDistance >= 10)) || Math.floor(foundGrowableCrop.y) !== Math.floor(villager.location.y + 0.25)) {
             villager.pathFindTo(foundGrowableCrop)
             return
         }
 
-        
+        villager.stopPath()
+        if (villager.taskProgress === 0) {
+            villager.playAnimation("animation.tektopia_villager.cast_grow")
+        }
+
+        villager.lookAt(centerVector(foundGrowableCrop))
+
+        villager.taskProgress++
+
+        villager.dimension.spawnParticle("tektopia:cast_grow_crop_charge", centerVector(foundGrowableCrop, true))
+
+        if (villager.taskProgress === 70) {
+            villager.dimension.spawnParticle("tektopia:cast_grow_crop_grow", centerVector(foundGrowableCrop, true))
+        }
+
+        if (villager.taskProgress <= 80 || villager.isWaiting) {
+            return
+        }
+
+        const north = cropBlock.northSafe()
+        const east = cropBlock.eastSafe()
+        const south = cropBlock.southSafe()
+        const west = cropBlock.westSafe()
+
+        const blockList = [
+            cropBlock,
+            north,
+            east,
+            south,
+            west,
+            north?.eastSafe(),
+            east?.southSafe(),
+            south?.westSafe(),
+            west?.northSafe()
+        ]
+
+        for (const block of blockList) {
+            if (block === undefined) {
+                continue
+            }
+
+            if (block.isCrop) {
+                const blockGrowth = block.permutation.getState("growth")
+                if (blockGrowth !== undefined) {
+                    block.setPermutation(block.permutation.withState("growth", Math.min(blockGrowth + randomInt(2, 5), 7)))
+                }
+            }
+            else if (block.isValidSugarCane) {
+                const sugarCaneBlockList = [
+                    block, block.aboveSafe(), block.aboveSafe(2)
+                ]
+
+                for (const sugarCaneBlock of sugarCaneBlockList) {
+                    if (!sugarCaneBlock?.isAir) {
+                        continue
+                    }
+
+                    sugarCaneBlock.setType("minecraft:reeds")
+                }
+            }
+            else if (block.typeId === "minecraft:sweet_berry_bush") {
+                const blockGrowth = block.permutation.getState("growth")
+                if (blockGrowth !== undefined) {
+                    block.setPermutation(block.permutation.withState("growth", Math.min(blockGrowth + randomInt(1, 4), 3)))
+                }
+            }
+        }
+
+        villager.cancelTask()
+
+        villager.waiting = 10
     }
 
     tickHarvest(village: Village) {
         const villager = this
 
-        const foundHarvest = villager.foundHarvestLocation
+        const foundHarvest = villager.taskContext.harvestLocation
         const dimension = villager.dimension
 
         if (foundHarvest === undefined) {
-            villager.currentTask = undefined
+            villager.cancelTask()
             return
         }
 
         const harvestBlock = dimension.getBlockSafe(foundHarvest)
         if (harvestBlock === undefined) {
-            villager.currentTask = undefined
+            villager.cancelTask()
             return
         }
 
@@ -2621,20 +3983,20 @@ export class Villager {
                 if (villager.taskProgress > 100 && !villager.isWaiting) {
                     if (harvestBlock.isHarvestableCrop) {
                         village.plantLocations[harvestLocationString] = harvestBlock.typeId
-                        harvestBlock.destroy()
+                        harvestBlock.destroy(true)
                     }
                     else if (harvestBlock.isHarvestableGourd) {
-                        harvestBlock.destroy()
+                        harvestBlock.destroy(true)
                     }
                     else if (harvestBlock.isHarvestableSugarCane) {
                         const blockList = [harvestBlock.aboveSafe(2), harvestBlock.aboveSafe()]
                         for (const block of blockList) {
-                            block?.destroy()
+                            block?.destroy(true)
                         }
                     }
                     else if (harvestBlock.isHarvestableSweetBerryBush) {
                         const savedPermutation = harvestBlock.permutation.withState("growth", 1)
-                        harvestBlock.destroy()
+                        harvestBlock.destroy(true)
                         harvestBlock.setPermutation(savedPermutation)
                     }
 
@@ -2642,7 +4004,7 @@ export class Villager {
 
                     villager.waiting = 20
                     villager.setAnimation(undefined)
-                    villager.currentTask = undefined
+                    villager.cancelTask()
                 }
             }
             else {
@@ -2651,14 +4013,14 @@ export class Villager {
         }
         else {
             village.harvestLocations.remove(harvestLocationString)
-            villager.currentTask = undefined
+            villager.cancelTask()
         }
     }
 
     tickPlant(village: Village) {
         const villager = this
 
-        const foundPlant = villager.foundPlant
+        const foundPlant = villager.taskContext.plant
         const dimension = villager.dimension
 
         if (foundPlant !== undefined) {
@@ -2678,7 +4040,7 @@ export class Villager {
 
                         villager.waiting = 20
                         villager.setAnimation(undefined)
-                        villager.currentTask = undefined
+                        villager.cancelTask()
                     }
                 }
                 else {
@@ -2687,18 +4049,18 @@ export class Villager {
             }
             else {
                 delete village.plantLocations[plantLocationString]
-                villager.currentTask = undefined
+                villager.cancelTask()
             }
         }
         else {
-            villager.currentTask = undefined
+            villager.cancelTask()
         }
     }
 
     tickTill(village: Village) {
         const villager = this
 
-        const foundTill = villager.foundTillLocation
+        const foundTill = villager.taskContext.tillLocation
         const dimension = villager.dimension
 
         if (foundTill !== undefined) {
@@ -2710,7 +4072,7 @@ export class Villager {
             if (tillBlock !== undefined && tillResult !== undefined) {
                 const pathLocationDist = calculateDistance(centerVector(pathLocation, true), villager.location)
                 if (pathLocationDist <= 5) {
-                    villager.holdingItem = "wooden_hoe"
+                    villager.holdingItem = "tool"
                 }
                 else {
                     villager.holdingItem = undefined
@@ -2724,7 +4086,7 @@ export class Villager {
                     if (villager.taskProgress > 100 && !villager.isWaiting) {
                         villager.waiting = 20
                         villager.setAnimation(undefined)
-                        villager.currentTask = undefined
+                        villager.cancelTask()
 
                         tillBlock.playSound("use.gravel", { pitch: 0.8 })
                         tillBlock.setType(tillResult)
@@ -2741,17 +4103,17 @@ export class Villager {
             }
             else {
                 village.tillLocations.remove(tillLocationString)
-                villager.currentTask = undefined
+                villager.cancelTask()
             }
         }
         else {
-            villager.currentTask = undefined
+            villager.cancelTask()
         }
     }
 
     tickGuardPost(village: Village) {
-        if (this.foundGuardPost === undefined) {
-            this.currentTask = undefined
+        if (this.taskContext.guardPost === undefined) {
+            this.cancelTask()
             return
         }
 
@@ -2760,9 +4122,9 @@ export class Villager {
                 this.taskProgress--
             }
             else {
-                const guardPost = village.getStructure(this.foundGuardPost) as StationPost | undefined
+                const guardPost = village.getStructure(this.taskContext.guardPost) as StationPost | undefined
                 if (guardPost === undefined) {
-                    this.currentTask = undefined
+                    this.cancelTask()
                     return
                 }
 
@@ -2794,7 +4156,7 @@ export class Villager {
 
     tickPickupItem() {
         const villager = this
-        const foundItem = villager.foundItem
+        const foundItem = villager.taskContext.item
         const pathError = villager.pathError
         if (foundItem?.isValid) {
             const itemDistance = calculateDistance(foundItem.location, villager.location)
@@ -2805,12 +4167,13 @@ export class Villager {
                         villager.getComponent(EntityComponentTypes.Inventory)?.container.addItem(item)
                         villager.holdingItem = item.typeId
                     }
+                    //villager.lookAt(foundItem.location)
                     villager.waiting = 10
                     villager.playAnimation(
                         "animation.tektopia_villager.pickup_item"
                     )
                     foundItem.remove()
-                    villager.currentTask = undefined
+                    villager.cancelTask()
                     villager.animation = undefined
                     villager.stopPath()
                 }
@@ -2818,15 +4181,58 @@ export class Villager {
             else if (pathError !== undefined) {
                 foundItem.unreachable = 20
                 unreachableItemEntities.add(foundItem)
-                villager.currentTask = undefined
+                villager.cancelTask()
             }
             else {
                 villager.pathFindTo(foundItem)
             }
         }
         else {
-            villager.currentTask = undefined
+            villager.cancelTask()
         }
+    }
+
+    /**
+     * Opens the chest at `location` for this villager and makes it wait while the lid opens.
+     * Returns true once the chest is open and the wait is over, so the caller can use it.
+     * Switching to a different chest closes the previous one first.
+     */
+    private openChest(location: Vector3): boolean {
+        if (this.openedChest !== undefined) {
+            if (areVectorsEqual(this.openedChest, location)) {
+                return true
+            }
+            this.closeChest()
+        }
+
+        const chest = this.dimension.getBlockSafe(location)?.chest
+        if (chest === undefined) {
+            // Not a display chest (or not loaded); nothing to animate, so don't hold the villager up
+            return true
+        }
+
+        chest.open(this.id)
+        this.openedChest = { x: location.x, y: location.y, z: location.z }
+        this.waiting = CHEST_OPEN_WAIT_TICKS
+        return false
+    }
+
+    private closeChest() {
+        const location = this.openedChest
+        if (location === undefined) {
+            return
+        }
+
+        this.openedChest = undefined
+        this.dimension.getBlockSafe(location)?.chest?.close(this.id)
+    }
+
+    cancelTask() {
+        this.closeChest()
+        this.currentTask = undefined
+        this.pendingContext = {}
+        this.stopPath()
+        this.setAnimation(undefined)
     }
 
     updateAnimation() {
@@ -2836,11 +4242,40 @@ export class Villager {
         }
     }
 
+    getToolTypes() {
+        const villagerConfig = this.getConfig()
+        if (villagerConfig?.tool === undefined) {
+            return undefined
+        }
+
+        return Array.isArray(villagerConfig.tool) ? villagerConfig.tool : [villagerConfig.tool]
+    }
+
+    getHoldingItemId() {
+        if (this.holdingItem === undefined) {
+            return undefined
+        }
+
+        if (this.holdingItem === "tool") {
+            const villagerToolsTypes = this.getToolTypes()
+            if (villagerToolsTypes?.[0] === undefined) {
+                return undefined
+            }
+
+            const toolType = villagerToolsTypes[0]
+
+            return this.getBestTool(toolType)?.item.typeId
+        }
+
+        return this.holdingItem
+    }
+
     updateHoldingItem() {
-        if (this.lastHoldingItem !== this.holdingItem) {
-            this.lastHoldingItem = this.holdingItem
+        const holdingItem = this.getHoldingItemId()
+        if (this.lastHoldingItem !== holdingItem) {
+            this.lastHoldingItem = holdingItem
             this.entity.runCommand(
-                this.holdingItem !== undefined ? `replaceitem entity @s slot.weapon.offhand 0 ${this.holdingItem}` : "replaceitem entity @s slot.weapon.offhand 0 air"
+                holdingItem !== undefined ? `replaceitem entity @s slot.weapon.offhand 0 ${holdingItem}` : "replaceitem entity @s slot.weapon.offhand 0 air"
             )
         }
     }
@@ -2864,6 +4299,42 @@ export class Villager {
 
         openable.setPermutation(openable.permutation.withState("open_bit", true))
         openable.soundEvent(openable.isDoor ? "door.open" : "fence_gate.open")
+    }
+
+    private isOpenableInUseByOthers(center: Vector3) {
+        for (const other of world.getVillagers()) {
+            if (other.id === this.id || !other.isValid || other.dimension.id !== this.dimension.id) {
+                continue
+            }
+            if (calculateDistance(center, other.location) <= 2.5) {
+                return true
+            }
+            const next = other.nextPathNode
+            if (other.isPathing && next !== undefined && calculateDistance(center, next, true) < 1.5) {
+                return true
+            }
+        }
+        return false
+    }
+
+    private shouldKeepDoorOpen(village: Village, center: Vector3, leashedEntity: Entity | undefined) {
+        const nextNode = this.nextPathNode
+        if (this.isPathing && nextNode !== undefined && calculateDistance(center, nextNode, true) < 0.75) {
+            return true
+        }
+
+        if (this.isOpenableInUseByOthers(center)) {
+            return true
+        }
+
+        if (leashedEntity !== undefined) {
+            const ranchEntity = village.ranchEntities[leashedEntity.id]
+            const range = ranchEntity?.inPen ? 1 : 5
+            if (calculateDistance(center, leashedEntity.location) <= range) {
+                return true
+            }
+        }
+        return false
     }
 
     private closeFarDoors() {
@@ -2899,23 +4370,10 @@ export class Villager {
                 continue
             }
 
-            const ESCAPE_RANGE = 3
-
-            if (leashedEntity !== undefined) {
-                const escaping = Object.entries(village.ranchEntities).some(([id, other]) =>
-                    id !== leashedEntity.id
-                    && other.inPen
-                    && calculateDistance(center, other.location) <= ESCAPE_RANGE
-                )
-
-                if (!escaping) {
-                    const ranchEntity = village.ranchEntities[leashedEntity.id]
-                    const leashedLocation = leashedEntity.location
-                    const range = !ranchEntity?.inPen ? 5 : 1
-                    if (calculateDistance(center, leashedLocation) <= range) {
-                        continue
-                    }
-                }
+            const animalAtGate = isPenWorkerType(this.typeId)
+                && this.hasPennedEntityNear(village, center, GATE_CLOSE_TRIGGER, undefined, leashedEntity?.id)
+            if (!animalAtGate && this.shouldKeepDoorOpen(village, center, leashedEntity)) {
+                continue
             }
 
             door.setPermutation(door.permutation.withState("open_bit", false))
@@ -2944,13 +4402,15 @@ export class Villager {
         const dimensionId = dimension.id
         const villageBounds = village.bounds
 
+        const KNOCKBACK_SKIP_SPEED_RATIO = 0.8
+
         function tickFollowPath() {
             if (isFinished()) {
                 return
             }
 
             try {
-                if (!villager.isValid || !villager.isPathing || village === undefined) {
+                if (!villager.isValid || !villager.isPathing || village === undefined || villager.isDead) {
                     cancelPath()
                     return
                 }
@@ -2965,7 +4425,6 @@ export class Villager {
                 const pathNode = pathNodeList[pathNodeIndex]
                 if (pathNode === undefined) {
                     if (stream.status === "searching") {
-                        // The path is still being generated; wait for more nodes.
                         villager.nextPathNode = undefined
                         villager.setAnimation(undefined)
                         return
@@ -3001,6 +4460,12 @@ export class Villager {
                 const speed = villager.isOnGround ? 0.2 : 0.015
                 const moveVector = multiplyVector(direction, "xyz", speed)
                 const pathNodeBlock = dimension.getBlockSafe(currentPathNode)
+                const inBlock = dimension.getBlockSafe(entityLocation)
+                if (inBlock !== undefined) {
+                    if (inBlock.isOpenable) {
+                        villager.openDoor(inBlock)
+                    }
+                }
                 if (pathNodeBlock !== undefined) {
                     if (!pathNodeBlock.isValidPath(villageBounds)) {
                         village.checkNodeValidity(locationToString(pathNodeBlock))
@@ -3008,16 +4473,20 @@ export class Villager {
                         return
                     }
                     const pathNodeBlockBelowTypeId = pathNodeBlock.belowSafe()?.typeId
-                    if (pathNodeBlockBelowTypeId !== undefined && (Registry.slabTypes.includesFast(pathNodeBlockBelowTypeId) || Registry.stairTypes.includesFast(pathNodeBlockBelowTypeId))) {
+                    if (pathNodeBlockBelowTypeId !== undefined && (Registry.slabTypes.includesFast(pathNodeBlockBelowTypeId) || Registry.stairTypes.includesFast(pathNodeBlockBelowTypeId) || pathNodeBlockBelowTypeId === "minecraft:bed")) {
                         currentPathNode.y -= 0.5
                     }
 
                     if (pathNodeBlock.isOpenable) {
+                        if (villager.holdForEscapingEntity(village, pathNodeBlock)) {
+                            villager.setAnimation(undefined)
+                            return
+                        }
                         villager.openDoor(pathNodeBlock)
                     }
                 }
                 villager.nextPathNode = currentPathNode
-                if (calculateDistance(currentPathNode, entityLocation) >= 2) {
+                if (calculateDistance(centerVector(pathNode, true), entityLocation) >= 2) {
                     cancelPath()
                     return
                 }
@@ -3027,13 +4496,14 @@ export class Villager {
                     return
                 }
                 let isBlocked = blocker !== undefined
-                const blockedByTektopiaVillager = blocker?.typeId.startsWith("tektopia:") === true
+
+                const blockedByTektopiaVillager = blocker === undefined ? false : Registry.villagerTypes.includes(blocker.typeId)
                 villager.blockingEntityTypeId = blocker?.typeId
 
                 if (blockedByTektopiaVillager) {
-                    villager.unblockTimer += 4
-                    if (villager.unblockTimer > 20) {
-                        villager.unblockTimer = 20
+                    villager.unblockTimer += 2
+                    if (villager.unblockTimer > 16) {
+                        villager.unblockTimer = 16
                     }
                 }
                 else if (!isBlocked && villager.unblockTimer > 0) {
@@ -3060,7 +4530,9 @@ export class Villager {
                     villager.totalBlockTimer++
                 }
 
-                const isMoving = villager.getMoveSpeed(true) > 0.0001
+                const velocity = villager.getVelocity()
+                const horizontalSpeed = Math.sqrt((velocity.x * velocity.x) + (velocity.z * velocity.z))
+                const isMoving = horizontalSpeed > 0.0001
                 if (!isMoving || isBlocked) {
                     villager.blockedTimer++
                 }
@@ -3075,7 +4547,13 @@ export class Villager {
                 else {
                     villager.setAnimation("none")
                     if (villager.isOnGround) {
-                        villager.applyKnockback(moveVector, 0)
+                        const directionLength = Math.sqrt((direction.x * direction.x) + (direction.z * direction.z))
+                        const speedTowardNode = directionLength > 0.0001
+                            ? ((velocity.x * direction.x) + (velocity.z * direction.z)) / directionLength
+                            : 0
+                        if (speedTowardNode < speed * KNOCKBACK_SKIP_SPEED_RATIO) {
+                            villager.applyKnockback(moveVector, 0)
+                        }
                         if (currentPathNode.y - villager.location.y > 0.55) {
                             villager.applyImpulse({ x: 0, y: 0.44, z: 0 })
                         }
@@ -3092,11 +4570,7 @@ export class Villager {
                 if (Math.abs(currentPathNode.y - villager.location.y) <= 0.25 ? calculateChebyshevDistance(currentPathNode, villager.location) <= 0.25 : calculateChebyshevDistance(currentPathNode, villager.location) <= 0.5) {
                     stream.head = pathNodeIndex + 1
                     stream.reached = pathNode
-                    // const before = stream.nodes.length
                     shortcutStream(stream, village.graph, pathNode)
-                    // if (stream.nodes.length < before) {
-                    //     console.warn(`shortcut skipped ${before - stream.nodes.length} nodes`)
-                    // }
                     if (stream.head >= 64 && stream.head * 2 >= pathNodeList.length) {
                         pathNodeList.splice(0, stream.head)
                         stream.head = 0
@@ -3125,13 +4599,8 @@ system.runInterval(() => {
     }
 
     const villagers = world.getVillagers()
-    for (const villager of villagers) {
-        try {
-            villager.tickAI()
-        }
-        catch (error) {
-            console.warn("Villager tick failed: ", error)
-        }
+    for (const villager of shuffle(villagers)) {
+        villager.tickAI()
     }
 })
 
@@ -3150,7 +4619,7 @@ system.runInterval(() => {
     }
 }, 20)
 
-Block.prototype.destroy = function () {
+Block.prototype.destroy = function (villagerItem = false, playSound = true) {
     if (!this.isValid) {
         return
     }
@@ -3158,10 +4627,14 @@ Block.prototype.destroy = function () {
     const itemList = lootTableManager.generateLootFromBlock(this, new ItemStack("minecraft:netherite_pickaxe")) ?? []
     const dimension = this.dimension
     for (const item of itemList) {
-        item.makeVillagerItem()
+        if (villagerItem) {
+            item.makeVillagerItem()
+        }
         dimension.spawnItem(item, this.center())
     }
-    this.soundEvent("break")
+    if (playSound) {
+        this.soundEvent("break")
+    }
     this.setType("air")
 }
 
@@ -3229,5 +4702,35 @@ Object.defineProperty(Entity.prototype, "isShearable", {
         }
 
         return !this.hasComponent(EntityComponentTypes.IsSheared) && !this.hasComponent(EntityComponentTypes.IsBaby)
+    }
+})
+
+world.afterEvents.entitySpawn.subscribe(event => {
+    const entity = event.entity
+    if (entity.isVillager) {
+        const villager = Villager.fromEntity(entity)
+        const villagerConfig = villager.getConfig()
+        if (villagerConfig?.tool === undefined) {
+            return
+        }
+
+        const toolType = Array.isArray(villagerConfig.tool) ? villagerConfig.tool[0] : villagerConfig.tool
+        if (toolType === undefined) {
+            return
+        }
+
+        const villagerInventory = villager.getInventory()
+        if (villagerInventory === undefined) {
+            return
+        }
+
+        if (!upgradableToolTypes.includes(toolType as UpgradableToolType)) {
+            return
+        }
+
+        const toolItem = new ItemStack(`minecraft:wooden_${toolType}`)
+        toolItem.makeVillagerItem()
+
+        villagerInventory.addItem(toolItem)
     }
 })

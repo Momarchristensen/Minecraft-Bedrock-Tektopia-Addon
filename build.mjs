@@ -16,7 +16,8 @@ const options = {
 
     external: [
         "@minecraft/server",
-        "@minecraft/server-ui"
+        "@minecraft/server-ui",
+        "@minecraft/debug-utilities"
     ],
 
     outdir: "behavior_packs/Tektopia/scripts",

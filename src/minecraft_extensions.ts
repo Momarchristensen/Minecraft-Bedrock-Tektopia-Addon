@@ -1,4 +1,11 @@
+import type { TillResult } from "./big_variables"
+
 import type { EntityBreeding } from "./breed"
+
+import type {
+    Chest,
+    ConnectedChestRecord
+} from "./chest"
 
 import type { SoundEvents } from "./generated"
 
@@ -16,13 +23,13 @@ import type {
 
 import type { CardinalDirection } from "./utils"
 
-import type { TillResult } from "./variables"
-
 import type { Village } from "./village"
 
 import type { VillageSaveData } from "./village_serialization"
 
 import type { Villager } from "./villager"
+
+import type { ItemStack } from "@minecraft/server"
 
 export interface ItemStackFilter {
     includesTypes?: string[]
@@ -30,7 +37,7 @@ export interface ItemStackFilter {
     isVillagerItem?: boolean
 }
 
-export type DepositPlan = Record<string, number>
+export interface ItemFilterResult { item: ItemStack, slotIndex: number }
 
 declare module "@minecraft/server" {
     interface World {
@@ -39,6 +46,7 @@ declare module "@minecraft/server" {
             dimensionId: string
             structureId?: string | undefined
         }>
+        connectedChestList: ConnectedChestRecord[]
         villageList: VillageSaveData[]
         lagTime?: number
         loadedData: boolean
@@ -55,28 +63,42 @@ declare module "@minecraft/server" {
     }
 
     interface Dimension {
+        dropItem(itemStack: ItemStack, location: Vector3, pickupDelay?: number): Entity
         getBlockSafe(...args: Parameters<Dimension["getBlock"]>): ReturnType<Dimension["getBlock"]> | undefined
         validateStructure(block: Block, rotation: CardinalDirection, structureId: StructureType, allowInactiveMineshaft?: boolean): Generator<void, StructureValidationResult, void>
         placeStructureFrame(location: Vector3, structureId: string, isEnchanted: boolean, rotation: string): void
         getVillage(location: Vector3): Village | undefined
     }
 
+    interface EntityItemComponent {
+        setType(typeId: string, pickupDelay?: number): Entity
+    }
+
     interface Entity extends EntityData {
         saveData<K extends keyof EntityData>(propertyId: K): void
         loadData(): void
         getWoolItem(): ItemStack | undefined
-
+        getHitboxSize(): {
+            width: number
+            height: number
+        }
+        getHitbox(): Bounds
+        resetEggTimer(): void
         isDead: boolean
         unreachable: number
         loadedData: boolean
+        villagerEntityProperty?: boolean
         readonly isShearable: boolean
         readonly isVillager: boolean
         readonly breeding: EntityBreeding | undefined
     }
 
     interface Block {
-        getFrameItem(): ItemStack | undefined
+        readonly isSolid: boolean
+        readonly chest: Chest | undefined
 
+        getFrameItem(): ItemStack | undefined
+        growTree(): boolean
         northSafe(...args: Parameters<Block["north"]>): ReturnType<Block["north"]> | undefined
         eastSafe(...args: Parameters<Block["east"]>): ReturnType<Block["east"]> | undefined
         southSafe(...args: Parameters<Block["south"]>): ReturnType<Block["south"]> | undefined
@@ -90,7 +112,7 @@ declare module "@minecraft/server" {
         getIsSolid(): boolean
         isDangerous(): boolean
         destroyableLeaf(): boolean
-        destroy(): void
+        destroy(villagerItem?: boolean, playSound?: boolean): void
         playSound(soundId: string, soundOptions?: WorldSoundOptions): void
         soundEvent(eventId: SoundEvents, soundOptions?: WorldSoundOptions): void
         replace(blockType: string | BlockType | BlockPermutation): void
@@ -101,7 +123,8 @@ declare module "@minecraft/server" {
         scanBlock(village: Village): boolean
         getVillage(): Village | undefined
         getPathCost(): number
-        readonly isTree: boolean
+        getKey(): string
+        isTree(checkLeaves?: boolean): boolean
         readonly isOre: boolean
         readonly isFarm: boolean
         readonly isHarvestable: boolean
@@ -121,9 +144,16 @@ declare module "@minecraft/server" {
     }
 
     interface ItemStack {
-        matchesFilter(filter: ItemStackFilter): boolean
+        setType(typeId: string): ItemStack
+        getToolRank(): number
+        matchesFilter(filter?: ItemStackFilter): boolean
         makeVillagerItem(): void
+        matchesItem(otherItem: ItemStack): boolean
         readonly isVillagerItem: boolean
+    }
+
+    interface ContainerSlot {
+        matchesFilter(filter?: ItemStackFilter): boolean
     }
 
     interface Player {
@@ -132,9 +162,18 @@ declare module "@minecraft/server" {
     }
 
     interface Container {
+        findItem(itemFilter: ItemStackFilter): ItemFilterResult | undefined
+        removeItem(itemFilter: ItemStackFilter, amount: number, cancelIfUnable: boolean): boolean
+        removeItems(requests: Array<{ itemFilter: ItemStackFilter, amount: number }>, cancelIfUnable: boolean): boolean
         getItemCount(itemFilter: ItemStackFilter): number
-        getItemCounts(itemFilter: ItemStackFilter): Record<string, number>
-        [Symbol.iterator](): Iterator<ItemStack | undefined>
+        getItemCounts(itemFilter?: ItemStackFilter): Record<string, number>
+        hasItem(itemFilter: ItemStackFilter): boolean
+        getRoomFor(item: ItemStack): number
+        transferItemStack(fromSlot: number, toContainer: Container, amount: number): number
+        isSameContainer(otherContainer: Container): boolean
+        filterItems(itemFilter: ItemStackFilter): ItemFilterResult[]
+        entries(): Generator<{ slotIndex: number, slot: ContainerSlot }>
+        [Symbol.iterator](): Iterator<ContainerSlot>
         readonly isFull: boolean
     }
 }

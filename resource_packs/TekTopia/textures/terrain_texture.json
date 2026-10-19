@@ -1,0 +1,29 @@
+{
+    "resource_pack_name": "vanilla",
+    "texture_name": "atlas.terrain",
+    "padding": 8,
+    "num_mip_levels": 4,
+    "texture_data": {
+        "chest_normal": {
+            "textures": "textures/entity/chest_entity/normal"
+        },
+        "chest_trapped_normal": {
+            "textures": "textures/entity/chest_entity/trapped"
+        },
+        "chest_copper_default": {
+            "textures": "textures/entity/chest_entity/copper_default"
+        },
+        "chest_copper_exposed": {
+            "textures": "textures/entity/chest_entity/copper_exposed"
+        },
+        "chest_copper_weathered": {
+            "textures": "textures/entity/chest_entity/copper_weathered"
+        },
+        "chest_copper_oxidized": {
+            "textures": "textures/entity/chest_entity/copper_oxidized"
+        },
+        "chest_ender": {
+            "textures": "textures/entity/chest_entity/ender"
+        }
+    }
+}

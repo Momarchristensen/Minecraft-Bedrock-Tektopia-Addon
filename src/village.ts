@@ -4,7 +4,6 @@ import {
     CustomCommandParamType,
     CustomCommandStatus,
     Dimension,
-    MolangVariableMap,
     Player,
     system,
     type Entity,
@@ -13,10 +12,9 @@ import {
     world
 } from "@minecraft/server"
 
-import {
-    getRanchAnimals,
-    isRanchAnimalRegistryInitialized
-} from "./breed"
+import { tillBlocks } from "./big_variables"
+
+import { getRanchAnimals } from "./breed"
 
 import { debugFlags } from "./debug_flags"
 
@@ -28,10 +26,13 @@ import { Registry } from "./registry"
 
 import {
     Structure,
+    type FloorClaims,
     type StructureType,
     type StructureTypeMap,
     type StructureData
 } from "./structure"
+
+import { getTrunkBlocks } from "./tree"
 
 import {
     calculateDistance,
@@ -44,11 +45,6 @@ import {
     locationToString,
     addVector
 } from "./utils"
-
-import {
-    minecraftDirtTypes,
-    tillBlocks
-} from "./variables"
 
 import {
     type CompressedVillage,
@@ -114,15 +110,22 @@ export interface StructureFilter<K extends StructureType = StructureType> {
 
 // Ores within one block of each other in any direction (faces, edges and corners) belong to the same vein
 const ORE_NEIGHBOR_OFFSETS: Vector3[] = []
+
 for (let x = -1; x <= 1; x++) {
     for (let y = -1; y <= 1; y++) {
         for (let z = -1; z <= 1; z++) {
-            if (x !== 0 || y !== 0 || z !== 0) {
+            if ((x !== 0 || y !== 0 || z !== 0) && !(x !== 0 && y !== 0 && z !== 0)) {
                 ORE_NEIGHBOR_OFFSETS.push({ x, y, z })
             }
         }
     }
 }
+
+const ORE_FACE_OFFSETS: Vector3[] = [
+    { x: 1, y: 0, z: 0 }, { x: -1, y: 0, z: 0 },
+    { x: 0, y: 1, z: 0 }, { x: 0, y: -1, z: 0 },
+    { x: 0, y: 0, z: 1 }, { x: 0, y: 0, z: -1 }
+]
 
 // Safety cap so one scan can never flood an entire ore-filled area in a single tick
 const MAX_ORE_VEIN_SCAN = 2048
@@ -140,7 +143,14 @@ export class Village {
     ranchEntities: Record<string, VillageRanchEntity> = {}
     ranchVillagerEntitiesByStructure = new Map<LocationString, string[]>()
     penTiles = new Map<LocationString, LocationString>()
-    penCache = new Map<LocationString, { floor: Vector3[], fence: Vector3[] }>()
+    // Which structure (by key) holds each floor location, and the reverse. In memory only: it fills back in as
+    // structures scan, and the scan decides who wins when two structures want the same floor.
+    private readonly floorOwners = new Map<LocationString, LocationString>()
+    // The floor locations that are held as the owner's own room (first-claim-wins), as opposed to rooms the owner
+    // only reached through a door
+    private readonly ownRoomFloors = new Set<LocationString>()
+    private readonly floorsByStructure = new Map<LocationString, Set<LocationString>>()
+    penCache = new Map<LocationString, { floor: Vector3[], fence: Vector3[], gates: Vector3[] }>()
 
     readonly sugarCaneLocations: LocationList
     readonly saplingLocations: LocationList
@@ -155,6 +165,9 @@ export class Village {
 
     searchingBlocks = false
     deletingInvalidNodes = false
+    // The full path-graph scan and node sweep only start again once these ticks have passed (see the interval near checkVillagePathNodes)
+    nextFullScanTick = 0
+    nextNodeSweepTick = 0
 
     private constructor(readonly data: VillageSaveData) {
         this.center = data.center
@@ -240,13 +253,133 @@ export class Village {
         return data !== undefined ? Structure.from(locationString, data, this.dimension, this) : undefined
     }
 
+    /**
+     * Every fence gate of a pen, the pen's own gate included. Ranches can have more than one gate.
+     */
+    getPenGates(penKey: LocationString): Vector3[] {
+        const gates = this.penCache.get(penKey)?.gates ?? []
+        const primary = stringToLocation(penKey)
+        const primaryKey = locationToString(primary)
+        if (gates.some(gate => locationToString(gate) === primaryKey)) {
+            return gates
+        }
+        return [primary, ...gates]
+    }
+
     addStructure(location: Vector3, structureData: StructureData) {
         const locationString = locationToString(location)
+        const existing = this.data.structures[locationString]
+        // The same structure seen again keeps its data object: Structure instances (and the floor they cache) are
+        // keyed by it. A different structure on the same key starts over, claims included.
+        if (existing?.type === structureData.type && existing.rotation === structureData.rotation) {
+            return
+        }
+        if (existing !== undefined) {
+            this.releaseFloorClaims(locationString)
+        }
         this.data.structures[locationString] = structureData
     }
 
     removeStructure(locationString: LocationString) {
         delete this.data.structures[locationString]
+        this.releaseFloorClaims(locationString)
+        this.storage.clearContainers(locationString)
+    }
+
+    getFloorClaims(selfKey: LocationString): FloorClaims {
+        return {
+            selfKey,
+            getOwner: location => this.floorOwners.get(locationToString(location)),
+            isOwnRoom: location => this.ownRoomFloors.has(locationToString(location))
+        }
+    }
+
+    getClaimedFloorLocations(structureKey: LocationString): readonly LocationString[] {
+        return [...this.floorsByStructure.get(structureKey) ?? []]
+    }
+
+    /**
+     * Makes the locations the structure's floor. The first ownRoomFloorCount locations are the structure's own
+     * room, which is first-claim-wins: if another structure already holds any of them as its own room nothing
+     * changes and undefined is returned (the structure is invalid). Other locations are rooms past a door. They
+     * only change hands when they are the claimant's own room, and are left alone when anyone else holds them.
+     * A structure that loses locations drops them from its own floor right away.
+     * Returns the locations the structure now holds.
+     */
+    claimFloor(
+        structureKey: LocationString,
+        floorLocations: readonly Vector3[],
+        ownRoomFloorCount = floorLocations.length
+    ): Set<LocationString> | undefined {
+        for (let i = 0; i < floorLocations.length && i < ownRoomFloorCount; i++) {
+            const floorLocation = floorLocations[i]
+            if (floorLocation === undefined) {
+                return undefined
+            }
+            const locationString = locationToString(floorLocation)
+            const previousOwner = this.floorOwners.get(locationString)
+            if (previousOwner !== undefined && previousOwner !== structureKey && this.ownRoomFloors.has(locationString)) {
+                return undefined
+            }
+        }
+
+        this.releaseFloorClaims(structureKey)
+
+        const claimed = new Set<LocationString>()
+        const lostByStructure = new Map<LocationString, Set<LocationString>>()
+        for (const [index, location] of floorLocations.entries()) {
+            const locationString = locationToString(location)
+            const isOwnRoom = index < ownRoomFloorCount
+            const previousOwner = this.floorOwners.get(locationString)
+            if (previousOwner !== undefined) {
+                if (!isOwnRoom) {
+                    continue
+                }
+                this.floorsByStructure.get(previousOwner)?.delete(locationString)
+                let lost = lostByStructure.get(previousOwner)
+                if (lost === undefined) {
+                    lost = new Set()
+                    lostByStructure.set(previousOwner, lost)
+                }
+                lost.add(locationString)
+            }
+            this.floorOwners.set(locationString, structureKey)
+            if (isOwnRoom) {
+                this.ownRoomFloors.add(locationString)
+            }
+            else {
+                this.ownRoomFloors.delete(locationString)
+            }
+            claimed.add(locationString)
+        }
+        this.floorsByStructure.set(structureKey, claimed)
+
+        for (const [previousOwner, lost] of lostByStructure) {
+            this.getStructure(stringToLocation(previousOwner))?.dropFloorLocations(lost)
+        }
+        if (lostByStructure.size > 0) {
+            // Once the claims have settled, so a scan in progress isn't interrupted by the losers' own work
+            system.run(() => {
+                for (const previousOwner of lostByStructure.keys()) {
+                    this.getStructure(stringToLocation(previousOwner))?.onFloorLost()
+                }
+            })
+        }
+        return claimed
+    }
+
+    releaseFloorClaims(structureKey: LocationString) {
+        const claimed = this.floorsByStructure.get(structureKey)
+        if (claimed === undefined) {
+            return
+        }
+        for (const locationString of claimed) {
+            if (this.floorOwners.get(locationString) === structureKey) {
+                this.floorOwners.delete(locationString)
+                this.ownRoomFloors.delete(locationString)
+            }
+        }
+        this.floorsByStructure.delete(structureKey)
     }
 
     getStructures(): Structure[] {
@@ -414,83 +547,94 @@ export class Village {
                 checkBlockList.push(seedBlock)
             }
             while (checkBlockIndex < checkBlockList.length) {
-                if (!village.isValid) {
+                // village.isValid scans the village list, so it is only checked every 32 blocks
+                if ((checkBlockIndex & 31) === 0 && !village.isValid) {
                     return
                 }
                 const checkBlock = checkBlockList[checkBlockIndex]
                 checkBlockList[checkBlockIndex] = undefined
                 checkBlockIndex++
-                if (!checkBlock?.isValid) {
+                if (checkBlock === undefined) {
                     continue
                 }
 
-                if (debugFlags.searchBlocksParticles) {
-                    dimension.spawnParticle(
-                        "minecraft:heart_particle",
-                        centerVector(checkBlock.location)
-                    )
-                }
-
-                const key = locationToString(checkBlock)
-                village.pathNodes[key] ??= { neighbors: [] }
-                const node = village.pathNodes[key]
-
-                const pathCost = checkBlock.getPathCost()
-                if (pathCost !== 0) {
-                    node.cost = pathCost
-                }
-
-                const requirement = checkBlock.getNodeRequirement()
-                if (requirement !== undefined) {
-                    node.requirement = requirement
-                }
-                else {
-                    delete node.requirement
-                }
-
-                const before = new Set(node.neighbors)
-                const after = new Set<string>()
-
-                const checkBlockNeighbors = checkBlock.getNodeNeighbors()
-                for (const block of checkBlockNeighbors) {
-                    const blockString = locationToString(block)
-                    let isValid = pathCache.get(blockString)
-                    if (isValid === undefined) {
-                        isValid = block.isValidPath(villageBounds)
-                        pathCache.set(blockString, isValid)
-                    }
-                    if (!isValid || !isValidConnection(checkBlock, block)) {
-                        continue
+                // Blocks queued on an earlier tick can become invalid (chunk unloaded), and the first native read then throws.
+                // isValid is a native call per block, so it is only checked after something threw instead of before every block.
+                try {
+                    if (debugFlags.searchBlocksParticles) {
+                        dimension.spawnParticle(
+                            "minecraft:heart_particle",
+                            centerVector(checkBlock.location)
+                        )
                     }
 
-                    after.add(blockString)
+                    const key = locationToString(checkBlock)
+                    village.pathNodes[key] ??= { neighbors: [] }
+                    const node = village.pathNodes[key]
 
-                    const existed = village.pathNodes[blockString] !== undefined
-                    village.pathNodes[blockString] ??= { neighbors: [] }
-                    village.link(key, blockString)
-                    village.setConnectionRequirement(key, blockString, checkBlock.getConnectionRequirement(block))
-                    village.setConnectionRequirement(blockString, key, block.getConnectionRequirement(checkBlock))
+                    const pathCost = checkBlock.getPathCost()
+                    if (pathCost !== 0) {
+                        node.cost = pathCost
+                    }
 
-                    if (!alreadyCheckedLocations.has(blockString)) {
-                        alreadyCheckedLocations.add(blockString)
-                        if (overwrite || !existed) {
-                            checkBlockList.push(block)
+                    const requirement = checkBlock.getNodeRequirement()
+                    if (requirement !== undefined) {
+                        node.requirement = requirement
+                    }
+                    else {
+                        delete node.requirement
+                    }
+
+                    const before = new Set(node.neighbors)
+                    const after = new Set<string>()
+
+                    const checkBlockNeighbors = checkBlock.getNodeNeighbors()
+                    for (const block of checkBlockNeighbors) {
+                        const blockString = locationToString(block)
+                        let isValid = pathCache.get(blockString)
+                        if (isValid === undefined) {
+                            isValid = block.isValidPath(villageBounds)
+                            pathCache.set(blockString, isValid)
+                        }
+                        if (!isValid || !isValidConnection(checkBlock, block)) {
+                            continue
+                        }
+
+                        after.add(blockString)
+
+                        const existed = village.pathNodes[blockString] !== undefined
+                        village.pathNodes[blockString] ??= { neighbors: [] }
+                        village.link(key, blockString)
+                        village.setConnectionRequirement(key, blockString, checkBlock.getConnectionRequirement(block))
+                        village.setConnectionRequirement(blockString, key, block.getConnectionRequirement(checkBlock))
+
+                        if (!alreadyCheckedLocations.has(blockString)) {
+                            alreadyCheckedLocations.add(blockString)
+                            if (overwrite || !existed) {
+                                checkBlockList.push(block)
+                            }
+                        }
+                    }
+
+                    for (const oldKey of before) {
+                        if (after.has(oldKey)) {
+                            continue
+                        }
+                        village.unlink(key, oldKey)
+                        if (!overwrite && !alreadyCheckedLocations.has(oldKey)) {
+                            const neighbor = dimension.getBlockSafe(stringToLocation(oldKey))
+                            if (neighbor?.isValidPath(villageBounds)) {
+                                alreadyCheckedLocations.add(oldKey)
+                                checkBlockList.push(neighbor)
+                            }
                         }
                     }
                 }
-
-                for (const oldKey of before) {
-                    if (after.has(oldKey)) {
-                        continue
+                catch (error) {
+                    if (checkBlock.isValid) {
+                        throw error
                     }
-                    village.unlink(key, oldKey)
-                    if (!overwrite && !alreadyCheckedLocations.has(oldKey)) {
-                        const neighbor = dimension.getBlockSafe(stringToLocation(oldKey))
-                        if (neighbor?.isValidPath(villageBounds)) {
-                            alreadyCheckedLocations.add(oldKey)
-                            checkBlockList.push(neighbor)
-                        }
-                    }
+                    continue
                 }
                 yield
             }
@@ -502,10 +646,20 @@ export class Village {
         }
     }
 
-    /**
-     * Flood-fills outwards from a freshly mined block and records every connected ore
-     * (including diagonal neighbours, like a real vein) in oreLocations, which is saved with the village.
-     */
+    private isOreExposed(dimension: Dimension, location: Vector3): boolean {
+        for (const offset of ORE_FACE_OFFSETS) {
+            const block = dimension.getBlockSafe({
+                x: location.x + offset.x,
+                y: location.y + offset.y,
+                z: location.z + offset.z
+            })
+            if (block !== undefined && !block.getIsSolid()) {
+                return true
+            }
+        }
+        return false
+    }
+
     scanOreVein(dimension: Dimension, origin: Vector3) {
         const start = floorVector(origin)
         const visited = new Set<LocationString>([locationToString(start)])
@@ -532,6 +686,11 @@ export class Village {
 
                 const neighborBlock = dimension.getBlockSafe(neighborLocation)
                 if (!neighborBlock?.isOre) {
+                    continue
+                }
+
+                // Buried ores are skipped until something next to them is mined away
+                if (!this.isOreExposed(dimension, neighborLocation)) {
                     continue
                 }
 
@@ -668,9 +827,9 @@ export class Village {
                         checkNearbyNodes = true
                         village.saplingLocations.add(checkBlockString)
                     }
-                    else if (checkBlock.isTree) {
+                    else if (checkBlock.isTree(true)) {
                         checkNearbyNodes = true
-                        village.treeLocations.add(checkBlockString)
+                        addTreeLocation(village, checkBlock)
                     }
                     else if (checkBlock.typeId === "minecraft:sweet_berry_bush") {
                         checkNearbyNodes = true
@@ -701,7 +860,18 @@ export class Village {
             return
         }
 
-        if (!block.isValidPath(village.bounds)) {
+        const isValidPath = block.isValidPath(village.bounds)
+        if (debugFlags.pathNodeValidationParticles) {
+            try {
+                dimension.spawnParticle(
+                    "minecraft:mobflame_single",
+                    addVector(centerVector(block.location, true), "y", 0.01)
+                )
+            }
+            catch { }
+        }
+
+        if (!isValidPath) {
             village.removeNode(pathNodeLocation)
             return
         }
@@ -790,15 +960,11 @@ Block.prototype.getNodeRequirement = function () {
     const above = block.aboveSafe()
 
     if (below?.destroyableLeaf()) {
-        return { whiteList: false, types: ["tektopia:lumberjack"] }
+        return { whiteList: false, types: ["tektopia:villager_lumberjack"] }
     }
 
     if (Registry.leafTypes.includesFast(block.typeId) || (above !== undefined && Registry.leafTypes.includesFast(above.typeId))) {
-        return { whiteList: true, types: ["tektopia:lumberjack"] }
-    }
-
-    if (Registry.fenceGateTypes.includes(block.typeId)) {
-        return { whiteList: true, types: ["tektopia:rancher", "tektopia:butcher"] }
+        return { whiteList: true, types: ["tektopia:villager_lumberjack"] }
     }
 
     return undefined
@@ -811,7 +977,7 @@ Block.prototype.getConnectionRequirement = function (neighbor: Block) {
     const ownCeiling = this.aboveSafe()?.aboveSafe()
     const neighborCeiling = neighbor.aboveSafe()?.aboveSafe()
     if (ownCeiling?.destroyableLeaf() === true || neighborCeiling?.destroyableLeaf() === true) {
-        return { whiteList: true, types: ["tektopia:lumberjack"] }
+        return { whiteList: true, types: ["tektopia:villager_lumberjack"] }
     }
     return undefined
 }
@@ -835,32 +1001,10 @@ Object.defineProperty(Block.prototype, "isOre", {
     }
 })
 
-Object.defineProperty(Block.prototype, "isTree", {
-    get(this: Block) {
-        const block = this
-        const aboveBlock = block.aboveSafe()
-        if (!Registry.logTypes.includesFast(block.typeId)) {
-            return false
-        }
-        if (aboveBlock?.typeId !== block.typeId) {
-            return false
-        }
-        const aboveAboveBlock = aboveBlock.aboveSafe()
-        if (aboveAboveBlock?.typeId !== block.typeId) {
-            return false
-        }
-        const belowBlock = block.belowSafe()
-        if (belowBlock === undefined || !minecraftDirtTypes.includesFast(belowBlock.typeId)) {
-            return false
-        }
-        return true
-    }
-})
-
 Object.defineProperty(Block.prototype, "isValidSugarCane", {
     get(this: Block) {
         const belowBlock = this.belowSafe()
-        return belowBlock !== undefined && belowBlock.isSolid && this.typeId === "minecraft:reeds"
+        return belowBlock?.getIsSolid() && this.typeId === "minecraft:reeds"
     }
 })
 
@@ -1004,6 +1148,14 @@ function* scanVillageBlocks(callback?: () => void) {
     }
 }
 
+function addTreeLocation(village: Village, block: Block) {
+    const [origin, ...otherTrunks] = getTrunkBlocks(block)
+    for (const trunk of otherTrunks) {
+        village.treeLocations.remove(locationToString(trunk.location))
+    }
+    village.treeLocations.add(locationToString(origin.location))
+}
+
 function* pruneLocations(dimension: Dimension, locations: LocationList, shouldRemove: (block: Block, locationString: LocationString) => boolean) {
     for (let i = locations.length - 1; i >= 0; i--) {
         if (i >= locations.length) {
@@ -1056,9 +1208,9 @@ function* updateVillageBlocks(callback?: () => void) {
             }
             const dimension = world.getDimension(village.dimensionId)
 
-            yield* pruneLocations(dimension, village.saplingLocations, (block, locationString) => {
+            yield* pruneLocations(dimension, village.saplingLocations, (block, _) => {
                 if (Registry.logTypes.includesFast(block.typeId)) {
-                    village.treeLocations.add(locationString)
+                    addTreeLocation(village, block)
                     return true
                 }
                 return !Registry.saplingTypes.includesFast(block.typeId)
@@ -1067,17 +1219,13 @@ function* updateVillageBlocks(callback?: () => void) {
             yield* pruneLocations(dimension, village.farmLocations, block => {
                 const aboveBlock = block.aboveSafe()
 
-
-
                 if (aboveBlock !== undefined) {
-                const aboveBlockIsHarvestableCrop = aboveBlock.isHarvestableCrop
-                        const aboveLocationString = locationToString(aboveBlock.location)
-
+                    const aboveBlockIsHarvestableCrop = aboveBlock.isHarvestableCrop
+                    const aboveLocationString = locationToString(aboveBlock.location)
 
                     if (aboveBlockIsHarvestableCrop) {
                         village.harvestLocations.add(aboveLocationString)
                     }
-
 
                     const gourdBlocks = [
                         aboveBlock.northSafe(),
@@ -1125,8 +1273,6 @@ function* updateVillageBlocks(callback?: () => void) {
                     }
                 }
 
-
-
                 for (let x = -1; x <= 1; x += 2) {
                     for (let z = -1; z <= 1; z += 2) {
                         const neighborBlock = block.offsetSafe({ x, y: 0, z })
@@ -1166,6 +1312,9 @@ function* updateVillageBlocks(callback?: () => void) {
                 if (block.isHarvestableSugarCane) {
                     village.harvestLocations.add(locationString)
                 }
+                else {
+                    village.growLocations.add(locationString)
+                }
 
                 return block.typeId !== "minecraft:reeds"
             })
@@ -1173,6 +1322,9 @@ function* updateVillageBlocks(callback?: () => void) {
             yield* pruneLocations(dimension, village.sweetBerryLocations, (block, locationString) => {
                 if (block.isHarvestableSweetBerryBush) {
                     village.harvestLocations.add(locationString)
+                }
+                else {
+                    village.growLocations.add(locationString)
                 }
 
                 return block.typeId !== "minecraft:sweet_berry_bush"
@@ -1184,9 +1336,11 @@ function* updateVillageBlocks(callback?: () => void) {
 
             yield* pruneLocationRecord(dimension, village.plantLocations, block => !block.isAir)
 
-            yield* pruneLocations(dimension, village.treeLocations, block => !block.isTree)
+            yield* pruneLocations(dimension, village.treeLocations, block => !block.isTree())
 
             yield* pruneLocations(dimension, village.oreLocations, block => !block.isOre)
+
+            yield* pruneLocations(dimension, village.growLocations, block => block.isAir || block.isHarvestable)
 
             yield
         }
@@ -1200,6 +1354,15 @@ function* updateVillageBlocks(callback?: () => void) {
 
 let ranchRefreshRunning = false
 
+// The full path-graph scan and the node sweep used to restart right after they finished, so they ran all the time. Player edits
+// and explosions already update the graph immediately (updateNodesBlocks in path.ts); these two passes are the safety net for
+// everything else. After a pass the village now idles for at least the minimum, and for FACTOR times as long as the pass took,
+// which caps their share of the server's time. Raise the minimums or the factors to save more, lower them to notice changes sooner.
+const FULL_SCAN_MIN_COOLDOWN_TICKS = 1200
+const FULL_SCAN_IDLE_FACTOR = 4
+const NODE_SWEEP_MIN_COOLDOWN_TICKS = 400
+const NODE_SWEEP_IDLE_FACTOR = 2
+
 system.runInterval(() => {
     if (!world.loadedData) {
         return
@@ -1209,38 +1372,46 @@ system.runInterval(() => {
     for (const village of villageList) {
 
         const dimension = world.getDimension(village.dimensionId)
-        if (!village.searchingBlocks) {
+        if (!village.searchingBlocks && system.currentTick >= village.nextFullScanTick) {
             const doorBlock = dimension.getBlockSafe(village.doorLocation)
             if (doorBlock !== undefined) {
                 village.searchingBlocks = true
+                const scanStartTick = system.currentTick
                 system.runJob(
                     village.searchBlocks(doorBlock, true, () => {
                         village.searchingBlocks = false
+                        const took = system.currentTick - scanStartTick
+                        village.nextFullScanTick = system.currentTick + Math.max(FULL_SCAN_MIN_COOLDOWN_TICKS, took * FULL_SCAN_IDLE_FACTOR)
                     })
                 )
             }
         }
 
-        if (!village.deletingInvalidNodes) {
+        if (!village.deletingInvalidNodes && system.currentTick >= village.nextNodeSweepTick) {
             village.deletingInvalidNodes = true
+            const sweepStartTick = system.currentTick
             system.runJob(checkVillagePathNodes())
 
             function* checkVillagePathNodes() {
                 const allVillagePathNodes = Object.keys(village.pathNodes) as LocationString[]
+                let checkedNodes = 0
                 try {
                     for (const pathNodeLocation of allVillagePathNodes) {
-                        if (!village.isValid) {
+                        // isValid scans the village list, so it is only checked every 32 nodes
+                        if ((checkedNodes++ & 31) === 0 && !village.isValid) {
                             return
                         }
-                        while (village.searchingBlocks) {
-                            yield
-                        }
+                        // Must not wait for searchingBlocks: the full scan restarts every interval right after it finishes,
+                        // so it is almost always running and waiting for it starves this sweep. The two don't conflict: both
+                        // judge nodes by the current block state, and checkNodeValidity skips nodes that no longer exist.
                         village.checkNodeValidity(pathNodeLocation)
                         yield
                     }
                 }
                 finally {
                     village.deletingInvalidNodes = false
+                    const took = system.currentTick - sweepStartTick
+                    village.nextNodeSweepTick = system.currentTick + Math.max(NODE_SWEEP_MIN_COOLDOWN_TICKS, took * NODE_SWEEP_IDLE_FACTOR)
                 }
             }
         }
@@ -1300,50 +1471,81 @@ Player.prototype.spawnBorderParticles = function (bounds) { //not debug
     }
 }
 
-const GLOW_PARTICLE_ID = "tektopia:animal_glow"
-const GLOW_HEIGHTS: Record<string, number> = {
-    "minecraft:pig": 0.9,
-    "minecraft:cow": 1.4,
-    "minecraft:sheep": 1.3,
-    "minecraft:chicken": 0.7
+const WIREFRAME_PROPERTY = "tektopia:show_wireframe"
+
+// Entities each player currently has the wireframe override applied to, so it can be cleared again
+const wireframeOverrides = new Map<string, Set<string>>()
+
+function clearWireframeOverride(player: Player, entityId: string) {
+    const entity = world.getEntity(entityId)
+    // An unloaded or removed entity takes its overrides with it
+    if (entity?.isValid === true) {
+        player.removePropertyOverrideForEntity(entity, WIREFRAME_PROPERTY)
+    }
 }
+
+function getWireframeEntityIds(player: Player) {
+    const wanted = new Set<string>()
+    const village = player.dimension.getVillage(player.location)
+    if (village === undefined) {
+        return wanted
+    }
+
+    const tile = locationToString(floorVector(addVector(player.location, "y", 0.1)))
+    const playerPen = village.penTiles.get(tile)
+    if (playerPen === undefined) {
+        return wanted
+    }
+
+    for (const entityId of village.ranchVillagerEntitiesByStructure.get(playerPen) ?? []) {
+        if (village.ranchEntities[entityId] !== undefined) {
+            wanted.add(entityId)
+        }
+    }
+    return wanted
+}
+
 system.runInterval(() => {
     if (!world.loadedData) {
         return
     }
 
     for (const player of world.getAllPlayers()) {
-        const village = player.dimension.getVillage(player.location)
-        if (village === undefined) {
-            continue
-        }
+        const applied = wireframeOverrides.get(player.id)
+        const wanted = getWireframeEntityIds(player)
 
-        const tile = locationToString(floorVector(addVector(player.location, "y", 0.1)))
-        const playerPen = village.penTiles.get(tile)
-        if (playerPen === undefined) {
-            continue
-        }
-
-        for (const entityId of village.ranchVillagerEntitiesByStructure.get(playerPen) ?? []) {
-            const data = village.ranchEntities[entityId]
-            if (data === undefined) {
-                continue
+        if (applied !== undefined) {
+            for (const entityId of applied) {
+                if (!wanted.has(entityId)) {
+                    clearWireframeOverride(player, entityId)
+                    applied.delete(entityId)
+                }
             }
+        }
+
+        if (wanted.size === 0) {
+            wireframeOverrides.delete(player.id)
+            continue
+        }
+
+        const current = applied ?? new Set<string>()
+        for (const entityId of wanted) {
             const entity = world.getEntity(entityId)
             if (entity?.isValid !== true) {
+                current.delete(entityId)
                 continue
             }
 
-            const molangVars = new MolangVariableMap()
-            molangVars.setFloat("variable.height", GLOW_HEIGHTS[data.typeId] ?? 1)
-
-            try {
-                player.spawnParticle(GLOW_PARTICLE_ID, entity.location, molangVars)
-            }
-            catch { }
+            player.setPropertyOverrideForEntity(entity, WIREFRAME_PROPERTY, true)
+            current.add(entityId)
         }
+        wireframeOverrides.set(player.id, current)
     }
 }, 10)
+
+world.afterEvents.playerLeave.subscribe(event => {
+    wireframeOverrides.delete(event.playerId)
+})
 
 system.runInterval(() => {
     if (!world.loadedData) {
@@ -1368,7 +1570,7 @@ system.runInterval(() => {
         }
     }
 
-    if (isRanchAnimalRegistryInitialized() && !ranchRefreshRunning) {
+    if (!ranchRefreshRunning) {
         ranchRefreshRunning = true
         system.runJob(refreshRanchEntities(villageList, () => {
             ranchRefreshRunning = false
@@ -1432,7 +1634,14 @@ function* refreshRanchEntities(villageList: Village[], callback: () => void): Ge
                 const previous = village.penCache.get(pen.locationString)
                 const floor = scanned.floor ?? previous?.floor ?? []
                 const fence = scanned.fence ?? previous?.fence ?? []
-                village.penCache.set(pen.locationString, { floor, fence })
+                // A pen can have several gates: every fence gate on the enclosure is a way in or out
+                const gates = scanned.fence === undefined && previous !== undefined
+                    ? previous.gates
+                    : fence.filter(location => {
+                        const block = village.dimension.getBlockSafe(location)
+                        return block !== undefined && Registry.fenceGateTypes.includes(block.typeId)
+                    })
+                village.penCache.set(pen.locationString, { floor, fence, gates })
                 const columns = new Map<string, number[]>()
                 const floorColumns = new Set<string>()
                 let processedLocations = 0
@@ -1502,6 +1711,13 @@ function* refreshRanchEntities(villageList: Village[], callback: () => void): Ge
                 const breeding = rancherEntity.breeding
                 const breedable = breeding?.canBreed ?? false
                 const villagerEntity = rancherEntity.villagerEntity ?? false
+                const eggLayTicks = rancherEntity.eggLayTimer
+                const eggLaySeconds = eggLayTicks === undefined
+                    ? undefined
+                    : Math.ceil(Math.max(0, eggLayTicks) / 20)
+                const eggLayTime = eggLaySeconds === undefined
+                    ? "none"
+                    : `${Math.floor(eggLaySeconds / 60)}:${(eggLaySeconds % 60).toString().padStart(2, "0")}`
 
                 const existingRanchEntity = ranchEntities[rancherEntity.id]
                 if (existingRanchEntity === undefined) {
@@ -1526,6 +1742,11 @@ function* refreshRanchEntities(villageList: Village[], callback: () => void): Ge
                 }
                 seenRanchEntityIds.add(rancherEntity.id)
 
+                rancherEntity.villagerEntityProperty ??= rancherEntity.getProperty("tektopia:villager_entity") as boolean | undefined
+                if (rancherEntity.villagerEntityProperty === false) {
+                    rancherEntity.triggerEvent("tektopia:make_villager_entity")
+                }
+
                 if (inPen && structure !== undefined && rancherEntity.villagerEntity) {
                     let villagerEntities = ranchVillagerEntitiesByStructure.get(structure)
                     if (villagerEntities === undefined) {
@@ -1541,6 +1762,7 @@ function* refreshRanchEntities(villageList: Village[], callback: () => void): Ge
                         `In pen: ${inPen ? "Yes" : "No"}`,
                         `Structure: ${structure ?? "None"}`,
                         `Breeding: ${breeding?.time ?? "none"}-${breeding?.cooldown ?? "none"}`,
+                        ...rancherEntity.typeId === "minecraft:chicken" ? [`Egg lay: ${eggLayTime}`] : [],
                         `Villager Entity: ${rancherEntity.villagerEntity ?? false}`
                     ].join("\n")
                 }

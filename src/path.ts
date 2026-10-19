@@ -1,6 +1,6 @@
 import {
     Block,
-    type Entity,
+    Entity,
     EntityComponentTypes,
     GameMode,
     Player,
@@ -27,8 +27,6 @@ import {
 import { Registry } from "./registry"
 
 import {
-    addVectors,
-    calculateDistance,
     calculateChebyshevDistance,
     floorVector,
     isVectorBetween,
@@ -36,11 +34,6 @@ import {
     locationToString,
     addVector
 } from "./utils"
-
-import {
-    MIN_MOVE_COST,
-    minecraftDangerousBlockTypes
-} from "./variables"
 
 import type {
     CheckEntityData,
@@ -57,6 +50,12 @@ const VERTICAL_AWAY_PENALTY = 10
 const DIAGONAL_COST = 1.75
 
 const BLOCKED_ENTITY_RADIUS = 1
+
+const BLOCKED_ENTITY_PADDING = 0.1
+
+export function blockRadiusFromWidth(width: number) {
+    return (width / 2) + BLOCKED_ENTITY_PADDING
+}
 
 export interface PathVillage {
     readonly bounds: Bounds
@@ -75,6 +74,8 @@ export interface PathVillager {
     readonly isBlocked: boolean
     readonly totalBlockTimer: number
     getVillage(): PathVillage | undefined
+    /** Path nodes this villager must not route through right now (e.g. a gate an animal is about to escape from). */
+    getAvoidedNodes?(): ReadonlySet<LocationString> | undefined
 }
 
 export type PathFailure = "no_path" | "no_village" | "timeout" | "cancelled" | "error"
@@ -86,7 +87,6 @@ export type PathTarget = Vector3 | Entity
 export interface PathStream {
     readonly nodes: Vector3[]
     head?: number
-    /** The last node the follower reached. A new route is always connected through it, so the entity is never sent back. */
     reached?: Vector3
     status: "searching" | "complete" | PathFailure
 }
@@ -96,10 +96,11 @@ const TARGET_POLL_TICKS = 4
 const TRACK_INTERVAL_TICKS = 2
 const SLEEP = -1
 const MAX_RESTARTS = 8
-// A new partial path is only published while the follower has fewer than this many nodes left to walk,
-// and only when it gets at least PARTIAL_MIN_PROGRESS closer to the goal than the queued route already does.
 const PARTIAL_LOOKAHEAD = 16
 const PARTIAL_MIN_PROGRESS = 1
+// When the search budget runs out before the goal is found, the best partial route only counts if it gets
+// at least this much closer to the goal than the search started. Otherwise the goal is treated as unreachable.
+const STALL_MIN_PROGRESS = 3
 
 interface Scratch {
     capacity: number
@@ -111,6 +112,42 @@ interface Scratch {
     mark: Int32Array
     link: Int32Array
     heap: IntHeap
+}
+
+Entity.prototype.getHitbox = function () {
+    const { center, extent } = this.getAABB()
+
+    return {
+        start: {
+            x: center.x - extent.x,
+            y: center.y - extent.y,
+            z: center.z - extent.z
+        },
+        end: {
+            x: center.x + extent.x,
+            y: center.y + extent.y,
+            z: center.z + extent.z
+        }
+    }
+}
+
+const entityHitBoxSizeCache = new Map<string, { width: number, height: number }>()
+
+Entity.prototype.getHitboxSize = function () {
+    const cached = entityHitBoxSizeCache.get(this.typeId)
+    if (cached !== undefined) {
+        return cached
+    }
+
+    const { extent } = this.getAABB()
+
+    const size = {
+        width: extent.x * 2,
+        height: extent.y * 2
+    }
+    entityHitBoxSizeCache.set(this.typeId, size)
+
+    return size
 }
 
 const scratchPool: Scratch[] = []
@@ -139,18 +176,19 @@ function acquireScratch(capacity: number): Scratch {
 }
 
 function buildBlockedCells(
-    entities: Array<{ id: string, location: Vector3, cancelPath?: boolean }>,
+    entities: Array<{ id: string, location: Vector3, cancelPath?: boolean, radius?: number }>,
     graph: PathGraph,
     bounds: Bounds,
     blocked: Uint8Array,
     excludedEntityId: string,
     targetEntityId?: string
 ) {
-    const RADIUS = BLOCKED_ENTITY_RADIUS
-    const minBX = Math.min(bounds.start.x, bounds.end.x) - RADIUS - 1
-    const maxBX = Math.max(bounds.start.x, bounds.end.x) + RADIUS + 1
-    const minBZ = Math.min(bounds.start.z, bounds.end.z) - RADIUS - 1
-    const maxBZ = Math.max(bounds.start.z, bounds.end.z) + RADIUS + 1
+    const BOUNDS_MARGIN = 4 // generous enough for large entities
+    const minBX = Math.min(bounds.start.x, bounds.end.x) - BOUNDS_MARGIN
+    const maxBX = Math.max(bounds.start.x, bounds.end.x) + BOUNDS_MARGIN
+    const minBZ = Math.min(bounds.start.z, bounds.end.z) - BOUNDS_MARGIN
+    const maxBZ = Math.max(bounds.start.z, bounds.end.z) + BOUNDS_MARGIN
+    const RADIUS_Y = BLOCKED_ENTITY_RADIUS
 
     for (const other of entities) {
         if (other.id === excludedEntityId || other.id === targetEntityId) {
@@ -160,21 +198,22 @@ function buildBlockedCells(
         if (loc.x < minBX || loc.x > maxBX || loc.z < minBZ || loc.z > maxBZ) {
             continue
         }
+        const radius = other.radius ?? BLOCKED_ENTITY_RADIUS
         const state = other.cancelPath === true ? 2 : 1
-        const maxX = Math.ceil(loc.x + RADIUS)
-        const maxY = Math.ceil(loc.y + RADIUS)
-        const maxZ = Math.ceil(loc.z + RADIUS)
+        const maxX = Math.ceil(loc.x + radius)
+        const maxY = Math.ceil(loc.y + RADIUS_Y)
+        const maxZ = Math.ceil(loc.z + radius)
 
-        for (let x = Math.floor(loc.x - RADIUS - 1); x <= maxX; x++) {
-            if (Math.abs(loc.x - (x + 0.5)) >= RADIUS) {
+        for (let x = Math.floor(loc.x - radius - 1); x <= maxX; x++) {
+            if (Math.abs(loc.x - (x + 0.5)) >= radius) {
                 continue
             }
-            for (let z = Math.floor(loc.z - RADIUS - 1); z <= maxZ; z++) {
-                if (Math.abs(loc.z - (z + 0.5)) >= RADIUS) {
+            for (let z = Math.floor(loc.z - radius - 1); z <= maxZ; z++) {
+                if (Math.abs(loc.z - (z + 0.5)) >= radius) {
                     continue
                 }
-                for (let y = Math.floor(loc.y - RADIUS - 1); y <= maxY; y++) {
-                    if (Math.abs(loc.y - y) >= RADIUS) {
+                for (let y = Math.floor(loc.y - RADIUS_Y - 1); y <= maxY; y++) {
+                    if (Math.abs(loc.y - y) >= RADIUS_Y) {
                         continue
                     }
                     const id = graph.idAt(x, y, z)
@@ -194,10 +233,11 @@ export function getPathNodeBlockState(dimensionId: string, node: Vector3): 0 | 1
     let blockState: 0 | 1 | 2 = 0
     for (const entity of pathCheckEntities[dimensionId] ?? []) {
         const { x, y, z } = entity.location
+        const radius = entity.radius ?? BLOCKED_ENTITY_RADIUS
         if (
-            Math.abs(x - (node.x + 0.5)) >= BLOCKED_ENTITY_RADIUS
+            Math.abs(x - (node.x + 0.5)) >= radius
             || Math.abs(y - node.y) >= BLOCKED_ENTITY_RADIUS
-            || Math.abs(z - (node.z + 0.5)) >= BLOCKED_ENTITY_RADIUS
+            || Math.abs(z - (node.z + 0.5)) >= radius
         ) {
             continue
         }
@@ -377,6 +417,8 @@ function estimateCost(dx: number, dy: number, dz: number) {
 
     return (Math.max(absX, absZ) - diagonal) + (diagonal * DIAGONAL_COST) + (Math.abs(dy) * Y_WEIGHT)
 }
+
+const MIN_MOVE_COST = 0.25
 
 export function generatePath(
     entity: PathVillager,
@@ -588,6 +630,16 @@ export function generatePath(
                 const { g, closed, came, blocked, verdict, heap, mark, link } = scratch
                 buildBlockedCells(pathCheckEntities[dimensionId] ?? [], graph, villageBounds, blocked, entity.id, targetEntity?.id)
 
+                const avoidedNodes = entity.getAvoidedNodes?.()
+                if (avoidedNodes !== undefined) {
+                    for (const avoidedKey of avoidedNodes) {
+                        const avoidedId = graph.idOf(avoidedKey)
+                        if (avoidedId !== -1) {
+                            blocked[avoidedId] = 2
+                        }
+                    }
+                }
+
                 const typeId = entity.typeId
                 const allowed = (requirementId: number) => {
                     let value = verdict[requirementId] ?? -1
@@ -777,8 +829,12 @@ export function generatePath(
                     }
 
                     if (++expansions > MAX_EXPANSIONS) {
-                        // Too expensive to keep searching: settle for the best partial route.
-                        if (bestId === rootId) {
+                        // Too expensive to keep searching: settle for the best partial route, but only if it
+                        // makes real progress towards the goal. A route that barely gets closer (a dead-end nub,
+                        // or the closest reachable point to an unreachable goal) would end as a silent "complete",
+                        // so the caller would walk there and ask again forever; report it as a failure instead.
+                        const progress = estimate(rootId) - bestHeuristic
+                        if (bestId === rootId || progress < STALL_MIN_PROGRESS) {
                             finish((out.head ?? 0) < out.nodes.length ? "complete" : "timeout")
                             return "done"
                         }
@@ -902,33 +958,50 @@ export function findNearestNodeLocation(nodeList: Record<string, PathNode>, loca
     if (nodeList[locationToString(location)] !== undefined) {
         return location
     }
+    const lx = location.x
+    const ly = location.y
+    const lz = location.z
+    // A biased search only looks on the side(s) the entity is leaning towards
+    const biasX = bias?.x ?? 0
+    const biasZ = bias?.z ?? 0
     for (let radius = 1; radius <= maxRadius; radius++) {
-        let closest: Vector3 | undefined
-        let closestDist = Infinity
-        for (let dx = -radius; dx <= radius; dx++) {
+        let bestX = 0
+        let bestY = 0
+        let bestZ = 0
+        let closestDistSq = Infinity
+        const dxMin = biasX > 0 ? 0 : -radius
+        const dxMax = biasX < 0 ? 0 : radius
+        const dzMin = biasZ > 0 ? 0 : -radius
+        const dzMax = biasZ < 0 ? 0 : radius
+        // Visit only the cells on the surface of the cube (Chebyshev distance == radius), in the same dx, dy, dz order as a full scan
+        for (let dx = dxMin; dx <= dxMax; dx++) {
+            const dxOnShell = dx === radius || dx === -radius
+            const x = lx + dx
             for (let dy = -radius; dy <= radius; dy++) {
-                for (let dz = -radius; dz <= radius; dz++) {
-                    if (Math.max(Math.abs(dx), Math.abs(dy), Math.abs(dz)) !== radius) {
+                const dyOnShell = dxOnShell || dy === radius || dy === -radius
+                const y = ly + dy
+                // Off the shell on both x and y, only the two z faces belong to it; otherwise the whole z range does
+                const dzStep = dyOnShell ? 1 : radius * 2
+                const keyPrefix = `${x},${y},`
+                // Start on the first z that is inside the bias window and on the shell
+                let dz = dyOnShell ? dzMin : -radius < dzMin ? radius : -radius
+                for (; dz <= dzMax; dz += dzStep) {
+                    if (nodeList[keyPrefix + (lz + dz)] === undefined) {
                         continue
                     }
-                    // A biased search only looks on the side(s) the entity is leaning towards
-                    if (bias !== undefined && ((bias.x !== 0 && dx * bias.x < 0) || (bias.z !== 0 && dz * bias.z < 0))) {
-                        continue
-                    }
-                    const candidate = addVectors(location, { x: dx, y: dy, z: dz })
-                    if (nodeList[locationToString(candidate)] === undefined) {
-                        continue
-                    }
-                    const dist = calculateDistance(addVector(candidate, "y", 0.25), location)
-                    if (dist < closestDist) {
-                        closestDist = dist
-                        closest = candidate
+                    const dyDist = (y + 0.25) - ly
+                    const distSq = (dx * dx) + (dyDist * dyDist) + (dz * dz)
+                    if (distSq < closestDistSq) {
+                        closestDistSq = distSq
+                        bestX = dx
+                        bestY = dy
+                        bestZ = dz
                     }
                 }
             }
         }
-        if (closest !== undefined) {
-            return closest
+        if (closestDistSq !== Infinity) {
+            return { x: lx + bestX, y: ly + bestY, z: lz + bestZ }
         }
     }
     return undefined
@@ -937,6 +1010,7 @@ export function findNearestNodeLocation(nodeList: Record<string, PathNode>, loca
 interface PathEntity extends CheckEntityData {
     villager?: PathVillager
     ignoreAsBlocker?: boolean
+    radius?: number
 }
 
 const CELL = 4
@@ -966,7 +1040,7 @@ export function findPathBlocker(
                 continue
             }
             for (const other of bucket) {
-                if (other.id === selfId || other.id === targetId || calculateChebyshevDistance(other.location, node) >= 1.75) {
+                if (other.id === selfId || other.id === targetId || calculateChebyshevDistance(other.location, node) >= (other.radius ?? BLOCKED_ENTITY_RADIUS) + 0.75) {
                     continue
                 }
                 if (other.ignoreAsBlocker === true) {
@@ -1100,10 +1174,12 @@ function tickPathSnapshot() {
                     location,
                     id: entity.id,
                     typeId: entity.typeId,
+                    radius: blockRadiusFromWidth(entity.getHitboxSize().width),
                     cancelPath: pathCancelEntityTypes.includesFast(entity.typeId),
                     villager: entity.isVillager ? pathingVillagerById.get(entity.id) : undefined,
                     ignoreAsBlocker: entity.isVillager && !pathingVillagerById.has(entity.id)
                 }
+
                 flat.push(pathEntity)
 
                 const key = cellKey(location.x, location.z)
@@ -1259,28 +1335,37 @@ function* updateNodesBlocks(callback?: () => void) {
     }
 }
 
+const BED_BLOCK_TYPE = "minecraft:bed"
+
 Block.prototype.isValidPath = function (villageBounds?: Bounds) {
     const block = this
     const below = block.belowSafe()
     if (below === undefined) {
         return false
     }
+
     const above = block.aboveSafe()
     if (above === undefined) {
         return false
     }
+
     if (!block.canPathThrough()) {
+        return false
+    }
+    // Beds are furniture: never allow a path node in a bed block or on top of one
+    if (block.typeId === BED_BLOCK_TYPE || below.typeId === BED_BLOCK_TYPE) {
         return false
     }
     if (below.isDangerous()) {
         return false
     }
-    const belowIsSolid = below.getIsSolid()
     if (
         below.destroyableLeaf() && (block.destroyableLeaf() || above.destroyableLeaf())
     ) {
         return false
     }
+
+    const belowIsSolid = below.getIsSolid()
     if (!belowIsSolid) {
         return false
     }
@@ -1339,6 +1424,9 @@ Block.prototype.getNodeNeighbors = function () {
 }
 
 Block.prototype.getIsSolid = function () {
+    if (Registry.chestTypesSet.has(this.typeId)) {
+        return false
+    }
     return this.isSolid || Registry.solidBlocksSet.has(this.typeId)
 }
 
@@ -1354,10 +1442,11 @@ Block.prototype.canPathThrough = function () {
 }
 
 Block.prototype.canWalkThrough = function () {
+    const blockTypeId = this.typeId
     return (
-        (this.isAir || Registry.nonSolidBlocksSet.has(this.typeId) || this.destroyableLeaf())
-        && !avoidBlockTypes.has(this.typeId)
-        && !this.isDangerous() && !this.isLiquid && !this.isWaterlogged
+        (this.isAir || Registry.nonSolidBlocksSet.has(blockTypeId) || this.destroyableLeaf())
+        && !avoidBlockTypes.has(blockTypeId)
+        && !this.isDangerous() && !Registry.liquidTypesSet.has(blockTypeId)
     )
 }
 
@@ -1368,5 +1457,5 @@ Block.prototype.destroyableLeaf = function () {
 }
 
 Block.prototype.isDangerous = function () {
-    return minecraftDangerousBlockTypes.includesFast(this.typeId)
+    return Registry.dangerousTypesSet.has(this.typeId)
 }

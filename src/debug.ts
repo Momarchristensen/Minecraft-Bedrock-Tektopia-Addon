@@ -1,4 +1,14 @@
 import {
+    diagnosticsManager,
+    DiagnosticsChartDisplayType,
+    DiagnosticsTableDisplayType,
+    type DiagnosticsChartViewOptions,
+    type DiagnosticsStat,
+    type DiagnosticsTableViewOptions,
+    type DiagnosticsView
+} from "@minecraft/debug-utilities"
+
+import {
     CommandPermissionLevel,
     CustomCommandParamType,
     CustomCommandStatus,
@@ -8,10 +18,12 @@ import {
 } from "@minecraft/server"
 
 import {
-    debugFlags,
+    type DebugFlag,
     debugFlagNames,
-    type DebugFlag
+    debugFlags
 } from "./debug_flags"
+
+import { getItemFrameStructureLocation } from "./item_frames"
 
 import { getPathNodeBlockState } from "./path"
 
@@ -102,7 +114,8 @@ const VILLAGE_LOCATION_PROPERTIES = [
     "treeLocations",
     "oreLocations",
     "plantLocations",
-    "tillLocations"
+    "tillLocations",
+    "growLocations"
 ] as const
 
 export function isDebugFlag(value: string): value is DebugFlag {
@@ -197,6 +210,48 @@ function* drawDebug(callback?: () => void) {
             return
         }
         const players = world.getAllPlayers()
+
+        if (debugFlags.itemFrameFloorParticles) {
+            const villages = world.getVillages()
+
+            for (const player of players) {
+                if (!player.isValid) {
+                    continue
+                }
+
+                for (const itemFrame of world.itemFrameList) {
+                    const structureLocation = getItemFrameStructureLocation(itemFrame)
+                    if (structureLocation === undefined || itemFrame.dimensionId !== player.dimension.id) {
+                        continue
+                    }
+
+                    const village = villages.find(candidate =>
+                        candidate.dimensionId === itemFrame.dimensionId
+                        && candidate.data.structures[structureLocation] !== undefined
+                    )
+                    if (village === undefined) {
+                        continue
+                    }
+
+                    const colorMap = new MolangVariableMap()
+                    colorMap.setColorRGB("color", stringColor(structureLocation))
+
+                    for (const floorLocation of village.getClaimedFloorLocations(structureLocation)) {
+                        const location = stringToLocation(floorLocation)
+                        if (calculateDistance(player.location, location) > 20) {
+                            continue
+                        }
+
+                        const particleLocation = addVector(centerVector(location, true), "y", 0.02)
+                        try {
+                            player.spawnParticle("tektopia:path_node", particleLocation, colorMap)
+                        }
+                        catch { }
+                        yield
+                    }
+                }
+            }
+        }
 
         if (debugFlags.villageLocationParticles) {
             for (const player of players) {
@@ -440,6 +495,310 @@ function hashString(value: string) {
     return hash >>> 0
 }
 
+interface DiagnosticViewDefinition {
+    statName: string
+    options: DiagnosticsChartViewOptions | DiagnosticsTableViewOptions
+    getStats: () => DiagnosticsStat[]
+}
+
+interface DiagnosticFeed {
+    view: DiagnosticsView
+    getStats: () => DiagnosticsStat[]
+}
+
+const diagnosticFeeds: DiagnosticFeed[] = []
+let lastDiagnosticUpdate = Date.now()
+let diagnosticTickRate = 20
+let diagnosticUpdateIntervalMs = 1000
+let ticksSinceDiagnosticUpdate = 0
+
+function registerDiagnosticTab(tabName: string, definitions: DiagnosticViewDefinition[]) {
+    let tab = diagnosticsManager.tabs.find(candidate => candidate.tabName === tabName)
+    tab ??= diagnosticsManager.createTab(tabName)
+
+    for (const [index, definition] of definitions.entries()) {
+        let view = tab.views[index]
+        if (view === undefined) {
+            view = diagnosticsManager.createView(definition.statName, definition.options)
+            tab.addView(view)
+        }
+
+        diagnosticFeeds.push({ view, getStats: definition.getStats })
+    }
+}
+
+function tableView(statName: string, labels: string[], getStats: () => DiagnosticsStat[]): DiagnosticViewDefinition {
+    return {
+        statName,
+        options: {
+            tableType: DiagnosticsTableDisplayType.MultiColumnTable,
+            keyLabel: "Metric",
+            valueLabels: labels
+        },
+        getStats
+    }
+}
+
+function chartView(statName: string, getStats: () => DiagnosticsStat[]): DiagnosticViewDefinition {
+    return {
+        statName,
+        options: {
+            chartType: DiagnosticsChartDisplayType.LineChart,
+            yAxisLabel: "Ticks per second",
+            targetValue: 20,
+            tickRange: 60
+        },
+        getStats
+    }
+}
+
+function registerDiagnostics() {
+    lastDiagnosticUpdate = Date.now()
+
+    const singleValue = (stats: Array<[string, number | string]>): DiagnosticsStat[] =>
+        stats.map(([name, value]) => ({ name, values: [value] }))
+
+    registerDiagnosticTab("Tektopia - Overview", [
+        tableView("World overview", ["Value"], () => singleValue([
+            ["World data", world.loadedData ? "Loaded" : "Loading"],
+            ["Game tick", system.currentTick],
+            ["Players", world.getAllPlayers().length],
+            ["Villages", world.getVillages().length],
+            ["Villagers", world.getVillagers().length]
+        ]))
+    ])
+
+    registerDiagnosticTab("Tektopia - Performance", [
+        tableView("Runtime", ["Value"], () => singleValue([
+            ["Estimated tick rate", diagnosticTickRate],
+            ["Game tick", system.currentTick],
+            ["Update interval (ms)", diagnosticUpdateIntervalMs]
+        ])),
+        chartView("Tick rate history", () => [{ name: "TPS", values: [diagnosticTickRate] }])
+    ])
+
+    registerDiagnosticTab("Tektopia - Villager Population", [
+        tableView("Villagers by type", ["Count"], () => {
+            const counts = new Map<string, number>()
+            for (const villager of world.getVillagers()) {
+                counts.set(villager.typeId, (counts.get(villager.typeId) ?? 0) + 1)
+            }
+            return [...counts]
+                .sort(([left], [right]) => left.localeCompare(right))
+                .map(([typeId, count]) => ({ name: typeId, values: [count] }))
+        })
+    ])
+
+    registerDiagnosticTab("Tektopia - Villager State", [
+        tableView("Villager states", ["Count", "Percent"], () => {
+            const villagers = world.getVillagers().filter(villager => villager.isValid)
+            const states: Array<[string, (villager: typeof villagers[number]) => boolean]> = [
+                ["Alive", villager => !villager.isDead],
+                ["Blocked", villager => villager.isBlocked],
+                ["Pathing", villager => villager.isPathing],
+                ["Unreachable", villager => villager.unreachable > 0],
+                ["Path errors", villager => villager.pathError !== undefined]
+            ]
+            return states.map(([name, matches]) => {
+                const count = villagers.filter(matches).length
+                const percent = villagers.length === 0 ? 0 : Math.round((count / villagers.length) * 100)
+                return { name, values: [count, `${percent}%`] }
+            })
+        })
+    ])
+
+    registerDiagnosticTab("Tektopia - Villager Issues", [
+        tableView("Blocked or failing villagers", ["State", "Details"], () => {
+            const villagers = world.getVillagers()
+                .filter(villager => villager.isValid && (villager.isBlocked || villager.pathError !== undefined || villager.unreachable > 0))
+                .slice(0, 100)
+            return villagers.map(villager => ({
+                name: villager.nameTag.length > 0 ? villager.nameTag : villager.id,
+                values: [
+                    villager.isBlocked ? "Blocked" : "Path issue",
+                    villager.pathError ?? `Unreachable: ${villager.unreachable}`
+                ]
+            }))
+        })
+    ])
+
+    registerDiagnosticTab("Tektopia - Players", [
+        tableView("Online players", ["Dimension", "X", "Y", "Z"], () =>
+            world.getAllPlayers().map(player => ({
+                name: player.name,
+                values: [
+                    player.dimension.id,
+                    Math.floor(player.location.x),
+                    Math.floor(player.location.y),
+                    Math.floor(player.location.z)
+                ]
+            })))
+    ])
+
+    registerDiagnosticTab("Tektopia - Village Registry", [
+        tableView("Village summary", ["Dimension", "Villagers", "Paths", "Structures"], () => {
+            const villages = world.getVillages()
+            const villagers = world.getVillagers().filter(villager => villager.isValid)
+            return villages.map((village, index) => {
+                const { start, end } = village.bounds
+                const villagerCount = villagers.filter(villager =>
+                    villager.dimension.id === village.dimensionId
+                    && villager.location.x >= start.x && villager.location.x <= end.x
+                    && villager.location.z >= start.z && villager.location.z <= end.z
+                ).length
+                return {
+                    name: `Village ${index + 1} (${village.centerString})`,
+                    values: [
+                        village.dimensionId,
+                        villagerCount,
+                        Object.keys(village.pathNodes).length,
+                        Object.keys(village.data.structures).length
+                    ]
+                }
+            })
+        })
+    ])
+
+    registerDiagnosticTab("Tektopia - Path Network", [
+        tableView("Path graph by village", ["Nodes", "Neighbor links", "Costed nodes", "Requirements"], () =>
+            world.getVillages().map((village, index) => {
+                const nodes = Object.values(village.pathNodes)
+                return {
+                    name: `Village ${index + 1}`,
+                    values: [
+                        nodes.length,
+                        nodes.reduce((total, node) => total + node.neighbors.length, 0),
+                        nodes.filter(node => node.cost !== undefined).length,
+                        nodes.reduce((total, node) =>
+                            total + Number(node.requirement !== undefined) + Object.keys(node.nodeRequirements ?? {}).length, 0)
+                    ]
+                }
+            }))
+    ])
+
+    registerDiagnosticTab("Tektopia - Resource Locations", [
+        tableView("Tracked resource locations", ["Count"], () => {
+            const totals = new Map<string, number>()
+            for (const village of world.getVillages()) {
+                const resources: Array<[string, number]> = [
+                    ["Sugar cane", village.data.sugarCaneLocations.length],
+                    ["Saplings", village.data.saplingLocations.length],
+                    ["Farm plots", village.data.farmLocations.length],
+                    ["Harvest locations", village.data.harvestLocations.length],
+                    ["Grow locations", village.data.growLocations.length],
+                    ["Till locations", village.data.tillLocations.length],
+                    ["Sweet berries", village.data.sweetBerryLocations.length],
+                    ["Trees", village.data.treeLocations.length],
+                    ["Ore", village.data.oreLocations.length],
+                    ["Plants", Object.keys(village.plantLocations).length]
+                ]
+                for (const [name, count] of resources) {
+                    totals.set(name, (totals.get(name) ?? 0) + count)
+                }
+            }
+            return [...totals].map(([name, count]) => ({ name, values: [count] }))
+        })
+    ])
+
+    registerDiagnosticTab("Tektopia - Structures", [
+        tableView("Structures by type", ["Count"], () => {
+            const counts = new Map<string, number>()
+            for (const village of world.getVillages()) {
+                for (const structure of Object.values(village.data.structures)) {
+                    counts.set(structure.type, (counts.get(structure.type) ?? 0) + 1)
+                }
+            }
+            return [...counts]
+                .sort(([left], [right]) => left.localeCompare(right))
+                .map(([type, count]) => ({ name: type, values: [count] }))
+        })
+    ])
+
+    registerDiagnosticTab("Tektopia - Item Frame Floors", [
+        tableView("Frame floor claims", ["Structure", "Structure location", "Claimed floor locations"], () => {
+            const villages = world.getVillages()
+            return world.itemFrameList.map(itemFrame => {
+                const structureLocation = getItemFrameStructureLocation(itemFrame)
+                const village = structureLocation === undefined
+                    ? undefined
+                    : villages.find(candidate =>
+                        candidate.dimensionId === itemFrame.dimensionId
+                        && candidate.data.structures[structureLocation] !== undefined
+                    )
+                const floorLocations = structureLocation === undefined || village === undefined
+                    ? undefined
+                    : village.getClaimedFloorLocations(structureLocation)
+
+                return {
+                    name: `${itemFrame.dimensionId} ${locationToString(itemFrame.location)}`,
+                    values: [
+                        itemFrame.structureId ?? "Unrecognized or unloaded",
+                        structureLocation ?? "No validated structure",
+                        floorLocations === undefined
+                            ? "No current village claim"
+                            : floorLocations.length === 0
+                                ? "No floor locations"
+                                : [...floorLocations].sort().join("; ")
+                    ]
+                }
+            })
+        })
+    ])
+
+    registerDiagnosticTab("Tektopia - Ranches", [
+        tableView("Ranch entities", ["Count", "In pen", "Breedable"], () => {
+            const counts = new Map<string, { total: number, inPen: number, breedable: number }>()
+            for (const village of world.getVillages()) {
+                for (const animal of Object.values(village.ranchEntities)) {
+                    const count = counts.get(animal.typeId) ?? { total: 0, inPen: 0, breedable: 0 }
+                    count.total++
+                    count.inPen += Number(animal.inPen)
+                    count.breedable += Number(animal.breedable)
+                    counts.set(animal.typeId, count)
+                }
+            }
+            return [...counts]
+                .sort(([left], [right]) => left.localeCompare(right))
+                .map(([type, count]) => ({
+                    name: type,
+                    values: [count.total, count.inPen, count.breedable]
+                }))
+        })
+    ])
+
+    registerDiagnosticTab("Tektopia - Debug Flags", [
+        tableView("Debug flag switches", ["Enabled"], () =>
+            debugFlagNames.map(flag => ({
+                name: flag,
+                values: [debugFlags[flag] ? "On" : "Off"]
+            })))
+    ])
+}
+
+function updateDiagnostics() {
+    if (!world.loadedData) {
+        return
+    }
+
+    const ticksIntoUpdate = ticksSinceDiagnosticUpdate + 1
+    const firstFeedIndex = Math.floor(ticksSinceDiagnosticUpdate * diagnosticFeeds.length / 20)
+    const lastFeedIndex = Math.floor(ticksIntoUpdate * diagnosticFeeds.length / 20)
+    for (let index = firstFeedIndex; index < lastFeedIndex; index++) {
+        const feed = diagnosticFeeds[index]
+        if (feed !== undefined) {
+            feed.view.pushStats(feed.getStats())
+        }
+    }
+
+    ticksSinceDiagnosticUpdate = ticksIntoUpdate % 20
+    if (ticksSinceDiagnosticUpdate === 0) {
+        const now = Date.now()
+        diagnosticUpdateIntervalMs = Math.max(1, now - lastDiagnosticUpdate)
+        diagnosticTickRate = Math.round((20_000 / diagnosticUpdateIntervalMs) * 10) / 10
+        lastDiagnosticUpdate = now
+    }
+}
+
 export function testLag() {
     if (world.lagTime === undefined) {
         world.lagTime = Date.now()
@@ -456,4 +815,6 @@ world.afterEvents.worldLoad.subscribe(() => {
 
 function main() {
     loadDebugFlags()
+    registerDiagnostics()
+    system.runInterval(updateDiagnostics)
 }

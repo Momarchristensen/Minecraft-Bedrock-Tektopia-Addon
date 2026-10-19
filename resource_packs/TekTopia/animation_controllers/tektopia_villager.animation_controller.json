@@ -25,7 +25,16 @@
 							"refill": "query.property('property:animation') == 'refilling'"
 						},
 						{
-							"grow": "query.property('property:animation') == 'growing'"
+							"sleep": "query.property('property:animation') == 'sleeping'"
+						},
+						{
+							"sitting": "query.property('property:animation') == 'sitting'"
+						},
+						{
+							"forging": "query.property('property:animation') == 'forging'"
+						},
+						{
+							"crafting": "query.property('property:animation') == 'crafting'"
 						}
 					],
 					"transitions": [
