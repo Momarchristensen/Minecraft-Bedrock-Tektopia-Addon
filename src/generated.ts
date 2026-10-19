@@ -19,7 +19,6 @@ export type SoundEvents = keyof BlockSounds
 
 type SoundEventEntry = SoundEvent | string | null
 
-//Auto Generated Variables
 export const blockSounds: Record<string, BlockSounds> = {
     acacia_button: {
         break: {

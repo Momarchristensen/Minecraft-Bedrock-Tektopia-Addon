@@ -14,13 +14,12 @@ import {
 import { Registry } from "./registry"
 
 import {
-    areVectorsEqual,
     calculateDistance,
     directionToRotation,
     directionToVector,
     reverseRecord,
     rotateHorizontalDirection,
-    vectorsAreEqual,
+    areVectorsEqual,
     type HorizontalDirection
 } from "./utils"
 
@@ -80,11 +79,6 @@ export interface ConnectedChestRecord {
     b: Vector3
 }
 
-// ---------------------------------------------------------------------------
-// Saved double-chest pairs
-// ---------------------------------------------------------------------------
-
-// Lookup index over world.connectedChestList, rebuilt whenever the list instance changes
 const savedPartners = new Map<string, Vector3>()
 let indexedList: ConnectedChestRecord[] | undefined
 
@@ -146,10 +140,6 @@ function forgetPair(dimensionId: string, location: Vector3) {
     }
 }
 
-// ---------------------------------------------------------------------------
-// Connection detection
-// ---------------------------------------------------------------------------
-
 function getDirection(block: Block): HorizontalDirection | undefined {
     return block.permutation.getState("minecraft:cardinal_direction") as HorizontalDirection | undefined
 }
@@ -179,7 +169,6 @@ function getNeighborOffsets(direction: HorizontalDirection): Array<{ offset: Vec
     ]
 }
 
-// True when the candidate is already saved as half of a different, still valid pair
 function isPairedElsewhere(candidate: Block, block: Block, direction: HorizontalDirection): boolean {
     const dimensionId = candidate.dimension.id
     const partnerLocation = getSavedPartner(dimensionId, candidate.location)
@@ -206,12 +195,11 @@ function findConnectedChest(block: Block): ConnectingChest | undefined {
 
     const neighbors = getNeighborOffsets(direction)
 
-    // Prefer the saved partner if it is still adjacent and valid
     const savedLocation = getSavedPartner(dimension.id, location)
     if (savedLocation !== undefined) {
         const partner = dimension.getBlockSafe(savedLocation)
         if (partner === undefined) {
-            // Partner chunk isn't loaded; keep the saved pair for later
+
             return undefined
         }
 
@@ -225,7 +213,6 @@ function findConnectedChest(block: Block): ConnectingChest | undefined {
         forgetPair(dimension.id, location)
     }
 
-    // Otherwise look for a free neighbor, using the shared container to break ties
     const candidates: ConnectingChest[] = []
     for (const { offset, isBase } of neighbors) {
         const other = block.offsetSafe(offset)
@@ -244,10 +231,6 @@ function findConnectedChest(block: Block): ConnectingChest | undefined {
     return connected
 }
 
-// ---------------------------------------------------------------------------
-// Display entities and opener tracking
-// ---------------------------------------------------------------------------
-
 function getDisplaysAt(dimension: Dimension, location: Vector3): Entity[] {
     return dimension.getEntitiesAtBlockLocation(location).filter(entity => entity.typeId === DISPLAY_TYPE_ID)
 }
@@ -256,7 +239,6 @@ function getVariantIndex(variant: ChestVariant): number {
     return CHEST_VARIANTS.indexOf(variant)
 }
 
-// The display lives on the base half of a double chest
 function getOwnerBlock(block: Block, connection: ConnectingChest | undefined): Block {
     return connection?.isBase === true ? connection.block : block
 }
@@ -267,11 +249,8 @@ interface OpenerEntry {
     openers: Set<string>
 }
 
-// Keyed by the display owner's location so both halves of a double chest share one list.
-// Entries are removed as soon as their last opener leaves.
 const chestOpeners = new Map<string, OpenerEntry>()
 
-// The chest each copper golem currently has open, so it can be closed when the golem looks away or switches chests
 interface GolemTarget {
     dimensionId: string
     location: Vector3
@@ -621,10 +600,10 @@ system.runInterval(() => {
                 continue
             }
 
-            if (!vectorsAreEqual(display.location, anchor)) {
+            if (!areVectorsEqual(display.location, anchor)) {
                 display.teleport(anchor)
             }
-            if (!vectorsAreEqual(display.getVelocity(), { x: 0, y: 0, z: 0 })) {
+            if (!areVectorsEqual(display.getVelocity(), { x: 0, y: 0, z: 0 })) {
                 display.clearVelocity()
             }
         }

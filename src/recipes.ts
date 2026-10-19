@@ -1,32 +1,55 @@
-import { Registry } from "./registry"
+import { itemFuelValues } from "./big_variables"
 
-export interface Recipe {
-    input: Array<{
-        id: string | string[]
-        amount: number
-    }>
-    output: {
-        id: string
-        amount: number
-    }
-    usesFurnace?: boolean
-}
+import { Registry } from "./registry"
 
 export interface ItemAmount {
     id: string
     amount: number
 }
 
-export interface CraftStep {
-    input: ItemAmount[]
+interface RecipeInput {
+    id: string | string[]
+    amount: number
+}
+
+export interface CraftingRecipe {
+    input: RecipeInput[]
+    output: ItemAmount
+    usesFurnace?: false
+}
+
+export interface FurnaceRecipe {
+    input: ItemAmount
+    output: ItemAmount
+    usesFurnace: true
+}
+
+export type Recipe = CraftingRecipe | FurnaceRecipe
+
+interface BaseStep {
     output: ItemAmount
     times: number
 }
+
+export interface CraftingStep extends BaseStep {
+    smelt: false
+    input: ItemAmount[]
+}
+
+export interface SmeltStep extends BaseStep {
+    smelt: true
+    input: ItemAmount
+
+    fuel: ItemAmount
+}
+
+export type CraftStep = CraftingStep | SmeltStep
 
 interface InternalStep {
     recipe: Recipe
     times: number
     input: ItemAmount[]
+    fuel?: ItemAmount
 }
 
 interface RecipeIndex {
@@ -39,6 +62,18 @@ interface RecipeIndex {
 }
 
 let index: RecipeIndex | undefined
+
+const fuelValues = new Map<string, number>(Object.entries(itemFuelValues))
+const fuelIds = [...fuelValues.keys()]
+
+function recipeInputs(recipe: Recipe): RecipeInput[] {
+    return recipe.usesFurnace ? [recipe.input] : recipe.input
+}
+
+function fuelItemsFor(smelts: number, smeltsPerFuel: number): number {
+
+    return Math.max(1, Math.ceil((smelts / smeltsPerFuel) - 1e-9))
+}
 
 function idList(id: string | string[]): string[] {
     return typeof id === "string" ? [id] : id
@@ -56,10 +91,6 @@ function getIndex(): RecipeIndex {
     const slotCounts: number[] = []
 
     for (const recipe of Registry.craftingRecipes) {
-        if (recipe.usesFurnace) {
-            continue
-        }
-
         const recipeIndex = recipes.length
         recipes.push(recipe)
 
@@ -71,15 +102,19 @@ function getIndex(): RecipeIndex {
             list.push(recipe)
         }
 
+        const requirements: Array<string | string[]> = recipeInputs(recipe)
+            .filter(input => input.amount > 0)
+            .map(input => input.id)
+        if (recipe.usesFurnace) {
+            requirements.push(fuelIds)
+        }
+
         let slots = 0
-        for (const input of recipe.input) {
-            if (input.amount <= 0) {
-                continue
-            }
+        for (const requirement of requirements) {
             const slot = slotRecipe.length
             slotRecipe.push(recipeIndex)
             slots++
-            for (const id of idList(input.id)) {
+            for (const id of idList(requirement)) {
                 const consumersList = consumers.get(id)
                 if (consumersList === undefined) {
                     consumers.set(id, [slot])
@@ -164,7 +199,10 @@ function computeReachable(initial: Record<string, number>): Set<string> {
 }
 
 function isViable(recipe: Recipe, reachable: Set<string>): boolean {
-    for (const input of recipe.input) {
+    if (recipe.usesFurnace && !fuelIds.some(id => reachable.has(id))) {
+        return false
+    }
+    for (const input of recipeInputs(recipe)) {
         if (input.amount <= 0) {
             continue
         }
@@ -232,13 +270,39 @@ function learn(ctx: Context): Set<string> {
     return ctx.reachable
 }
 
-/** Sums amounts of the same item id. */
 function mergeItems(items: ItemAmount[]): ItemAmount[] {
     const merged = new Map<string, number>()
     for (const { id, amount } of items) {
         merged.set(id, (merged.get(id) ?? 0) + amount)
     }
     return [...merged].map(([id, amount]) => ({ id, amount }))
+}
+
+function takeFuel(smelts: number, state: PlanState): ItemAmount | undefined {
+    let best: (ItemAmount & { waste: number }) | undefined
+    for (const [id, held] of state.counts) {
+        const value = fuelValues.get(id)
+        if (value === undefined || held <= 0) {
+            continue
+        }
+        const amount = fuelItemsFor(smelts, value)
+        if (amount > held) {
+            continue
+        }
+        const waste = (amount * value) - smelts
+        if (
+            best === undefined
+            || amount < best.amount
+            || (amount === best.amount && (waste < best.waste || (waste === best.waste && id < best.id)))
+        ) {
+            best = { id, amount, waste }
+        }
+    }
+    if (best === undefined) {
+        return undefined
+    }
+    setCount(state, best.id, getCount(state, best.id) - best.amount)
+    return { id: best.id, amount: best.amount }
 }
 
 function obtain(itemId: string, amount: number, state: PlanState, ctx: Context): boolean {
@@ -278,16 +342,22 @@ function obtain(itemId: string, amount: number, state: PlanState, ctx: Context):
 
             const consumed: ItemAmount[] | undefined = ctx.record ? [] : undefined
             let ok = true
-            for (const input of recipe.input) {
+            for (const input of recipeInputs(recipe)) {
                 if (!obtainInput(input.id, input.amount * times, state, ctx, consumed)) {
                     ok = false
                     break
                 }
             }
 
+            let fuel: ItemAmount | undefined
+            if (ok && recipe.usesFurnace) {
+                fuel = takeFuel(recipe.input.amount * times, state)
+                ok = fuel !== undefined
+            }
+
             if (ok) {
                 if (consumed !== undefined) {
-                    state.steps.push({ recipe, times, input: mergeItems(consumed) })
+                    state.steps.push({ recipe, times, input: mergeItems(consumed), ...fuel !== undefined && { fuel } })
                 }
                 setCount(state, itemId, getCount(state, itemId) + (times * recipe.output.amount) - missing)
                 return true
@@ -380,12 +450,12 @@ export function getCraftingPlan(
 interface MergedStep {
     recipe: Recipe
     times: number
-    // Items consumed by ONE craft of this step
+
     input: Map<string, number>
+
+    fuelId?: string
 }
 
-// Splits the total input of a step into per-craft inputs. Usually every craft uses the same items, but when a
-// tag/alternative input was satisfied by different items the crafts can differ, so those become separate groups.
 function splitPerCraft(step: InternalStep): Array<{ times: number, input: Map<string, number> }> {
     const totals = new Map(mergeItems(step.input).map(item => [item.id, item.amount] as const))
     const groups = new Map<string, { times: number, input: Map<string, number> }>()
@@ -418,10 +488,16 @@ function mergeSteps(steps: InternalStep[]): CraftStep[] {
             byRecipe.set(step.recipe, variants)
         }
         for (const part of splitPerCraft(step)) {
-            const key = JSON.stringify([...part.input].sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0))
+            const inputKey = JSON.stringify([...part.input].sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0))
+            const key = step.fuel === undefined ? inputKey : `${inputKey}|${step.fuel.id}`
             const entry = variants.get(key)
             if (entry === undefined) {
-                variants.set(key, { recipe: step.recipe, times: part.times, input: part.input })
+                variants.set(key, {
+                    recipe: step.recipe,
+                    times: part.times,
+                    input: part.input,
+                    ...step.fuel !== undefined && { fuelId: step.fuel.id }
+                })
             }
             else {
                 entry.times += part.times
@@ -449,7 +525,8 @@ function mergeSteps(steps: InternalStep[]): CraftStep[] {
             return
         }
         visited.add(step)
-        for (const id of step.input.keys()) {
+        const dependencies = step.fuelId === undefined ? [...step.input.keys()] : [...step.input.keys(), step.fuelId]
+        for (const id of dependencies) {
             const makers = producers.get(id)
             if (makers !== undefined) {
                 for (const maker of makers) {
@@ -457,11 +534,29 @@ function mergeSteps(steps: InternalStep[]): CraftStep[] {
                 }
             }
         }
-        ordered.push({
-            input: [...step.input].map(([id, amount]) => ({ id, amount })),
-            output: { ...step.recipe.output },
-            times: step.times
-        })
+
+        const output = { ...step.recipe.output }
+        const recipe = step.recipe
+
+        if (recipe.usesFurnace && step.fuelId !== undefined) {
+
+            const smelts = recipe.input.amount * step.times
+            ordered.push({
+                input: { ...recipe.input },
+                output,
+                times: step.times,
+                smelt: true,
+                fuel: { id: step.fuelId, amount: fuelItemsFor(smelts, fuelValues.get(step.fuelId) ?? 1) }
+            })
+        }
+        else {
+            ordered.push({
+                input: [...step.input].map(([id, amount]) => ({ id, amount })),
+                output,
+                times: step.times,
+                smelt: false
+            })
+        }
     }
 
     for (const entry of merged) {
@@ -473,8 +568,13 @@ function mergeSteps(steps: InternalStep[]): CraftStep[] {
 export function getRequiredItems(plan: CraftStep[]): Record<string, number> {
     const net: Record<string, number> = {}
     for (const step of plan) {
-        for (const { id, amount } of step.input) {
+        const inputs = step.smelt ? [step.input] : step.input
+        for (const { id, amount } of inputs) {
             net[id] = (net[id] ?? 0) + (amount * step.times)
+        }
+        if (step.smelt) {
+
+            net[step.fuel.id] = (net[step.fuel.id] ?? 0) + step.fuel.amount
         }
         net[step.output.id] = (net[step.output.id] ?? 0) - (step.output.amount * step.times)
     }

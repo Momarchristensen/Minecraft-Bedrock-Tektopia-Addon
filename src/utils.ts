@@ -9,7 +9,6 @@ export type HorizontalDirection = "north" | "south" | "east" | "west"
 export type VerticalDirection = "up" | "down"
 export type CardinalDirection = HorizontalDirection | VerticalDirection
 
-// Keyed by the block's numeric facing_direction state
 const itemFrameRotations: Record<number, CardinalDirection> = {
     2: "south",
     3: "north",
@@ -24,8 +23,7 @@ export function getItemFrameRotation(facingDirection: number | undefined) {
 }
 
 export function isVectorBetween(vector: Vector3, vector1: Vector3, vector2: Vector3, ignoreY = false): boolean {
-    // Compare block coordinates, with both corners inclusive. Comparing the block center (x + 0.5) against
-    // the max corner wrongly excluded the whole block at the max edge.
+
     const blockVector = floorVector(vector)
     const startingVector = floorVector(minVectors(vector1, vector2))
     const endingVector = floorVector(maxVectors(vector1, vector2))
@@ -269,7 +267,7 @@ export function stringToLocationCached(key: LocationString): Vector3 {
         location = stringToLocation(key)
         parseCache.set(key, location)
     }
-    return location
+    return { x: location.x, y: location.y, z: location.z }
 }
 
 export function subtractLists<T>(list1: T[], list2: T[]): T[] {
@@ -379,10 +377,6 @@ const directionMap: Record<string, string> = {
 
 export function vectorToDirection(vector: Vector3): string | undefined {
     return directionMap[locationToString(vector)]
-}
-
-export function vectorsAreEqual(vector1: Vector3, vector2: Vector3) {
-    return vector1.x === vector2.x && vector1.y === vector2.y && vector1.z === vector2.z
 }
 
 export function subtractVectors(vector1: Vector3, vector2: Vector3): Vector3 {

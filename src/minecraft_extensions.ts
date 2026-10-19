@@ -115,7 +115,7 @@ declare module "@minecraft/server" {
         destroy(villagerItem?: boolean, playSound?: boolean): void
         playSound(soundId: string, soundOptions?: WorldSoundOptions): void
         soundEvent(eventId: SoundEvents, soundOptions?: WorldSoundOptions): void
-        replace(blockType: string | BlockType | BlockPermutation): void
+        replace(replacement: string | BlockType | BlockPermutation): void
         getNodeNeighbors(): Block[]
         isValidPath(villageBounds?: Bounds): boolean
         getNodeRequirement(): NodeRequirement | undefined
@@ -153,6 +153,7 @@ declare module "@minecraft/server" {
     }
 
     interface ContainerSlot {
+        decreaseAmount(amount: number): { item: ItemStack, amount: number } | undefined
         matchesFilter(filter?: ItemStackFilter): boolean
     }
 
@@ -163,6 +164,7 @@ declare module "@minecraft/server" {
 
     interface Container {
         findItem(itemFilter: ItemStackFilter): ItemFilterResult | undefined
+        findItems(itemFilter: ItemStackFilter, amount: number): Array<{ item: ItemStack, slotIndex: number }>
         removeItem(itemFilter: ItemStackFilter, amount: number, cancelIfUnable: boolean): boolean
         removeItems(requests: Array<{ itemFilter: ItemStackFilter, amount: number }>, cancelIfUnable: boolean): boolean
         getItemCount(itemFilter: ItemStackFilter): number

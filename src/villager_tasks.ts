@@ -1,5 +1,6 @@
 import {
     ItemStack,
+    type Vector3,
     type Container
 } from "@minecraft/server"
 
@@ -53,6 +54,7 @@ export interface ToolCraftPlan {
         items: Record<string, number>
         doneSteps?: number[]
         haveItems?: boolean
+        waitingForSmelt?: { amount: number, furnace: Vector3 }
     }
 }
 
@@ -138,7 +140,6 @@ export interface Task {
     requiresTool: boolean
 }
 
-// Items villagers craft with (and pick up while crafting). Any of these in a villager's inventory gets deposited.
 export const CRAFTING_ITEMS: VillagerConfig["pickupItems"] = () => [
     "minecraft:stick",
     ...Registry.plankTypes
@@ -155,7 +156,6 @@ function createDepositPlan(
         includesTypes: resolvePickupItems(pickupItems)
     })
 
-    // Crafting items are always deposited when the villager has any, regardless of keep or thresholds
     const craftingCounts = craftingItems !== undefined
         ? inventory.getItemCounts({ includesTypes: resolvePickupItems(craftingItems) })
         : {}

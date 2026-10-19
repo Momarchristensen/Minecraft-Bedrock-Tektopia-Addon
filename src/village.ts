@@ -108,7 +108,6 @@ export interface StructureFilter<K extends StructureType = StructureType> {
     excludedTypes?: readonly StructureType[]
 }
 
-// Ores within one block of each other in any direction (faces, edges and corners) belong to the same vein
 const ORE_NEIGHBOR_OFFSETS: Vector3[] = []
 
 for (let x = -1; x <= 1; x++) {
@@ -127,10 +126,8 @@ const ORE_FACE_OFFSETS: Vector3[] = [
     { x: 0, y: 0, z: 1 }, { x: 0, y: 0, z: -1 }
 ]
 
-// Safety cap so one scan can never flood an entire ore-filled area in a single tick
 const MAX_ORE_VEIN_SCAN = 2048
 
-// How far (in blocks) from a path node a villager can mine an ore
 const ORE_REACH = 2
 
 export class Village {
@@ -143,11 +140,9 @@ export class Village {
     ranchEntities: Record<string, VillageRanchEntity> = {}
     ranchVillagerEntitiesByStructure = new Map<LocationString, string[]>()
     penTiles = new Map<LocationString, LocationString>()
-    // Which structure (by key) holds each floor location, and the reverse. In memory only: it fills back in as
-    // structures scan, and the scan decides who wins when two structures want the same floor.
+
     private readonly floorOwners = new Map<LocationString, LocationString>()
-    // The floor locations that are held as the owner's own room (first-claim-wins), as opposed to rooms the owner
-    // only reached through a door
+
     private readonly ownRoomFloors = new Set<LocationString>()
     private readonly floorsByStructure = new Map<LocationString, Set<LocationString>>()
     penCache = new Map<LocationString, { floor: Vector3[], fence: Vector3[], gates: Vector3[] }>()
@@ -165,7 +160,7 @@ export class Village {
 
     searchingBlocks = false
     deletingInvalidNodes = false
-    // The full path-graph scan and node sweep only start again once these ticks have passed (see the interval near checkVillagePathNodes)
+
     nextFullScanTick = 0
     nextNodeSweepTick = 0
 
@@ -253,9 +248,6 @@ export class Village {
         return data !== undefined ? Structure.from(locationString, data, this.dimension, this) : undefined
     }
 
-    /**
-     * Every fence gate of a pen, the pen's own gate included. Ranches can have more than one gate.
-     */
     getPenGates(penKey: LocationString): Vector3[] {
         const gates = this.penCache.get(penKey)?.gates ?? []
         const primary = stringToLocation(penKey)
@@ -269,8 +261,7 @@ export class Village {
     addStructure(location: Vector3, structureData: StructureData) {
         const locationString = locationToString(location)
         const existing = this.data.structures[locationString]
-        // The same structure seen again keeps its data object: Structure instances (and the floor they cache) are
-        // keyed by it. A different structure on the same key starts over, claims included.
+
         if (existing?.type === structureData.type && existing.rotation === structureData.rotation) {
             return
         }
@@ -298,14 +289,6 @@ export class Village {
         return [...this.floorsByStructure.get(structureKey) ?? []]
     }
 
-    /**
-     * Makes the locations the structure's floor. The first ownRoomFloorCount locations are the structure's own
-     * room, which is first-claim-wins: if another structure already holds any of them as its own room nothing
-     * changes and undefined is returned (the structure is invalid). Other locations are rooms past a door. They
-     * only change hands when they are the claimant's own room, and are left alone when anyone else holds them.
-     * A structure that loses locations drops them from its own floor right away.
-     * Returns the locations the structure now holds.
-     */
     claimFloor(
         structureKey: LocationString,
         floorLocations: readonly Vector3[],
@@ -358,7 +341,7 @@ export class Village {
             this.getStructure(stringToLocation(previousOwner))?.dropFloorLocations(lost)
         }
         if (lostByStructure.size > 0) {
-            // Once the claims have settled, so a scan in progress isn't interrupted by the losers' own work
+
             system.run(() => {
                 for (const previousOwner of lostByStructure.keys()) {
                     this.getStructure(stringToLocation(previousOwner))?.onFloorLost()
@@ -547,7 +530,7 @@ export class Village {
                 checkBlockList.push(seedBlock)
             }
             while (checkBlockIndex < checkBlockList.length) {
-                // village.isValid scans the village list, so it is only checked every 32 blocks
+
                 if ((checkBlockIndex & 31) === 0 && !village.isValid) {
                     return
                 }
@@ -558,8 +541,6 @@ export class Village {
                     continue
                 }
 
-                // Blocks queued on an earlier tick can become invalid (chunk unloaded), and the first native read then throws.
-                // isValid is a native call per block, so it is only checked after something threw instead of before every block.
                 try {
                     if (debugFlags.searchBlocksParticles) {
                         dimension.spawnParticle(
@@ -689,7 +670,6 @@ export class Village {
                     continue
                 }
 
-                // Buried ores are skipped until something next to them is mined away
                 if (!this.isOreExposed(dimension, neighborLocation)) {
                     continue
                 }
@@ -727,10 +707,6 @@ export class Village {
         return ores
     }
 
-    /**
-     * Finds the path node a villager can stand on to mine the ore at the given location.
-     * The villager can reach ORE_REACH blocks, so ores deeper in a vein can be mined from the tunnel.
-     */
     findOreStandLocation(oreLocation: Vector3): Vector3 | undefined {
         const oreCenter = { x: oreLocation.x + 0.5, y: oreLocation.y + 0.5, z: oreLocation.z + 0.5 }
         let best: Vector3 | undefined
@@ -739,13 +715,13 @@ export class Village {
         for (let dx = -ORE_REACH; dx <= ORE_REACH; dx++) {
             for (let dz = -ORE_REACH; dz <= ORE_REACH; dz++) {
                 for (let dy = -ORE_REACH - 1; dy <= 1; dy++) {
-                    // Never stand on top of the ore being mined
+
                     if (dx === 0 && dz === 0 && dy === 1) {
                         continue
                     }
 
                     const stand = { x: oreLocation.x + dx, y: oreLocation.y + dy, z: oreLocation.z + dz }
-                    // Compare against the villager's eye position, not their feet
+
                     const distance = calculateDistance({ x: stand.x + 0.5, y: stand.y + 1.5, z: stand.z + 0.5 }, oreCenter)
                     if (distance > ORE_REACH + 0.5 || distance >= bestDistance) {
                         continue
@@ -794,58 +770,55 @@ export class Village {
                 catch { }
             }
 
-            try {
-                const checkBlockList = [
-                    block,
-                    block.northSafe(),
-                    block.eastSafe(),
-                    block.southSafe(),
-                    block.westSafe(),
-                    block.belowSafe()
-                ]
-                for (const checkBlock of checkBlockList) {
-                    if (checkBlock === undefined) {
-                        continue
-                    }
-                    let checkNearbyNodes = false
-                    const checkBlockString = locationToString(checkBlock)
-                    if (checkBlock.isFarm) {
-                        checkNearbyNodes = true
-                        village.farmLocations.add(checkBlockString)
+            const checkBlockList = [
+                block,
+                block.northSafe(),
+                block.eastSafe(),
+                block.southSafe(),
+                block.westSafe(),
+                block.belowSafe()
+            ]
+            for (const checkBlock of checkBlockList) {
+                if (checkBlock === undefined) {
+                    continue
+                }
+                let checkNearbyNodes = false
+                const checkBlockString = locationToString(checkBlock)
+                if (checkBlock.isFarm) {
+                    checkNearbyNodes = true
+                    village.farmLocations.add(checkBlockString)
 
-                        const aboveCheckBlock = checkBlock.aboveSafe()
+                    const aboveCheckBlock = checkBlock.aboveSafe()
 
-                        if (aboveCheckBlock !== undefined) {
-                            node = village.pathNodes[locationToString(aboveCheckBlock)]
-                        }
-                    }
-                    else if (checkBlock.isValidSugarCane) {
-                        checkNearbyNodes = true
-                        village.sugarCaneLocations.add(checkBlockString)
-                    }
-                    else if (Registry.saplingTypes.includesFast(checkBlock.typeId)) {
-                        checkNearbyNodes = true
-                        village.saplingLocations.add(checkBlockString)
-                    }
-                    else if (checkBlock.isTree(true)) {
-                        checkNearbyNodes = true
-                        addTreeLocation(village, checkBlock)
-                    }
-                    else if (checkBlock.typeId === "minecraft:sweet_berry_bush") {
-                        checkNearbyNodes = true
-                        village.sweetBerryLocations.add(checkBlockString)
-                    }
-                    else if (checkBlock.isHarvestableGourd) {
-                        checkNearbyNodes = true
-                        village.harvestLocations.add(checkBlockString)
-                    }
-
-                    if (flood && checkNearbyNodes && node !== undefined) {
-                        locationStringList.push(...node.neighbors)
+                    if (aboveCheckBlock !== undefined) {
+                        node = village.pathNodes[locationToString(aboveCheckBlock)]
                     }
                 }
+                else if (checkBlock.isValidSugarCane) {
+                    checkNearbyNodes = true
+                    village.sugarCaneLocations.add(checkBlockString)
+                }
+                else if (Registry.saplingTypes.includesFast(checkBlock.typeId)) {
+                    checkNearbyNodes = true
+                    village.saplingLocations.add( checkBlockString)
+                }
+                else if (checkBlock.isTree(true)) {
+                    checkNearbyNodes = true
+                    addTreeLocation(village, checkBlock)
+                }
+                else if (checkBlock.typeId === "minecraft:sweet_berry_bush") {
+                    checkNearbyNodes = true
+                    village.sweetBerryLocations.add(checkBlockString)
+                }
+                else if (checkBlock.isHarvestableGourd) {
+                    checkNearbyNodes = true
+                    village.harvestLocations.add(checkBlockString)
+                }
+
+                if (flood && checkNearbyNodes && node !== undefined) {
+                    locationStringList.push(...node.neighbors)
+                }
             }
-            catch { }
 
             yield
         }
@@ -1354,10 +1327,6 @@ function* updateVillageBlocks(callback?: () => void) {
 
 let ranchRefreshRunning = false
 
-// The full path-graph scan and the node sweep used to restart right after they finished, so they ran all the time. Player edits
-// and explosions already update the graph immediately (updateNodesBlocks in path.ts); these two passes are the safety net for
-// everything else. After a pass the village now idles for at least the minimum, and for FACTOR times as long as the pass took,
-// which caps their share of the server's time. Raise the minimums or the factors to save more, lower them to notice changes sooner.
 const FULL_SCAN_MIN_COOLDOWN_TICKS = 1200
 const FULL_SCAN_IDLE_FACTOR = 4
 const NODE_SWEEP_MIN_COOLDOWN_TICKS = 400
@@ -1397,13 +1366,11 @@ system.runInterval(() => {
                 let checkedNodes = 0
                 try {
                     for (const pathNodeLocation of allVillagePathNodes) {
-                        // isValid scans the village list, so it is only checked every 32 nodes
+
                         if ((checkedNodes++ & 31) === 0 && !village.isValid) {
                             return
                         }
-                        // Must not wait for searchingBlocks: the full scan restarts every interval right after it finishes,
-                        // so it is almost always running and waiting for it starves this sweep. The two don't conflict: both
-                        // judge nodes by the current block state, and checkNodeValidity skips nodes that no longer exist.
+
                         village.checkNodeValidity(pathNodeLocation)
                         yield
                     }
@@ -1421,7 +1388,7 @@ system.runInterval(() => {
 const BORDER_PARTICLE_RANGE = 20
 const BORDER_PARTICLE_ID = "minecraft:rising_border_dust_particle"
 
-Player.prototype.spawnBorderParticles = function (bounds) { //not debug
+Player.prototype.spawnBorderParticles = function (bounds) {
     const player = this
 
     const range = BORDER_PARTICLE_RANGE
@@ -1440,7 +1407,6 @@ Player.prototype.spawnBorderParticles = function (bounds) { //not debug
         player.spawnParticle(BORDER_PARTICLE_ID, { x, y: py + ((Math.random() * 20) - 10), z })
     }
 
-    // Spawns about one particle per block of visible border, at random positions along it instead of on whole block coordinates
     const emitAlong = (from: number, to: number, emitAt: (position: number) => void) => {
         const length = to - from
         if (length <= 0) {
@@ -1473,12 +1439,11 @@ Player.prototype.spawnBorderParticles = function (bounds) { //not debug
 
 const WIREFRAME_PROPERTY = "tektopia:show_wireframe"
 
-// Entities each player currently has the wireframe override applied to, so it can be cleared again
 const wireframeOverrides = new Map<string, Set<string>>()
 
 function clearWireframeOverride(player: Player, entityId: string) {
     const entity = world.getEntity(entityId)
-    // An unloaded or removed entity takes its overrides with it
+
     if (entity?.isValid === true) {
         player.removePropertyOverrideForEntity(entity, WIREFRAME_PROPERTY)
     }
@@ -1578,10 +1543,6 @@ system.runInterval(() => {
     }
 }, 20)
 
-// Fence blocks sit on the pen's border, but small mobs (chickens) can stand inside a fence block's cell while
-// still outside the pen. Only the part of a fence block that faces the pen interior counts as inside:
-// each quarter of the block counts if a floor tile touches it (either side or the diagonal between them),
-// which gives half a block on straight fences, a quarter on outer corners and three quarters on inner corners.
 function isInsideFenceBlock(floorColumns: Set<string>, location: Vector3): boolean {
     const blockX = Math.floor(location.x)
     const blockZ = Math.floor(location.z)
@@ -1634,7 +1595,7 @@ function* refreshRanchEntities(villageList: Village[], callback: () => void): Ge
                 const previous = village.penCache.get(pen.locationString)
                 const floor = scanned.floor ?? previous?.floor ?? []
                 const fence = scanned.fence ?? previous?.fence ?? []
-                // A pen can have several gates: every fence gate on the enclosure is a way in or out
+
                 const gates = scanned.fence === undefined && previous !== undefined
                     ? previous.gates
                     : fence.filter(location => {

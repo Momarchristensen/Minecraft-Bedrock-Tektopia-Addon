@@ -1,6 +1,6 @@
 import {
     Block,
-    Entity,
+    type Entity,
     EntityComponentTypes,
     GameMode,
     Player,
@@ -74,7 +74,7 @@ export interface PathVillager {
     readonly isBlocked: boolean
     readonly totalBlockTimer: number
     getVillage(): PathVillage | undefined
-    /** Path nodes this villager must not route through right now (e.g. a gate an animal is about to escape from). */
+
     getAvoidedNodes?(): ReadonlySet<LocationString> | undefined
 }
 
@@ -98,8 +98,7 @@ const SLEEP = -1
 const MAX_RESTARTS = 8
 const PARTIAL_LOOKAHEAD = 16
 const PARTIAL_MIN_PROGRESS = 1
-// When the search budget runs out before the goal is found, the best partial route only counts if it gets
-// at least this much closer to the goal than the search started. Otherwise the goal is treated as unreachable.
+
 const STALL_MIN_PROGRESS = 3
 
 interface Scratch {
@@ -112,42 +111,6 @@ interface Scratch {
     mark: Int32Array
     link: Int32Array
     heap: IntHeap
-}
-
-Entity.prototype.getHitbox = function () {
-    const { center, extent } = this.getAABB()
-
-    return {
-        start: {
-            x: center.x - extent.x,
-            y: center.y - extent.y,
-            z: center.z - extent.z
-        },
-        end: {
-            x: center.x + extent.x,
-            y: center.y + extent.y,
-            z: center.z + extent.z
-        }
-    }
-}
-
-const entityHitBoxSizeCache = new Map<string, { width: number, height: number }>()
-
-Entity.prototype.getHitboxSize = function () {
-    const cached = entityHitBoxSizeCache.get(this.typeId)
-    if (cached !== undefined) {
-        return cached
-    }
-
-    const { extent } = this.getAABB()
-
-    const size = {
-        width: extent.x * 2,
-        height: extent.y * 2
-    }
-    entityHitBoxSizeCache.set(this.typeId, size)
-
-    return size
 }
 
 const scratchPool: Scratch[] = []
@@ -183,7 +146,7 @@ function buildBlockedCells(
     excludedEntityId: string,
     targetEntityId?: string
 ) {
-    const BOUNDS_MARGIN = 4 // generous enough for large entities
+    const BOUNDS_MARGIN = 4
     const minBX = Math.min(bounds.start.x, bounds.end.x) - BOUNDS_MARGIN
     const maxBX = Math.max(bounds.start.x, bounds.end.x) + BOUNDS_MARGIN
     const minBZ = Math.min(bounds.start.z, bounds.end.z) - BOUNDS_MARGIN
@@ -328,7 +291,6 @@ export function reconcileStreamTail(
         return nodeId !== -1 && mark[nodeId] === stamp ? link[nodeId] ?? -1 : -1
     }
 
-    // The search root may already be queued (continued searches start at the end of the queue): keep what leads up to it.
     let k = head
     for (let i = head; i < nodes.length; i++) {
         const node = nodes[i]
@@ -350,15 +312,14 @@ export function reconcileStreamTail(
 
     let keep = k
     if (matched === -1) {
-        // Nothing queued is on the new route: join it where the entity stands.
+
         const anchor = stream.reached === undefined ? 0 : chainIndexOf(stream.reached)
         if (anchor !== -1) {
             matched = anchor
             keep = head
         }
         else {
-            // The entity is on a branch the final route does not use (a dead end): lead it back up the same search tree to where
-            // the branches part, then along the final route. Nothing is searched again; only walkable steps are used.
+
             const back = parentOf === undefined || stream.reached === undefined ? undefined : walkBack(graph, stream.reached, mark, stamp, parentOf)
             if (back === undefined) {
                 return "disconnected"
@@ -442,7 +403,7 @@ export function generatePath(
             }
             settled = true
             if (status !== "complete" && status !== "cancelled") {
-                // The search failed: drop the queued partial route so the follower reports the failure right away instead of walking a dead end.
+
                 out.nodes.length = Math.min(out.nodes.length, out.head ?? 0)
             }
             out.status = status
@@ -509,8 +470,6 @@ export function generatePath(
 
         const anchorKey = (): LocationString | undefined => out.reached === undefined ? undefined : locationToString(out.reached)
 
-        // Drives a search generator as a job. When it yields SLEEP the job ends and is resumed a few ticks later, so an idle
-        // search that is only waiting for its target to move costs nothing in between (and no system.runInterval is needed).
         function pump(gen: Generator<number | void, void, void>) {
             system.runJob((function* () {
                 while (true) {
@@ -580,7 +539,7 @@ export function generatePath(
                     return
                 }
                 restarts++
-                // The finished route could not be joined to the one being followed: search again from the node the entity is at.
+
                 const anchor = anchorKey()
                 if (anchor === undefined || restarts > MAX_RESTARTS) {
                     finish("no_path")
@@ -679,7 +638,7 @@ export function generatePath(
 
                 const publishChain = (final: boolean) => {
                     cycle++
-                    // Only the final route may lead the entity back along the search tree; partial routes are simply skipped when they do not connect.
+
                     return reconcileStreamTail(out, graph, chain, mark, link, cycle, final, final ? parentOf : undefined)
                 }
 
@@ -709,8 +668,6 @@ export function generatePath(
                 let bestHeuristic = estimate(rootId)
                 let bestG = 0
 
-                // Early delivery: hand the follower a route through the search tree, without touching the search itself.
-                // Settled nodes never change their parent, so the route stays valid however the search continues.
                 const publishPartial = () => {
                     const head = out.head ?? 0
                     const pending = out.nodes.length - head
@@ -829,10 +786,7 @@ export function generatePath(
                     }
 
                     if (++expansions > MAX_EXPANSIONS) {
-                        // Too expensive to keep searching: settle for the best partial route, but only if it
-                        // makes real progress towards the goal. A route that barely gets closer (a dead-end nub,
-                        // or the closest reachable point to an unreachable goal) would end as a silent "complete",
-                        // so the caller would walk there and ask again forever; report it as a failure instead.
+
                         const progress = estimate(rootId) - bestHeuristic
                         if (bestId === rootId || progress < STALL_MIN_PROGRESS) {
                             finish((out.head ?? 0) < out.nodes.length ? "complete" : "timeout")
@@ -944,11 +898,6 @@ export function generatePath(
     })
 }
 
-/**
- * Which side of its block an entity is leaning towards on each horizontal axis: -1 or 1 when it is near that edge of the block,
- * 0 when it is centered on the axis. Both axes 0 means centered (search everywhere), one axis set means near an edge
- * (search that side only), both set means near a corner (search that quadrant).
- */
 export interface SearchBias {
     x: -1 | 0 | 1
     z: -1 | 0 | 1
@@ -961,7 +910,7 @@ export function findNearestNodeLocation(nodeList: Record<string, PathNode>, loca
     const lx = location.x
     const ly = location.y
     const lz = location.z
-    // A biased search only looks on the side(s) the entity is leaning towards
+
     const biasX = bias?.x ?? 0
     const biasZ = bias?.z ?? 0
     for (let radius = 1; radius <= maxRadius; radius++) {
@@ -973,17 +922,17 @@ export function findNearestNodeLocation(nodeList: Record<string, PathNode>, loca
         const dxMax = biasX < 0 ? 0 : radius
         const dzMin = biasZ > 0 ? 0 : -radius
         const dzMax = biasZ < 0 ? 0 : radius
-        // Visit only the cells on the surface of the cube (Chebyshev distance == radius), in the same dx, dy, dz order as a full scan
+
         for (let dx = dxMin; dx <= dxMax; dx++) {
             const dxOnShell = dx === radius || dx === -radius
             const x = lx + dx
             for (let dy = -radius; dy <= radius; dy++) {
                 const dyOnShell = dxOnShell || dy === radius || dy === -radius
                 const y = ly + dy
-                // Off the shell on both x and y, only the two z faces belong to it; otherwise the whole z range does
+
                 const dzStep = dyOnShell ? 1 : radius * 2
                 const keyPrefix = `${x},${y},`
-                // Start on the first z that is inside the bias window and on the shell
+
                 let dz = dyOnShell ? dzMin : -radius < dzMin ? radius : -radius
                 for (; dz <= dzMax; dz += dzStep) {
                     if (nodeList[keyPrefix + (lz + dz)] === undefined) {
@@ -1352,7 +1301,7 @@ Block.prototype.isValidPath = function (villageBounds?: Bounds) {
     if (!block.canPathThrough()) {
         return false
     }
-    // Beds are furniture: never allow a path node in a bed block or on top of one
+
     if (block.typeId === BED_BLOCK_TYPE || below.typeId === BED_BLOCK_TYPE) {
         return false
     }

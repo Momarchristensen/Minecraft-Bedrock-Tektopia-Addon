@@ -41,11 +41,10 @@ export const worldSaveDataList = [
         property: "villageList",
         default: [],
         compression: {
-            // A generator so the work can be spread across ticks (system.runJob) or drained immediately when saving synchronously
+
             *compress(value: VillageSaveData[]): Generator<void, CompressedVillage[], void> {
                 const compressed: CompressedVillage[] = []
 
-                // Iterate over a snapshot so villages added or removed while the job is paused can't skip or duplicate entries
                 for (const village of [...value]) {
                     compressed.push(yield* Village.compress(village))
                     yield
@@ -118,7 +117,6 @@ World.prototype.loadData = function () {
         }
     }
 
-    // Stay unloaded after a failure: saving is skipped while loadedData is false, so unreadable data is never overwritten
     this.loadedData = !failed
 }
 
@@ -145,7 +143,6 @@ interface CompressedWorldProperty {
 let syncSaveCount = 0
 let activeAsyncSave: Promise<void> | undefined
 
-// Runs a generator to completion immediately, ignoring its yields
 function runGeneratorSync<T>(generator: Generator<void, T, void>): T {
     let result = generator.next()
     while (!result.done) {
@@ -154,7 +151,6 @@ function runGeneratorSync<T>(generator: Generator<void, T, void>): T {
     return result.value
 }
 
-// Runs a generator across ticks with system.runJob and resolves with its return value
 function runJobAsync<T>(generator: Generator<void, T, void>): Promise<T> {
     return new Promise<T>((resolve, reject) => {
         system.runJob(function* () {
@@ -319,7 +315,7 @@ Entity.prototype.saveData = function <K extends keyof EntityData>(
     if (!this.loadedData || this instanceof Player || !this.isValid) {
         return
     }
-    this.setDynamicProperty(propertyId, JSON.stringify(this[propertyId]))
+    this.setDynamicProperty(`tektopia:${propertyId}`, JSON.stringify(this[propertyId]))
 }
 
 Entity.prototype.loadData = function (this: Entity) {
@@ -330,7 +326,7 @@ Entity.prototype.loadData = function (this: Entity) {
     const target = this as unknown as Record<string, unknown>
 
     for (const propertyId of this.getDynamicPropertyIds()) {
-        const valueString = this.getDynamicProperty(propertyId)
+        const valueString = this.getDynamicProperty(`tektopia:${propertyId}`)
         if (typeof valueString !== "string") {
             continue
         }

@@ -15,11 +15,10 @@ import {
     splitIdentifier
 } from "./utils"
 
-// Leaf types that belong to a tree of the given log type (without "_log"), including the special cases.
 function getLeafTypeIds(logType: string): Set<string> {
     const leafTypeIds = new Set([`minecraft:${logType}_leaves`])
     if (logType === "oak") {
-        // Azalea trees grow on oak logs
+
         leafTypeIds.add("minecraft:azalea_leaves")
         leafTypeIds.add("minecraft:azalea_leaves_flowered")
     }
@@ -256,7 +255,6 @@ const bigTreeFeatures: Record<string, string> = {
 
 const requiresBigTree = new Set(["minecraft:dark_oak_sapling", "minecraft:pale_oak_sapling"])
 
-// Dark oak and acacia trunks bend, so their next log can be diagonally above instead of straight above.
 const diagonalTrunkTypes = new Set(["minecraft:dark_oak_log", "minecraft:acacia_log", "minecraft:jungle_log", "minecraft:cherry_log"])
 
 const diagonalUpOffsets = [
@@ -264,7 +262,6 @@ const diagonalUpOffsets = [
     { x: 1, z: 1 }, { x: 1, z: -1 }, { x: -1, z: 1 }, { x: -1, z: -1 }
 ]
 
-/** The logs a trunk continues into above `block`: straight up first, then (dark oak/acacia only) diagonally up. */
 export function getTrunkContinuations(block: Block): Block[] {
     const result: Block[] = []
     const above = block.aboveSafe()
@@ -289,11 +286,6 @@ const squareOffsets = [
     { x: 1, z: 1 }
 ]
 
-/**
- * Finds the trunk blocks of a 2x2 tree (dark oak, big jungle/spruce) that `block` is part of.
- * Returns the 4 base logs ordered so the first one is the origin (lowest x, then lowest z),
- * or undefined when the block is not part of a 2x2 trunk.
- */
 export function findTrunkSquare(block: Block): [Block, Block, Block, Block] | undefined {
     for (const dx of [-1, 0]) {
         for (const dz of [-1, 0]) {
@@ -313,12 +305,10 @@ export function findTrunkSquare(block: Block): [Block, Block, Block, Block] | un
     return undefined
 }
 
-/** The block used to represent a tree in the village: the origin of a 2x2 trunk, or the block itself. */
 export function getTreeOrigin(block: Block): Block {
     return findTrunkSquare(block)?.[0] ?? block
 }
 
-/** All trunk base blocks of the tree at `block` (1 for normal trees, 4 for 2x2 trees). */
 export function getTrunkBlocks(block: Block): [Block, Block, Block, Block] | [Block] {
     return findTrunkSquare(block) ?? [block]
 }

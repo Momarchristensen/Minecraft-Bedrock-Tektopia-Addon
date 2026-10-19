@@ -1,5 +1,6 @@
 import {
-    Block,
+    type Block,
+    BlockComponentTypes,
     BlockPermutation,
     Entity,
     EntityComponentTypes,
@@ -13,8 +14,6 @@ import {
 } from "@minecraft/server"
 
 import { debugFlags } from "./debug_flags"
-
-import { blockSounds } from "./generated"
 
 import {
     checkRequirement,
@@ -64,7 +63,6 @@ import {
     fix,
     multiplyVector,
     randomInt,
-    removeIdentifier,
     locationToString,
     fixVector,
     getItemFrameRotation,
@@ -163,18 +161,6 @@ const PEN_SKIP_TICKS = 600
 const BUTCHER_SKIP_TICKS = 1200
 const BUTCHER_GIVE_UP_TICKS = 1200
 const unreachableItemEntities = new Set<Entity>()
-
-Object.defineProperty(Block.prototype, "isDoor", {
-    get(this: Block) {
-        return Registry.openableDoorTypes.includes(this.typeId)
-    }
-})
-
-Object.defineProperty(Block.prototype, "isOpenable", {
-    get(this: Block) {
-        return this.isDoor || Registry.fenceGateTypes.includes(this.typeId)
-    }
-})
 
 function getOpenableBlock(block: Block): Block | undefined {
     if (block.isDoor && block.permutation.getState("upper_block_bit") === true) {
@@ -2197,12 +2183,12 @@ export class Villager {
             craftTask.crafting = { plan: craftingPlan, items: getRequiredItems(craftingPlan), doneSteps: [] }
         }
 
-        const craftingContext = craftTask.crafting
+        const recipeContext = craftTask.crafting
 
-        if (!craftingContext.haveItems) {
+        if (!recipeContext.haveItems) {
             const villagerItemCounts = villagerInventory.getItemCounts()
 
-            for (const [itemId, amount] of Object.entries(craftingContext.items)) {
+            for (const [itemId, amount] of Object.entries(recipeContext.items)) {
                 const amountNeeded = amount - (villagerItemCounts[itemId] ?? 0)
                 if (amountNeeded > 0) {
                     const itemResults = villageStorage.findItems({ includesTypes: [itemId] }, amountNeeded)
@@ -2225,41 +2211,73 @@ export class Villager {
                         return
                     }
 
-                    targetItem.chest.container.transferItemStack(targetItem.slotIndex, villagerInventory, targetItem.item.amount)
+                    const moved = targetItem.chest.container.transferItemStack(targetItem.slotIndex, villagerInventory, targetItem.item.amount)
                     this.closeChest()
+
+                    if (moved <= 0) {
+                        // Nothing fit in the villager's inventory (or the stack vanished), retrying would loop forever
+                        toolCrafts.shift()
+                        return
+                    }
+
                     return
                 }
             }
         }
 
-        craftingContext.haveItems = true
+        recipeContext.haveItems = true
 
-        const craftingTables = villageStorageStructure.getCraftingTables()
+        recipeContext.doneSteps ??= []
 
-        if (craftingTables.length === 0) {
-            toolCrafts.shift()
-            return
-        }
+        const smelt = recipeContext.waitingForSmelt
+        if (smelt !== undefined) {
+            const furnaceLocation = smelt.furnace
 
-        const closestCraftingTable = craftingTables.reduce((closest, table) =>
-            calculateDistance(table.bottomCenter(), this.location)
-                < calculateDistance(closest.bottomCenter(), this.location)
-                ? table
-                : closest
-        )
+            const furnaceDistance = calculateDistance(centerVector(furnaceLocation, true), this.location)
+            if (furnaceDistance > 1.5) {
+                this.pathFindTo(furnaceLocation)
+                return
+            }
 
-        const craftingTableDistance = calculateDistance(closestCraftingTable.bottomCenter(), this.location)
-        if (craftingTableDistance > 1.5) {
-            this.pathFindTo(closestCraftingTable.location)
-            return
+            const furnace = village.dimension.getBlock(furnaceLocation)
+            if (furnace === undefined || (furnace.typeId !== "minecraft:furnace" && furnace.typeId !== "minecraft:lit_furnace")) {
+                toolCrafts.shift()
+                return
+            }
+
+            const furnaceInventory = furnace.getComponent(BlockComponentTypes.Inventory)?.container
+            if (furnaceInventory === undefined) {
+                toolCrafts.shift()
+                return
+            }
+
+            const outputSlot = furnaceInventory.getSlot(2)
+            const outputItem = outputSlot.getItem()
+
+            if (outputItem === undefined) {
+                return
+            }
+
+            if (outputSlot.amount >= smelt.amount) {
+                if (villagerInventory.isFull) {
+                    toolCrafts.shift()
+                    return
+                }
+
+                villagerInventory.addItem(outputItem)
+
+                outputSlot.setItem(undefined)
+                delete recipeContext.waitingForSmelt
+            }
+            else {
+                return
+            }
         }
 
         let currentCraftingStep
 
-        craftingContext.doneSteps ??= []
-
-        for (const [index, step] of craftingContext.plan.entries()) {
-            const doneStep = craftingContext.doneSteps[index]
+        for (const [index, step] of recipeContext.plan.entries()) {
+            const doneStep = recipeContext.doneSteps[index]
             if (doneStep === undefined || doneStep < step.times) {
                 currentCraftingStep = { ...step, index }
                 break
@@ -2271,31 +2289,189 @@ export class Villager {
             return
         }
 
-        this.stopPath()
-        this.setAnimation("crafting")
-        this.lookAt(closestCraftingTable.center())
-        this.holdingItem = currentCraftingStep.output.id
+        if (currentCraftingStep.smelt) {
+            const furnaces = villageStorageStructure.getFurnaces()
 
-        this.taskProgress++
+            if (furnaces.length === 0) {
+                toolCrafts.shift()
+                return
+            }
 
-        if (this.taskProgress <= 100) {
-            return
+            const closestFurnace = furnaces.reduce((closest, table) =>
+                calculateDistance(table.bottomCenter(), this.location)
+                    < calculateDistance(closest.bottomCenter(), this.location)
+                    ? table
+                    : closest
+            )
+
+            const furnaceDistance = calculateDistance(closestFurnace.bottomCenter(), this.location)
+            if (furnaceDistance > 1.5) {
+                this.pathFindTo(closestFurnace.location)
+                return
+            }
+
+            const furnaceInventory = closestFurnace.getComponent(BlockComponentTypes.Inventory)?.container
+            if (furnaceInventory === undefined) {
+                toolCrafts.shift()
+                return
+            }
+
+            this.stopPath()
+            this.lookAt(closestFurnace.center())
+
+            const inputSlot = furnaceInventory.getSlot(0)
+            const fuelSlot = furnaceInventory.getSlot(1)
+
+            if (inputSlot.hasItem()) {
+                const item = inputSlot.getItem()
+                if (item !== undefined) {
+                    if (villagerInventory.isFull) {
+                        toolCrafts.shift()
+                        return
+                    }
+                    villagerInventory.addItem(item)
+                }
+                inputSlot.setItem(undefined)
+            }
+
+            if (fuelSlot.hasItem()) {
+                const item = fuelSlot.getItem()
+                if (item !== undefined) {
+                    if (villagerInventory.isFull) {
+                        toolCrafts.shift()
+                        return
+                    }
+                    villagerInventory.addItem(item)
+                }
+                fuelSlot.setItem(undefined)
+            }
+
+            // The whole step is loaded at once. The plan is only read here, never modified
+            const inputNeeded = currentCraftingStep.input.amount * currentCraftingStep.times
+            const fuelNeeded = currentCraftingStep.fuel.amount
+
+            const inputResults = villagerInventory.findItems({ includesTypes: [currentCraftingStep.input.id] }, inputNeeded)
+            const fuelResults = villagerInventory.findItems({ includesTypes: [currentCraftingStep.fuel.id] }, fuelNeeded)
+
+            const inputAvailable = inputResults.reduce((sum, result) => sum + result.item.amount, 0)
+            const fuelAvailable = fuelResults.reduce((sum, result) => sum + result.item.amount, 0)
+
+            // Furnace slots hold one stack, so a step that doesn't fit in a single stack can't be loaded in one go
+            const inputMax = inputResults[0]?.item.maxAmount ?? 0
+            const fuelMax = fuelResults[0]?.item.maxAmount ?? 0
+
+            if (inputAvailable < inputNeeded || fuelAvailable < fuelNeeded || inputNeeded > inputMax || fuelNeeded > fuelMax) {
+                toolCrafts.shift()
+                return
+            }
+
+            for (const result of inputResults) {
+                const slot = villagerInventory.getSlot(result.slotIndex)
+                const item = slot.getItem()
+                if (item === undefined) {
+                    toolCrafts.shift()
+                    return
+                }
+
+                const existingInput = inputSlot.getItem()
+                if (existingInput !== undefined && !existingInput.isStackableWith(item)) {
+                    continue
+                }
+
+                const decreaseResult = slot.decreaseAmount(result.item.amount)
+                if (decreaseResult === undefined) {
+                    continue
+                }
+
+                if (existingInput !== undefined) {
+                    inputSlot.amount += decreaseResult.item.amount
+                }
+                else {
+                    inputSlot.setItem(decreaseResult.item)
+                }
+            }
+
+            for (const result of fuelResults) {
+                const slot = villagerInventory.getSlot(result.slotIndex)
+                const item = slot.getItem()
+                if (item === undefined) {
+                    toolCrafts.shift()
+                    return
+                }
+
+                const existingFuel = fuelSlot.getItem()
+                if (existingFuel !== undefined && !existingFuel.isStackableWith(item)) {
+                    continue
+                }
+
+                const decreaseResult = slot.decreaseAmount(result.item.amount)
+                if (decreaseResult === undefined) {
+                    continue
+                }
+
+                if (existingFuel !== undefined) {
+                    fuelSlot.amount += decreaseResult.item.amount
+                }
+                else {
+                    fuelSlot.setItem(decreaseResult.item)
+                }
+            }
+
+            if (!inputSlot.hasItem()) {
+                toolCrafts.shift()
+                return
+            }
+
+            recipeContext.doneSteps[currentCraftingStep.index] = currentCraftingStep.times
+            recipeContext.waitingForSmelt = { amount: currentCraftingStep.output.amount * currentCraftingStep.times, furnace: closestFurnace.location }
         }
+        else {
+            const craftingTables = villageStorageStructure.getCraftingTables()
 
-        this.taskProgress = 0
+            if (craftingTables.length === 0) {
+                toolCrafts.shift()
+                return
+            }
 
-        const successful = villagerInventory.removeItems(currentCraftingStep.input.map(input => ({ itemFilter: { includesTypes: [input.id] }, amount: input.amount })), true)
+            const closestCraftingTable = craftingTables.reduce((closest, table) =>
+                calculateDistance(table.bottomCenter(), this.location)
+                    < calculateDistance(closest.bottomCenter(), this.location)
+                    ? table
+                    : closest
+            )
 
-        if (!successful) {
-            toolCrafts.shift()
-            return
+            const craftingTableDistance = calculateDistance(closestCraftingTable.bottomCenter(), this.location)
+            if (craftingTableDistance > 1.5) {
+                this.pathFindTo(closestCraftingTable.location)
+                return
+            }
+
+            this.stopPath()
+            this.setAnimation("crafting")
+            this.lookAt(closestCraftingTable.center())
+            this.holdingItem = currentCraftingStep.output.id
+
+            this.taskProgress++
+
+            if (this.taskProgress <= 100) {
+                return
+            }
+
+            this.taskProgress = 0
+
+            const successful = villagerInventory.removeItems(currentCraftingStep.input.map(input => ({ itemFilter: { includesTypes: [input.id] }, amount: input.amount })), true)
+
+            if (!successful) {
+                toolCrafts.shift()
+                return
+            }
+
+            const outputItem = new ItemStack(currentCraftingStep.output.id, currentCraftingStep.output.amount)
+            outputItem.makeVillagerItem()
+            villagerInventory.addItem(outputItem)
+
+            recipeContext.doneSteps[currentCraftingStep.index] = (recipeContext.doneSteps[currentCraftingStep.index] ?? 0) + 1
         }
-
-        const outputItem = new ItemStack(currentCraftingStep.output.id, currentCraftingStep.output.amount)
-        outputItem.makeVillagerItem() //fix
-        villagerInventory.addItem(outputItem)
-
-        craftingContext.doneSteps[currentCraftingStep.index] = (craftingContext.doneSteps[currentCraftingStep.index] ?? 0) + 1
     }
 
     tickDepositTask(village: Village) {
@@ -2352,7 +2528,6 @@ export class Villager {
 
                 const moved = villagerInventory.transferItemStack(itemResult.slotIndex, chestInventory, item.amount)
 
-                // Count what the chest actually took; if it took nothing, stop trying to deposit this item
                 if (depositPlan[itemId] !== undefined) {
                     depositPlan[itemId] = moved > 0 ? depositPlan[itemId] - moved : 0
                 }
@@ -2681,7 +2856,7 @@ export class Villager {
 
         const checkedGates = new Set<LocationString>()
         for (const pen of village.findStructures({ includedTypes: [...RANCH_PEN_TYPES] })) {
-            // Every gate on the ranch needs closing, not just the one next to the item frame
+
             for (const gateLocation of village.getPenGates(pen.locationString)) {
                 const key = locationToString(gateLocation)
                 if (checkedGates.has(key)) {
@@ -3846,7 +4021,7 @@ export class Villager {
             return
         }
 
-        saplingBlock.growTree() //fix: blacklist sapling
+        saplingBlock.growTree()
 
         villager.cancelTask()
         villager.waiting = 10
@@ -4167,7 +4342,7 @@ export class Villager {
                         villager.getComponent(EntityComponentTypes.Inventory)?.container.addItem(item)
                         villager.holdingItem = item.typeId
                     }
-                    //villager.lookAt(foundItem.location)
+
                     villager.waiting = 10
                     villager.playAnimation(
                         "animation.tektopia_villager.pickup_item"
@@ -4192,11 +4367,6 @@ export class Villager {
         }
     }
 
-    /**
-     * Opens the chest at `location` for this villager and makes it wait while the lid opens.
-     * Returns true once the chest is open and the wait is over, so the caller can use it.
-     * Switching to a different chest closes the previous one first.
-     */
     private openChest(location: Vector3): boolean {
         if (this.openedChest !== undefined) {
             if (areVectorsEqual(this.openedChest, location)) {
@@ -4207,7 +4377,7 @@ export class Villager {
 
         const chest = this.dimension.getBlockSafe(location)?.chest
         if (chest === undefined) {
-            // Not a display chest (or not loaded); nothing to animate, so don't hold the villager up
+
             return true
         }
 
@@ -4619,36 +4789,6 @@ system.runInterval(() => {
     }
 }, 20)
 
-Block.prototype.destroy = function (villagerItem = false, playSound = true) {
-    if (!this.isValid) {
-        return
-    }
-    const lootTableManager = world.getLootTableManager()
-    const itemList = lootTableManager.generateLootFromBlock(this, new ItemStack("minecraft:netherite_pickaxe")) ?? []
-    const dimension = this.dimension
-    for (const item of itemList) {
-        if (villagerItem) {
-            item.makeVillagerItem()
-        }
-        dimension.spawnItem(item, this.center())
-    }
-    if (playSound) {
-        this.soundEvent("break")
-    }
-    this.setType("air")
-}
-
-Block.prototype.replace = function (blockType) {
-    if (blockType instanceof BlockPermutation) {
-        this.setPermutation(blockType)
-    }
-    else {
-        this.setType(blockType)
-    }
-
-    this.soundEvent("place")
-}
-
 ItemStack.prototype.makeVillagerItem = function () {
     this.nameTag = `§r§a${formatTypeId(this.typeId)}`
     this.setLore(["§r§7Villager Item"])
@@ -4659,41 +4799,6 @@ Object.defineProperty(ItemStack.prototype, "isVillagerItem", {
         return this.getLore()[0] === "§r§7Villager Item"
     }
 })
-
-Block.prototype.soundEvent = function (eventId, soundOptions) {
-    let options = soundOptions !== undefined ? { ...soundOptions } : undefined
-    if (this.isAir) {
-        return
-    }
-    const sound = blockSounds[removeIdentifier(this.typeId)]?.[eventId]
-    if (sound === undefined) {
-        console.warn(`Missing sound: ${this.typeId}`)
-        return
-    }
-
-    if (typeof sound === "object" && sound !== null) {
-        options = {
-            pitch: resolveValue(sound.pitch ?? 1),
-            volume: resolveValue(sound.volume ?? 1),
-            ...options
-        }
-    }
-
-    function resolveValue(value: number | [number, number]) {
-        if (Array.isArray(value)) {
-            return randomInt(value[0] * 10, value[1] * 10) / 10
-        }
-        return value
-    }
-
-    if (sound !== null) {
-        this.playSound(typeof sound === "string" ? sound : sound.sound, options)
-    }
-}
-
-Block.prototype.playSound = function (soundId, soundOptions) {
-    this.dimension.playSound(soundId, this.center(), soundOptions)
-}
 
 Object.defineProperty(Entity.prototype, "isShearable", {
     get(this: Entity): boolean {

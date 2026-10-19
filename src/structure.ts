@@ -37,29 +37,22 @@ import type { Village } from "./village"
 const cardinalDirectionList = ["north", "east", "south", "west"] as CardinalDirection[]
 
 const noFloorLocations: readonly Vector3[] = []
-// Ticks before a structure whose floor scan found nothing valid scans again (the item frame scan runs every 100)
+
 const floorRescanCooldownTicks = 100
 
 export interface StructureValidationResult {
     result: boolean | undefined
     doorLocation?: Vector3 | undefined
-    // Every floor location of the scan. The first ownRoomFloorCount of them are in the room the scan started in
-    // (the structure's own room), the rest were reached through a door.
     floorLocations?: Vector3[]
     ownRoomFloorCount?: number
     village?: Village
 }
 
-/**
- * Who has claimed each floor location of a village, so a room scan can tell when it has walked into another
- * structure's room. Locations are the standing locations (the block above the floor block).
- */
 export interface FloorClaims {
-    // Key of the structure that is scanning. Its own claims never count as another structure's.
+
     readonly selfKey: LocationString
     getOwner(location: Vector3): LocationString | undefined
-    // Whether the owner holds the location as part of its own room (as opposed to a room it reached through a
-    // door). Own-room claims are first-claim-wins: another structure scanning into one is invalid.
+
     isOwnRoom(location: Vector3): boolean
 }
 
@@ -527,22 +520,6 @@ function* validateMineshaftStructure(
         return parseResult(false)
     }
 
-    // const liquidCheckLocations = [
-    //     { x: mineBlock.x + direction.x, y: location.y, z: mineBlock.z + direction.z },
-    //     { x: mineBlock.x + direction.x, y: location.y + 1, z: mineBlock.z + direction.z }
-    // ]
-
-    // for (const liquidCheckLocation of liquidCheckLocations) {
-    //     const liquidCheckBlock = dimension.getBlockSafe(liquidCheckLocation)
-    //     if (liquidCheckBlock === undefined) {
-    //         return parseResult(undefined)
-    //     }
-
-    //     if (liquidCheckBlock.isLiquid) {
-    //         return parseResult(false)
-    //     }
-    // }
-
     return parseResult(true, location)
 }
 
@@ -596,18 +573,9 @@ function* validateDefaultStructure(
 interface RoomScanCell {
     floor: Block | undefined
     ceiling: Block | undefined
-    // True when the path that reached this cell has gone through a door before reaching it
     passedDoor: boolean
 }
 
-/**
- * Scans the room behind a door for floor locations, flood filling over every floor with enough headroom.
- *
- * Rooms can hold other structures, and a scan may go through any number of doors to reach more rooms. A scan
- * only takes floor over from another structure while it is still in the room it started in. Once it has gone
- * through a door it leaves every location another structure has claimed alone (and does not scan past it), so
- * an outer structure keeps its own rooms without swallowing the structure inside of it.
- */
 function* validateDefaultRoom(
     dimension: Dimension,
     doorLocation: Vector3,
@@ -651,7 +619,6 @@ function* validateDefaultRoom(
         return undefined
     }
 
-    // Whether a door stands on this floor block, in either of the two blocks a door fills
     function hasDoorAbove(floor: Block) {
         const lower = floor.aboveSafe()
         if (lower !== undefined && Registry.openableDoorTypes.includes(lower.typeId)) {
@@ -669,14 +636,10 @@ function* validateDefaultRoom(
         return parseResult(false, doorLocation)
     }
 
-    // Floor found in the room the scan started in, and floor found past a door. Kept apart so the claims know
-    // which locations the structure holds as its own room.
     const ownRoomFloorLocations: Vector3[] = []
     const throughDoorFloorLocations: Vector3[] = []
     const startingLocation = addVectors(doorBlock, directionToVector(rotation))
-    // Cells reached without going through a door are always scanned before cells reached through one. A cell
-    // that can be reached both ways is therefore treated as part of the room the scan started in, however
-    // short the way through the door is.
+
     const ownRoomQueue: Array<RoomScanCell | undefined> = [{
         floor: getFloorBlock(startingLocation),
         ceiling: getCeilingBlock(startingLocation),
@@ -708,7 +671,6 @@ function* validateDefaultRoom(
             if (!alreadyCheckedLocations.has(floorLocationString)) {
                 alreadyCheckedLocations.add(floorLocationString)
 
-                // The door's own cell counts as through the door, so everything past a door is too
                 const isDoorTile = hasDoorAbove(currentLocation.floor)
                 const passedDoor = currentLocation.passedDoor || isDoorTile
                 const standingLocation = addVector(currentLocation.floor, "y", 1)
@@ -717,13 +679,10 @@ function* validateDefaultRoom(
                 const claimedByAnother = owner !== undefined && owner !== claims?.selfKey
 
                 if (claimedByAnother && !passedDoor && claims?.isOwnRoom(standingLocation)) {
-                    // This room already belongs to another structure: first claim wins, so this one is invalid
+
                     return parseResult(false, doorLocation)
                 }
 
-                // Another structure's floor is off limits once the scan has left the room it started in. It is
-                // treated like a wall: not added, and not scanned past. In the room the scan started in, floor
-                // another structure only reached through a door is taken over (it was never that structure's own room).
                 if (!claimedByAnother || !passedDoor) {
                     if (debugFlags.structureScanParticles) {
                         try {
@@ -735,8 +694,6 @@ function* validateDefaultRoom(
                         catch { }
                     }
 
-                    // A door tile is only passed over. It belongs to no room, so the structure standing behind
-                    // that door doesn't leak into the floor of the room in front of it.
                     if (!isDoorTile) {
                         (passedDoor ? throughDoorFloorLocations : ownRoomFloorLocations).push(standingLocation)
                     }
@@ -759,16 +716,6 @@ function* validateDefaultRoom(
                         if (dimension.getBlockSafe(checkLocation)?.isSolid) {
                             checkLocation = addVector(checkLocation, "y", 1)
                         }
-
-                        // if (debugFlags.structureScanParticles) {
-                        //     try {
-                        //         dimension.spawnParticle(
-                        //             "minecraft:blue_flame_particle",
-                        //             centerVector(checkLocation)
-                        //         )
-                        //     }
-                        //     catch { }
-                        // }
 
                         let floorBlock = getFloorBlock(checkLocation)?.aboveSafe()
                         while (floorBlock?.getIsSolid() && !Registry.nonFloorBlocksSet.has(floorBlock.typeId)) {
@@ -816,6 +763,7 @@ function* validateDefaultRoom(
 export interface StructureTypeMap {
     mineshaft: Mineshaft
     storage: StorageStructure
+    blacksmith: BlackSmith
     butcher: Structure
     townhall: Structure
     pig_pen: AnimalPen
@@ -858,14 +806,18 @@ export interface BarracksData extends StructureData {
 }
 
 export interface BedInfo {
-    // Location of the bed's head block
+
     location: Vector3
-    // Location string of the home structure the bed belongs to
+
     home: LocationString
 }
 
 export interface StorageStructureData extends StructureData {
     type: "storage"
+}
+
+export interface BlackSmithData extends BlackSmith {
+    type: "blacksmith"
 }
 
 type StructureFactory = (locationString: LocationString, data: StructureData, dimension: Dimension, village: Village) => Structure
@@ -989,7 +941,7 @@ export class Structure<T extends StructureData = StructureData> {
             this.nextFloorScanTick = system.currentTick + floorRescanCooldownTicks
             return noFloorLocations
         }
-        return this.cachedFloorLocations ?? noFloorLocations
+        return (this.cachedFloorLocations as Vector3[] | undefined) ?? noFloorLocations
     }
 
     get type(): T["type"] {
@@ -1095,11 +1047,6 @@ export class Mineshaft extends Structure<MineshaftData> {
         return getMineshaftMineBlock(this.dimension, this.location, this.rotation)
     }
 
-    /**
-     * True when the location is inside the mineshaft tunnel itself: the door column or beyond it, on the tunnel's
-     * centerline and at floor level. A villager standing in a side pocket, a floor pit or the ceiling gap is
-     * outside the tunnel, so filling blocks around the tunnel could wall them in.
-     */
     isInTunnel(location: Vector3): boolean {
         const direction = directionToVector(this.rotation)
         const offset = subtractVectors(floorVector(location), this.location)
@@ -1289,7 +1236,6 @@ export class AnimalPen extends Structure<AnimalPenData> {
                 continue
             }
 
-            // world.getEntity only returns an entity that is valid this tick (see cache.ts)
             const entity = world.getEntity(id)
             if (entity === undefined) {
                 continue
@@ -1316,6 +1262,24 @@ export class AnimalPen extends Structure<AnimalPenData> {
     }
 }
 
+export class BlackSmith extends Structure<BlackSmithData> {
+    constructor(locationString: LocationString, data: BlackSmithData, dimension: Dimension, village: Village) {
+        super(locationString, data, dimension, village)
+    }
+
+    getAnvils() {
+
+    }
+
+    getFurnaces() {
+
+    }
+
+    getBlastFurnaces() {
+
+    }
+}
+
 export class StorageStructure extends Structure<StorageStructureData> {
     constructor(locationString: LocationString, data: StorageStructureData, dimension: Dimension, village: Village) {
         super(locationString, data, dimension, village)
@@ -1327,7 +1291,6 @@ export class StorageStructure extends Structure<StorageStructureData> {
         for (const floorLocation of floorLocations) {
             const chestBlock = this.dimension.getBlockSafe(floorLocation)
 
-            // Every chest type stores items, except the ender chest, which is a window into the player's own inventory
             if (chestBlock?.chest !== undefined && chestBlock.chest.variant !== "ender") {
                 chestList.push(chestBlock)
             }
@@ -1354,6 +1317,25 @@ export class StorageStructure extends Structure<StorageStructureData> {
 
         return craftingTableList
     }
+
+    getFurnaces(floorLocations: readonly Vector3[] = this.loadFloorLocations()) {
+        const furnaceList: Block[] = []
+
+        for (const floorLocation of floorLocations) {
+            const furnaceBlock = this.dimension.getBlockSafe(floorLocation)
+            if (furnaceBlock === undefined) {
+                continue
+            }
+
+            if (furnaceBlock.typeId !== "minecraft:furnace" && furnaceBlock.typeId !== "minecraft:lit_furnace") {
+                continue
+            }
+
+            furnaceList.push(furnaceBlock)
+        }
+
+        return furnaceList
+    }
 }
 
 const GUARD_TYPE_ID = "tektopia:villager_guard"
@@ -1367,26 +1349,21 @@ interface FoundBed {
     key: LocationString
 }
 
-// A structure whose floor holds beds that villagers claim and sleep in
 export abstract class BedStructure<T extends StructureData = StructureData> extends Structure<T> {
     abstract getMaxBedCount(): number
 
-    // Whether this villager may be given a new bed here
     protected canClaimBed(_villager: BedVillager): boolean {
         return true
     }
 
-    // Whether a villager that already holds a bed here may keep it. Otherwise the claim is released.
     protected canKeepBed(_villager: BedVillager): boolean {
         return true
     }
 
-    // Whether a villager holding a bed in another structure should be moved over to a free bed here
     protected shouldTransferBed(_villager: BedVillager, _claimed: BedInfo): boolean {
         return false
     }
 
-    // Beds that were on the floor another structure took must not stay claimed by villagers of this one
     override onFloorLost() {
         this.validateBeds()
     }
@@ -1438,13 +1415,11 @@ export abstract class BedStructure<T extends StructureData = StructureData> exte
         const maxBedCount = this.getMaxBedCount()
         const beds = this.findBeds(floorLocations)
 
-        // Only the first maxBedCount beds are usable, the rest are shown red
         const usableKeys = new Set<LocationString>()
         for (const bed of beds.slice(0, maxBedCount)) {
             usableKeys.add(bed.key)
         }
 
-        // Villagers that already hold a bed in this home, and releasing claims on beds that are gone or over the limit
         const villagers = this.village.getVillagers()
         const claimedBy = new Map<LocationString, (typeof villagers)[number]>()
         const bedlessVillagers: typeof villagers = []
@@ -1460,7 +1435,7 @@ export abstract class BedStructure<T extends StructureData = StructureData> exte
             }
 
             if (claimed.home !== this.locationString) {
-                // Keeps its current bed unless a free bed here is found for it below
+
                 if (this.canClaimBed(villager) && this.shouldTransferBed(villager, claimed)) {
                     bedlessVillagers.push(villager)
                 }
@@ -1480,7 +1455,6 @@ export abstract class BedStructure<T extends StructureData = StructureData> exte
             claimedBy.set(claimedKey, villager)
         }
 
-        // Unclaimed usable beds go to the closest villager without a bed
         for (const bed of beds) {
             if (!usableKeys.has(bed.key) || claimedBy.has(bed.key)) {
                 continue
@@ -1520,7 +1494,10 @@ export abstract class BedStructure<T extends StructureData = StructureData> exte
                 color = "green"
             }
 
-            world.structureManager.place(`mystructure:home_bed_${color}`, this.dimension, bed.placeLocation, { rotation: bed.rotation })
+            try {
+                world.structureManager.place(`mystructure:home_bed_${color}`, this.dimension, bed.placeLocation, { rotation: bed.rotation })
+            }
+            catch {}
 
             if (color === "red") {
                 continue
@@ -1542,7 +1519,6 @@ export class HomeStructure extends BedStructure<HomeStructureData> {
         return Number(this.type.replace("home_", ""))
     }
 
-    // Guards sleep in the barracks, so they are not handed a home bed while a barracks bed is free
     protected override canClaimBed(villager: BedVillager) {
         if (villager.typeId !== GUARD_TYPE_ID) {
             return true
@@ -1563,7 +1539,6 @@ export class Barracks extends BedStructure<BarracksData> {
         return BARRACKS_BED_COUNT
     }
 
-    // Only guards sleep in the barracks
     protected override canClaimBed(villager: BedVillager) {
         return villager.typeId === GUARD_TYPE_ID
     }
@@ -1572,12 +1547,10 @@ export class Barracks extends BedStructure<BarracksData> {
         return villager.typeId === GUARD_TYPE_ID
     }
 
-    // A guard sleeping in a normal home moves to the barracks as soon as a bed is free
     protected override shouldTransferBed() {
         return true
     }
 
-    // Usable beds that no guard has claimed yet
     getFreeBedCount(floorLocations: readonly Vector3[] = this.loadFloorLocations()) {
         const usableKeys = new Set(this.findBeds(floorLocations).slice(0, this.getMaxBedCount()).map(bed => bed.key))
         const claimedKeys = new Set<LocationString>()

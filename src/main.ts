@@ -16,6 +16,10 @@ import {
 
 import "./sheepColors"
 
+import "./container_extensions"
+
+import "./item_extensions"
+
 import "./block_extensions"
 
 import "./array_extensions"
@@ -451,7 +455,6 @@ system.beforeEvents.startup.subscribe(event => {
         }
     )
 
-    // Every event id used by any block in blockSounds
     const soundEventIds = [...new Set(Object.values(blockSounds).flatMap(sounds => Object.keys(sounds)))]
     customCommandRegistry.registerEnum("tektopia:soundevent", soundEventIds)
 

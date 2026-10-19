@@ -2,6 +2,7 @@ import {
     Block,
     Dimension,
     Entity,
+    EntityComponentTypes,
     Player,
     system,
     type Vector3,
@@ -136,8 +137,7 @@ Object.defineProperty(Entity.prototype, "dimension", {
 })
 
 Object.defineProperty(Entity.prototype, "location", {
-    /**@this {Entity} */
-    get() {
+    get(this: Entity) {
         if (this instanceof Player) {
             const location = originalFunctions.getLocation.call(this)
             location.y = snap(location.y, 1)
@@ -299,4 +299,42 @@ Dimension.prototype.setBlockPermutation = function (location, permutation) {
     const result = originalFunctions.dimensionSetBlockPermutation.call(this, location, permutation)
     invalidateBlockKey(dimensionLocationKey(this, location))
     return result
+}
+
+Entity.prototype.getHitbox = function () {
+    const { center, extent } = this.getAABB()
+
+    return {
+        start: {
+            x: center.x - extent.x,
+            y: center.y - extent.y,
+            z: center.z - extent.z
+        },
+        end: {
+            x: center.x + extent.x,
+            y: center.y + extent.y,
+            z: center.z + extent.z
+        }
+    }
+}
+
+const entityHitBoxSizeCache = new Map<string, { width: number, height: number }>()
+
+Entity.prototype.getHitboxSize = function () {
+    const cacheKey = `${this.typeId}${this.hasComponent(EntityComponentTypes.IsBaby)}`
+
+    const cachedSize = entityHitBoxSizeCache.get(cacheKey)
+    if (cachedSize !== undefined) {
+        return cachedSize
+    }
+
+    const { extent } = this.getAABB()
+
+    const size = {
+        width: extent.x * 2,
+        height: extent.y * 2
+    }
+    entityHitBoxSizeCache.set(cacheKey, size)
+
+    return size
 }

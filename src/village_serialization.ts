@@ -384,7 +384,6 @@ function unpackTypedLocations(text: string, types: string[] | undefined, typeInd
 
 const STRUCTURE_ROTATIONS: Array<StructureData["rotation"]> = ["north", "east", "south", "west"]
 
-// Returns the packed form, or the plain record when something doesn't fit the packed form (so nothing is ever lost)
 function* compressStructures(structures: Record<LocationString, StructureData>, origin: Vector3): Generator<void, CompressedStructures, void> {
     const entries: Array<{ point: Vector3, type: string, rotation: number }> = []
     const keys = Object.keys(structures) as LocationString[]
@@ -547,7 +546,6 @@ function* buildMaskStreams(masks: number[]): Generator<void, MaskStreams, void> 
     }
 }
 
-// For every node: the forward neighbors that exist as nodes but are not connected to it
 function* buildExceptionMasks(nodeLocations: Vector3[], indexByKey: Map<string, number>, connectedMasks: number[]): Generator<void, number[], void> {
     const exceptionMasks: number[] = new Array(nodeLocations.length).fill(0)
     for (let i = 0; i < nodeLocations.length; i++) {
@@ -845,7 +843,7 @@ export function decompressVillage(compressed: unknown): VillageSaveData | undefi
         }
 
         for (let bitIndex = 0; bitIndex < FORWARD_BITS; bitIndex++) {
-            // Normally a set bit means connected; in exception mode a set bit means "adjacent but not connected"
+
             if (((neighborMask & (1 << bitIndex)) !== 0) === masksListExceptions) {
                 continue
             }
