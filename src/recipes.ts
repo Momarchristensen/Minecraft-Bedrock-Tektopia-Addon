@@ -63,8 +63,20 @@ interface RecipeIndex {
 
 let index: RecipeIndex | undefined
 
+// itemFuelValues also lists tools, chests, boats, saplings, crafting tables and so on. Villagers must only burn
+// plain fuel, otherwise a plan can burn the wooden pickaxe or chest sitting in village storage
+function isPlainFuel(id: string): boolean {
+    return id === "minecraft:coal"
+        || id === "minecraft:charcoal"
+        || id === "minecraft:coal_block"
+        || id.endsWith("_planks")
+        || id.endsWith("_log")
+        || id.endsWith("_wood")
+}
+
 const fuelValues = new Map<string, number>(Object.entries(itemFuelValues))
-const fuelIds = [...fuelValues.keys()]
+const fuelIds = [...fuelValues.keys()].filter(isPlainFuel)
+const fuelIdSet = new Set(fuelIds)
 
 function recipeInputs(recipe: Recipe): RecipeInput[] {
     return recipe.usesFurnace ? [recipe.input] : recipe.input
@@ -225,11 +237,17 @@ interface PlanState {
     journalPrev: number[]
 }
 
+export interface PlanOptions {
+    // false when the village has no furnace, so furnace recipes can't be used. Defaults to true
+    smelting?: boolean
+}
+
 interface Context {
     initial: Record<string, number>
     reachable: Set<string> | undefined
     visiting: Set<string>
     record: boolean
+    smelting: boolean
 }
 
 function getCount(state: PlanState, id: string): number {
@@ -278,10 +296,39 @@ function mergeItems(items: ItemAmount[]): ItemAmount[] {
     return [...merged].map(([id, amount]) => ({ id, amount }))
 }
 
-function takeFuel(smelts: number, state: PlanState): ItemAmount | undefined {
-    let best: (ItemAmount & { waste: number }) | undefined
+interface FuelCandidate {
+    id: string
+    amount: number
+    waste: number
+
+    cost: number
+}
+
+// Fuels that are cheaper to burn after crafting them: 1 log makes 4 planks, and a plank burns as long as a log
+const craftableFuelIds = fuelIds.filter(id => id.endsWith("_planks"))
+
+function consumedSince(state: PlanState, journalMark: number): number {
+    const original = new Map<string, number>()
+    for (let i = journalMark; i < state.journalIds.length; i++) {
+        const id = state.journalIds[i]
+        const prev = state.journalPrev[i]
+        if (id !== undefined && prev !== undefined && !original.has(id)) {
+            original.set(id, prev)
+        }
+    }
+
+    let consumed = 0
+    for (const [id, prev] of original) {
+        consumed += Math.max(0, prev - getCount(state, id))
+    }
+    return consumed
+}
+
+function takeFuel(smelts: number, state: PlanState, ctx: Context): ItemAmount | undefined {
+    const candidates: Array<FuelCandidate & { craft: boolean }> = []
+
     for (const [id, held] of state.counts) {
-        const value = fuelValues.get(id)
+        const value = fuelIdSet.has(id) ? fuelValues.get(id) : undefined
         if (value === undefined || held <= 0) {
             continue
         }
@@ -289,19 +336,50 @@ function takeFuel(smelts: number, state: PlanState): ItemAmount | undefined {
         if (amount > held) {
             continue
         }
-        const waste = (amount * value) - smelts
+        candidates.push({ id, amount, waste: (amount * value) - smelts, cost: amount, craft: false })
+    }
+
+    for (const id of craftableFuelIds) {
+        const value = fuelValues.get(id)
+        if (value === undefined) {
+            continue
+        }
+        const amount = fuelItemsFor(smelts, value)
+        if (getCount(state, id) >= amount) {
+            continue
+        }
+
+        const journalMark = state.journalIds.length
+        const stepMark = state.steps.length
+        if (obtain(id, amount, state, ctx)) {
+            candidates.push({ id, amount, waste: (amount * value) - smelts, cost: consumedSince(state, journalMark), craft: true })
+        }
+        rollback(state, journalMark, stepMark)
+    }
+
+    let best: (FuelCandidate & { craft: boolean }) | undefined
+    for (const candidate of candidates) {
         if (
             best === undefined
-            || amount < best.amount
-            || (amount === best.amount && (waste < best.waste || (waste === best.waste && id < best.id)))
+            || candidate.cost < best.cost
+            || (candidate.cost === best.cost && (candidate.waste < best.waste || (candidate.waste === best.waste && candidate.id < best.id)))
         ) {
-            best = { id, amount, waste }
+            best = candidate
         }
     }
     if (best === undefined) {
         return undefined
     }
-    setCount(state, best.id, getCount(state, best.id) - best.amount)
+
+    if (best.craft) {
+        // Commit the crafting steps for the chosen fuel (e.g. log -> planks)
+        if (!obtain(best.id, best.amount, state, ctx)) {
+            return undefined
+        }
+    }
+    else {
+        setCount(state, best.id, getCount(state, best.id) - best.amount)
+    }
     return { id: best.id, amount: best.amount }
 }
 
@@ -333,6 +411,9 @@ function obtain(itemId: string, amount: number, state: PlanState, ctx: Context):
 
     try {
         for (const recipe of recipes) {
+            if (recipe.usesFurnace && !ctx.smelting) {
+                continue
+            }
             if (ctx.reachable !== undefined && !isViable(recipe, ctx.reachable)) {
                 continue
             }
@@ -351,7 +432,7 @@ function obtain(itemId: string, amount: number, state: PlanState, ctx: Context):
 
             let fuel: ItemAmount | undefined
             if (ok && recipe.usesFurnace) {
-                fuel = takeFuel(recipe.input.amount * times, state)
+                fuel = takeFuel(recipe.input.amount * times, state, ctx)
                 ok = fuel !== undefined
             }
 
@@ -440,10 +521,11 @@ function obtainInput(
 export function getCraftingPlan(
     itemId: string,
     itemCounts: Record<string, number>,
-    amount = 1
+    amount = 1,
+    options: PlanOptions = {}
 ): CraftStep[] | undefined {
     const state = createState(itemCounts)
-    const ctx: Context = { initial: itemCounts, reachable: undefined, visiting: new Set(), record: true }
+    const ctx: Context = { initial: itemCounts, reachable: undefined, visiting: new Set(), record: true, smelting: options.smelting ?? true }
     return obtain(itemId, amount, state, ctx) ? mergeSteps(state.steps) : undefined
 }
 
@@ -456,17 +538,68 @@ interface MergedStep {
     fuelId?: string
 }
 
-function splitPerCraft(step: InternalStep): Array<{ times: number, input: Map<string, number> }> {
-    const totals = new Map(mergeItems(step.input).map(item => [item.id, item.amount] as const))
-    const groups = new Map<string, { times: number, input: Map<string, number> }>()
+// Hands out the step's items craft by craft so every craft gets exactly what the recipe asks for,
+// even when a tag input (e.g. any planks) was filled with several item types
+function allocatePerCraft(step: InternalStep, totals: Map<string, number>): Array<Map<string, number>> | undefined {
+    if (step.recipe.usesFurnace) {
+        return undefined
+    }
+
+    const left = new Map(totals)
+    const crafts: Array<Map<string, number>> = []
     for (let craft = 0; craft < step.times; craft++) {
         const input = new Map<string, number>()
-        for (const [id, total] of totals) {
-            const amount = Math.floor(total / step.times) + (craft < total % step.times ? 1 : 0)
-            if (amount > 0) {
-                input.set(id, amount)
+        for (const requirement of step.recipe.input) {
+            let need = requirement.amount
+            if (need <= 0) {
+                continue
+            }
+            const ids = [...idList(requirement.id)].sort((a, b) => (left.get(b) ?? 0) - (left.get(a) ?? 0))
+            for (const id of ids) {
+                if (need <= 0) {
+                    break
+                }
+                const take = Math.min(left.get(id) ?? 0, need)
+                if (take > 0) {
+                    left.set(id, (left.get(id) ?? 0) - take)
+                    input.set(id, (input.get(id) ?? 0) + take)
+                    need -= take
+                }
+            }
+            if (need > 0) {
+                return undefined
             }
         }
+        crafts.push(input)
+    }
+
+    for (const remaining of left.values()) {
+        if (remaining > 0) {
+            return undefined
+        }
+    }
+    return crafts
+}
+
+function splitPerCraft(step: InternalStep): Array<{ times: number, input: Map<string, number> }> {
+    const totals = new Map(mergeItems(step.input).map(item => [item.id, item.amount] as const))
+    let crafts = allocatePerCraft(step, totals)
+    if (crafts === undefined) {
+        crafts = []
+        for (let craft = 0; craft < step.times; craft++) {
+            const input = new Map<string, number>()
+            for (const [id, total] of totals) {
+                const amount = Math.floor(total / step.times) + (craft < total % step.times ? 1 : 0)
+                if (amount > 0) {
+                    input.set(id, amount)
+                }
+            }
+            crafts.push(input)
+        }
+    }
+
+    const groups = new Map<string, { times: number, input: Map<string, number> }>()
+    for (const input of crafts) {
         const key = JSON.stringify([...input].sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0))
         const group = groups.get(key)
         if (group === undefined) {
@@ -588,17 +721,18 @@ export function getRequiredItems(plan: CraftStep[]): Record<string, number> {
     return required
 }
 
-export function canCraft(itemId: string, itemCounts: Record<string, number>, amount = 1): boolean {
+export function canCraft(itemId: string, itemCounts: Record<string, number>, amount = 1, options: PlanOptions = {}): boolean {
     const state = createState(itemCounts)
-    const ctx: Context = { initial: itemCounts, reachable: undefined, visiting: new Set(), record: false }
+    const ctx: Context = { initial: itemCounts, reachable: undefined, visiting: new Set(), record: false, smelting: options.smelting ?? true }
     return obtain(itemId, amount, state, ctx)
 }
 
 const UNBOUNDED_LIMIT = (2 ** 31) - 1
 
-export function getMaxCrafts(itemId: string, itemCounts: Record<string, number>, max = Infinity): number {
+// Returns the largest amount of the item (not the number of crafts) that can be made, up to max
+export function getMaxCrafts(itemId: string, itemCounts: Record<string, number>, max = Infinity, options: PlanOptions = {}): number {
     const cap = Math.min(Math.floor(max), UNBOUNDED_LIMIT)
-    if (!(cap >= 1) || !canCraft(itemId, itemCounts, 1)) {
+    if (!(cap >= 1) || !canCraft(itemId, itemCounts, 1, options)) {
         return 0
     }
 
@@ -606,7 +740,7 @@ export function getMaxCrafts(itemId: string, itemCounts: Record<string, number>,
     let bad = 0
     while (good < cap) {
         const next = Math.min(good * 2, cap)
-        if (canCraft(itemId, itemCounts, next)) {
+        if (canCraft(itemId, itemCounts, next, options)) {
             good = next
         }
         else {
@@ -620,7 +754,7 @@ export function getMaxCrafts(itemId: string, itemCounts: Record<string, number>,
 
     while (bad - good > 1) {
         const mid = good + Math.floor((bad - good) / 2)
-        if (canCraft(itemId, itemCounts, mid)) {
+        if (canCraft(itemId, itemCounts, mid, options)) {
             good = mid
         }
         else {

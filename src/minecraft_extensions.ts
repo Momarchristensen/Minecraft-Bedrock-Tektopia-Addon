@@ -170,6 +170,7 @@ declare module "@minecraft/server" {
         getItemCount(itemFilter: ItemStackFilter): number
         getItemCounts(itemFilter?: ItemStackFilter): Record<string, number>
         hasItem(itemFilter: ItemStackFilter): boolean
+        hasItems(itemFilter: ItemStackFilter, amount: number): boolean
         getRoomFor(item: ItemStack): number
         transferItemStack(fromSlot: number, toContainer: Container, amount: number): number
         isSameContainer(otherContainer: Container): boolean

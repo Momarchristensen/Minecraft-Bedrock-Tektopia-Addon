@@ -4,6 +4,8 @@ import {
     ItemStack
 } from "@minecraft/server"
 
+import type { ItemStackFilter } from "./minecraft_extensions"
+
 Container.prototype.getRoomFor = function (item) {
     let room = 0
 
@@ -157,6 +159,21 @@ Container.prototype.hasItem = function (itemFilter) {
     for (const slot of this) {
         if (slot.matchesFilter(itemFilter)) {
             return true
+        }
+    }
+
+    return false
+}
+
+Container.prototype.hasItems = function (itemFilter: ItemStackFilter, amount: number) {
+    let currentAmount = amount
+
+    for (const slot of this) {
+        if (slot.matchesFilter(itemFilter)) {
+            currentAmount -= slot.amount
+            if (currentAmount <= 0) {
+                return true
+            }
         }
     }
 

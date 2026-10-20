@@ -253,6 +253,8 @@ const bigTreeFeatures: Record<string, string> = {
     "minecraft:pale_oak_sapling": "minecraft:random_pale_oak_tree_feature"
 }
 
+export const bigTreeSaplings = Object.keys(bigTreeFeatures)
+
 const requiresBigTree = new Set(["minecraft:dark_oak_sapling", "minecraft:pale_oak_sapling"])
 
 const diagonalTrunkTypes = new Set(["minecraft:dark_oak_log", "minecraft:acacia_log", "minecraft:jungle_log", "minecraft:cherry_log"])

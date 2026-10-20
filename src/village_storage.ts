@@ -10,7 +10,8 @@ import {
 import {
     canCraft,
     getCraftingPlan,
-    getMaxCrafts
+    getMaxCrafts,
+    type PlanOptions
 } from "./recipes"
 
 import { locationToString } from "./utils"
@@ -116,16 +117,16 @@ export class VillageStorage implements Iterable<ContainerSlot> {
         return counts
     }
 
-    canCraft(itemId: string, amount = 1) {
-        return canCraft(itemId, this.getItemCounts(), amount)
+    canCraft(itemId: string, amount = 1, options?: PlanOptions) {
+        return canCraft(itemId, this.getItemCounts(), amount, options)
     }
 
-    getCraftingPlan(itemId: string, amount = 1) {
-        return getCraftingPlan(itemId, this.getItemCounts(), amount)
+    getCraftingPlan(itemId: string, amount = 1, options?: PlanOptions) {
+        return getCraftingPlan(itemId, this.getItemCounts(), amount, options)
     }
 
-    getMaxCrafts(itemId: string, max = Infinity) {
-        return getMaxCrafts(itemId, this.getItemCounts(), max)
+    getMaxCrafts(itemId: string, max = Infinity, options?: PlanOptions) {
+        return getMaxCrafts(itemId, this.getItemCounts(), max, options)
     }
 
     getChests(origin?: Vector3): StorageChest[] {
@@ -177,6 +178,31 @@ export class VillageStorage implements Iterable<ContainerSlot> {
         return 0
     }
 
+    hasItems(itemFilter: ItemStackFilter, amount: number) {
+        let currentAmount = amount
+
+        for (const slot of this) {
+            if (slot.matchesFilter(itemFilter)) {
+                currentAmount -= slot.amount
+                if (currentAmount <= 0) {
+                    return true
+                }
+            }
+        }
+
+        return false
+    }
+
+    hasItem(itemFilter: ItemStackFilter) {
+        for (const slot of this) {
+            if (slot.matchesFilter(itemFilter)) {
+                return true
+            }
+        }
+
+        return false
+    }
+
     findItem(itemFilter: ItemStackFilter): StorageItemResult | undefined {
 
         for (const { chest, slotIndex, slot } of this.entries()) {
@@ -200,7 +226,7 @@ export class VillageStorage implements Iterable<ContainerSlot> {
         const matchingItems: StorageItemResult[] = []
 
         if (amountLeft <= 0) {
-            return matchingItems
+            return []
         }
 
         for (const { chest, slotIndex, slot } of this.entries()) {
@@ -222,6 +248,10 @@ export class VillageStorage implements Iterable<ContainerSlot> {
             if (amountLeft <= 0) {
                 break
             }
+        }
+
+        if (amountLeft > 0) {
+            return []
         }
 
         return matchingItems

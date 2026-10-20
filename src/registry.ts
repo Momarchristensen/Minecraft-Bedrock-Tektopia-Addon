@@ -73,6 +73,7 @@ export const Registry = defineRegistry({
     fenceGateTypes: blocks(id => id.includes("_gate") && id.includes("fence")),
     saplingTypes: blocks(id => id.includes("_sapling")),
     logTypes: blocks(id => id.includes("_log")),
+    woodTypes: blocks(id => id.includes("_wood")),
     plankTypes: blocks(id => id.includes("_planks")),
     nonStrippedLogTypes: (): string[] => Registry.logTypes.filter(id => !id.includes("stripped_")),
     nonStrippedLogTypesSet: (): Set<string> => new Set(Registry.nonStrippedLogTypes),
@@ -370,7 +371,7 @@ export const Registry = defineRegistry({
                     },
                     {
                         id: "minecraft:stick",
-                        amount: 2
+                        amount: 1
                     }
                 ],
                 output: {
@@ -386,7 +387,7 @@ export const Registry = defineRegistry({
                     },
                     {
                         id: "minecraft:stick",
-                        amount: 2
+                        amount: 1
                     }
                 ],
                 output: {
@@ -757,7 +758,7 @@ export const Registry = defineRegistry({
             }
         ]
 
-        for (const id of Registry.logTypes) {
+        for (const id of Registry.logTypes.concat(Registry.woodTypes)) {
             recipes.push({
                 input: [{
                     id,

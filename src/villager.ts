@@ -82,6 +82,7 @@ import {
 import {
     type ArmorType,
     armorTypes,
+    CROP_SEEDS,
     type DepositPlan,
     getToolItems,
     globalTasks,
@@ -229,6 +230,7 @@ interface TaskFound {
     toolDeposits?: ItemFilterResult[]
     toolUpgrades?: ToolUpgradePlan[]
     toolCrafts?: ToolCraftPlan[]
+    craftedTaskItems?: string[]
 }
 
 interface VillagerTask {
@@ -652,6 +654,71 @@ export class Villager {
         return true
     }
 
+    canCraftTaskItem(village: Village, itemId: string, amount = 1) {
+        const storageStructure = village.findStructures({ includedTypes: ["storage"] })[0]
+        if (storageStructure === undefined || storageStructure.getCraftingTables().length === 0) {
+            return false
+        }
+
+        return village.storage.canCraft(itemId, amount, { smelting: storageStructure.getFurnaces().length > 0 })
+    }
+
+    /**
+     * Crafts a missing task item by running the crafting flow inside the current task.
+     * Returns true while crafting is in progress (or just finished and needs re-checking),
+     * false if the item can't be crafted (or crafting already failed once for this task).
+     */
+    craftTaskItem(village: Village, itemId: string, minAmount: number, targetAmount = minAmount) {
+        const context = this.taskContext
+        const crafts = context.toolCrafts
+
+        if (crafts === undefined) {
+            const attempted = context.craftedTaskItems ??= []
+            if (attempted.includes(itemId) || !this.canCraftTaskItem(village, itemId, minAmount)) {
+                return false
+            }
+
+            // Craft as many as storage allows up to the full target (e.g. 16 torches), not just the minimum
+            const smelting = (village.findStructures({ includedTypes: ["storage"] })[0]?.getFurnaces().length ?? 0) > 0
+            const amount = Math.max(minAmount, village.storage.getMaxCrafts(itemId, Math.max(minAmount, targetAmount), { smelting }))
+
+            attempted.push(itemId)
+            context.toolCrafts = [{ itemId, amount }]
+            return true
+        }
+
+        return this.continueTaskItemCrafting(village)
+    }
+
+    /**
+     * Keeps running a crafting plan that was started for a task item. Once started, the villager
+     * is locked into it until the whole plan is done (or fails), so it doesn't stop after the first
+     * batch (e.g. 4 of 16 torches) once the task's minimum is met and leave intermediates behind.
+     * Returns true while the villager is busy crafting.
+     */
+    continueTaskItemCrafting(village: Village) {
+        const context = this.taskContext
+        const crafts = context.toolCrafts
+        if (crafts === undefined) {
+            return false
+        }
+
+        if (crafts.length === 0) {
+            // Crafting finished (or failed); the normal item check decides which on the next tick
+            context.toolCrafts = undefined
+            this.stopPath()
+            this.setAnimation(undefined)
+            this.holdingItem = undefined
+            this.taskProgress = 0
+            return true
+        }
+
+        if (!this.isWaiting) {
+            this.tickCraftToolTask(village)
+        }
+        return true
+    }
+
     checkCraftToolTask(village: Village) {
         const toolContext = this.getToolContext(village)
         if (toolContext === undefined) {
@@ -684,7 +751,7 @@ export class Villager {
 
             const craftingId = `minecraft:${toolCraftingMaterial}_${toolType}`
 
-            if (toolContext.storage.canCraft(craftingId)) {
+            if (toolContext.storage.canCraft(craftingId, 1, { smelting: toolContext.storageStructure.getFurnaces().length > 0 })) {
                 toolCrafts.push({ itemId: craftingId })
             }
         }
@@ -1388,6 +1455,24 @@ export class Villager {
         return true
     }
 
+    canGetSeedFor(village: Village, cropType: string) {
+        const seedId = CROP_SEEDS[cropType]
+        if (seedId === undefined) {
+            return false
+        }
+
+        const villagerInventory = this.getInventory()
+        if (villagerInventory?.hasItem({ includesTypes: [seedId] }) === true) {
+            return true
+        }
+
+        if (village.storage.findItems({ includesTypes: [seedId] }, 1).length > 0) {
+            return true
+        }
+
+        return this.canCraftTaskItem(village, seedId, 1)
+    }
+
     findPlantLocation(village: Village) {
         const takenPlantLocation = new Set<string>()
         const villagers = world.getVillagers()
@@ -1408,8 +1493,25 @@ export class Villager {
         } | undefined
         let minDist = Infinity
 
+        // Cache seed availability per crop type so we only check inventory/storage once per type
+        const seedAvailability = new Map<string, boolean>()
+        const canGetSeedFor = (type: string) => {
+            let available = seedAvailability.get(type)
+            if (available === undefined) {
+                available = this.canGetSeedFor(village, type)
+                seedAvailability.set(type, available)
+            }
+            return available
+        }
+
         for (const [plantLocationStr, type] of Object.entries(village.plantLocations)) {
             if (takenPlantLocation.has(plantLocationStr)) {
+                continue
+            }
+
+            // No seeds for this crop anywhere (inventory or village storage): skip it
+            // and fall through to the closest spot we *can* plant instead of giving up.
+            if (!canGetSeedFor(type)) {
                 continue
             }
 
@@ -1685,13 +1787,6 @@ export class Villager {
                     villager.holdingItem = undefined
                 }
             }
-
-            if (villager.currentTask === undefined) {
-                const allTaskList = villager.getTaskList()
-                if (allTaskList !== undefined) {
-                    villager.trySelectTask(village, allTaskList)
-                }
-            }
         }
         else {
             villager.tickTasks(village)
@@ -1901,6 +1996,32 @@ export class Villager {
             return false
         }
 
+        const requireItems = task.taskItems(this, village)
+        if (requireItems !== undefined) {
+            const villagerInventory = this.getInventory()
+            if (villagerInventory !== undefined) {
+                const villageStorage = village.storage
+                for (const requiredItem of requireItems) {
+                    const villagerItemCount = villagerInventory.getItemCount({ includesTypes: [requiredItem.id] })
+                    const villagerHasItem = villagerItemCount >= requiredItem.amount
+                    if (!villagerHasItem) {
+                        const amountLeft = requiredItem.amount - villagerItemCount
+                        const foundItems = villageStorage.findItems({ includesTypes: [requiredItem.id] }, amountLeft)
+                        const currentItem = foundItems[0]
+                        if (currentItem === undefined && !requiredItem.optional) {
+                            const minNeeded = Math.max(1, (requiredItem.min ?? requiredItem.amount) - villagerItemCount)
+                            if (!this.canCraftTaskItem(village, requiredItem.id, minNeeded)) {
+                                return false
+                            }
+                        }
+                    }
+                }
+            }
+            else {
+                return false
+            }
+        }
+
         return task.condition(this, village)
     }
 
@@ -1928,7 +2049,67 @@ export class Villager {
             }
 
             if (task !== undefined) {
-                task.tick?.(villager, village)
+                let tickTask = !villager.isWaiting
+
+                const requireItems = task.taskItems(villager, village)
+                if (requireItems !== undefined && villager.continueTaskItemCrafting(village)) {
+                    return
+                }
+
+                if (requireItems !== undefined) {
+                    const villagerInventory = villager.getInventory()
+                    if (villagerInventory !== undefined) {
+                        const villageStorage = village.storage
+                        for (const requiredItem of requireItems) {
+                            const villagerItemCount = villagerInventory.getItemCount({ includesTypes: [requiredItem.id] })
+                            const villagerHasItem = villagerItemCount >= (requiredItem.min ?? requiredItem.amount)
+                            if (!villagerHasItem) {
+                                const amountLeft = requiredItem.amount - villagerItemCount
+                                const foundItems = villageStorage.findItems({ includesTypes: [requiredItem.id] }, amountLeft)
+                                const currentItem = foundItems[0]
+                                if (currentItem !== undefined) {
+                                    const chestLocation = currentItem.chest.location
+                                    const chestInventory = currentItem.chest.container
+
+                                    const chestDistance = calculateDistance(centerVector(chestLocation, true), this.location)
+                                    if (chestDistance > 1.5) {
+                                        this.pathFindTo(chestLocation)
+                                        return
+                                    }
+
+                                    this.stopPath()
+                                    if (!this.openChest(chestLocation)) {
+                                        return
+                                    }
+
+                                    chestInventory.transferItemStack(currentItem.slotIndex, villagerInventory, amountLeft)
+                                    this.closeChest()
+
+                                    tickTask = false
+                                }
+                                else if (!requiredItem.optional) {
+                                    tickTask = false
+
+                                    const minNeeded = Math.max(1, (requiredItem.min ?? requiredItem.amount) - villagerItemCount)
+                                    if (this.craftTaskItem(village, requiredItem.id, minNeeded, amountLeft)) {
+                                        return
+                                    }
+
+                                    this.cancelTask()
+                                    break
+                                }
+                            }
+                        }
+                    }
+                    else {
+                        tickTask = false
+                        this.cancelTask()
+                    }
+                }
+
+                if (tickTask) {
+                    task.tick?.(villager, village)
+                }
             }
 
             if (!villager.hasTask && !villager.isWaiting) {
@@ -2008,7 +2189,7 @@ export class Villager {
         }
     }
 
-    private get taskContext(): TaskFound {
+    get taskContext(): TaskFound {
         return this.currentTask?.context ?? this.pendingContext
     }
 
@@ -2042,10 +2223,6 @@ export class Villager {
     }
 
     tickDepositToolTask(village: Village) {
-        if (this.isWaiting) {
-            return
-        }
-
         const toolDeposits = this.taskContext.toolDeposits
         if (toolDeposits === undefined) {
             this.cancelTask()
@@ -2097,10 +2274,6 @@ export class Villager {
     }
 
     tickGetToolTask(village: Village) {
-        if (this.isWaiting) {
-            return
-        }
-
         const toolUpgrades = this.taskContext.toolUpgrades
         const toolUpgrade = toolUpgrades?.[0]
         if (toolUpgrades === undefined || toolUpgrade === undefined) {
@@ -2148,10 +2321,6 @@ export class Villager {
     }
 
     tickCraftToolTask(village: Village) {
-        if (this.isWaiting) {
-            return
-        }
-
         const toolCrafts = this.taskContext.toolCrafts
         const craftTask = toolCrafts?.[0]
         if (toolCrafts === undefined || craftTask === undefined) {
@@ -2174,7 +2343,7 @@ export class Villager {
         const villageStorage = village.storage
 
         if (craftTask.crafting === undefined) {
-            const craftingPlan = villageStorage.getCraftingPlan(craftTask.itemId)
+            const craftingPlan = villageStorage.getCraftingPlan(craftTask.itemId, craftTask.amount ?? 1, { smelting: villageStorageStructure.getFurnaces().length > 0 })
             if (craftingPlan === undefined) {
                 toolCrafts.shift()
                 return
@@ -2251,10 +2420,23 @@ export class Villager {
                 return
             }
 
+            smelt.ticks++
+            if (smelt.ticks > smelt.maxTicks) {
+                // The furnace never produced the output (out of fuel, or something else is using it)
+                toolCrafts.shift()
+                return
+            }
+
             const outputSlot = furnaceInventory.getSlot(2)
             const outputItem = outputSlot.getItem()
 
             if (outputItem === undefined) {
+                return
+            }
+
+            if (outputItem.typeId !== smelt.outputId) {
+                // Something else is in the output slot, so the furnace is blocked
+                toolCrafts.shift()
                 return
             }
 
@@ -2321,6 +2503,20 @@ export class Villager {
 
             const inputSlot = furnaceInventory.getSlot(0)
             const fuelSlot = furnaceInventory.getSlot(1)
+            const leftoverOutputSlot = furnaceInventory.getSlot(2)
+
+            // Old output would be mistaken for the new smelt result (or block it if it is a different item)
+            if (leftoverOutputSlot.hasItem()) {
+                const item = leftoverOutputSlot.getItem()
+                if (item !== undefined) {
+                    if (villagerInventory.isFull) {
+                        toolCrafts.shift()
+                        return
+                    }
+                    villagerInventory.addItem(item)
+                }
+                leftoverOutputSlot.setItem(undefined)
+            }
 
             if (inputSlot.hasItem()) {
                 const item = inputSlot.getItem()
@@ -2423,7 +2619,14 @@ export class Villager {
             }
 
             recipeContext.doneSteps[currentCraftingStep.index] = currentCraftingStep.times
-            recipeContext.waitingForSmelt = { amount: currentCraftingStep.output.amount * currentCraftingStep.times, furnace: closestFurnace.location }
+            recipeContext.waitingForSmelt = {
+                amount: currentCraftingStep.output.amount * currentCraftingStep.times,
+                outputId: currentCraftingStep.output.id,
+                furnace: closestFurnace.location,
+                ticks: 0,
+                // A furnace smelts one item per 200 ticks
+                maxTicks: (inputNeeded * 200) + 400
+            }
         }
         else {
             const craftingTables = villageStorageStructure.getCraftingTables()
@@ -2484,10 +2687,6 @@ export class Villager {
         const villagerInventory = this.getInventory()
         if (villagerInventory === undefined) {
             this.cancelTask()
-            return
-        }
-
-        if (this.isWaiting) {
             return
         }
 
@@ -3621,7 +3820,7 @@ export class Villager {
 
             villager.taskProgress++
 
-            if (villager.taskProgress <= 100 || villager.isWaiting) {
+            if (villager.taskProgress <= 100) {
                 return
             }
 
@@ -3640,6 +3839,17 @@ export class Villager {
         else if (mineTask.type === "light") {
             const torchBlock = mineTask.block
 
+            const villagerInventory = this.getInventory()
+            if (villagerInventory === undefined) {
+                villager.cancelTask()
+                return
+            }
+
+            if (!villagerInventory.hasItem({ includesTypes: ["minecraft:torch"] })) {
+                villager.cancelTask()
+                return
+            }
+
             const torchBlockDistance = calculateDistance(torchBlock.location, villager.location)
 
             if (torchBlockDistance >= 1.5) {
@@ -3647,7 +3857,11 @@ export class Villager {
                 return
             }
 
-            torchBlock.replace(BlockPermutation.resolve("torch", { torch_facing_direction: "top" }))
+            const successful = villagerInventory.removeItem({ includesTypes: ["minecraft:torch"] }, 1, true)
+
+            if (successful) {
+                torchBlock.replace(BlockPermutation.resolve("minecraft:torch", { torch_facing_direction: "top" }))
+            }
         }
         else {
             const fillBlock = mineTask.block
@@ -3740,7 +3954,7 @@ export class Villager {
 
         villager.taskProgress++
 
-        if (villager.taskProgress <= 100 || villager.isWaiting) {
+        if (villager.taskProgress <= 100) {
             return
         }
 
@@ -3832,7 +4046,7 @@ export class Villager {
             villager.dimension.spawnParticle("tektopia:cast_forward_beam", villager.location, molangVars)
         }
 
-        if (villager.taskProgress <= 70 || villager.isWaiting) {
+        if (villager.taskProgress <= 70) {
             return
         }
 
@@ -3914,66 +4128,82 @@ export class Villager {
         const dimension = villager.dimension
         const foundTree = villager.taskContext.tree
 
-        if (foundTree !== undefined) {
-            const treeBlock = dimension.getBlockSafe(foundTree)
-            if (treeBlock?.isTree()) {
-                const trunkBlocks = getTrunkBlocks(treeBlock)
-                const trunkCenter = {
-                    x: trunkBlocks.reduce((sum, block) => sum + block.location.x + 0.5, 0) / trunkBlocks.length,
-                    y: treeBlock.location.y,
-                    z: trunkBlocks.reduce((sum, block) => sum + block.location.z + 0.5, 0) / trunkBlocks.length
-                }
-                const treeDist = calculateDistance(trunkCenter, villager.location)
-                if (treeDist <= 5) {
-                    villager.holdingItem = "tool"
-                }
-                else {
-                    villager.holdingItem = undefined
-                }
-                if (treeDist < 0.5 || (!villager.isPathing && treeDist < 3)) {
-                    villager.setAnimation("chopping")
-                    villager.lookAt({ x: trunkCenter.x, y: trunkCenter.y + 0.5, z: trunkCenter.z })
-                    villager.taskProgress++
-                    villager.stopPath()
+        if (foundTree === undefined) {
+            villager.cancelTask()
+            return
+        }
 
-                    if (villager.taskProgress > 100 && !villager.isWaiting) {
-                        const saplingTypeId = treeBlock.typeId.replace(
-                            "_log",
-                            "_sapling"
-                        )
-                        villager.waiting = true
-                        villager.setAnimation(undefined)
+        const treeBlock = dimension.getBlockSafe(foundTree)
+        if (!treeBlock?.isTree()) {
+            village.treeLocations.remove(locationToString(foundTree))
+            villager.cancelTask()
+            return
+        }
 
-                        const trunkKeys = trunkBlocks.map(block => locationToString(block.location))
-                        destroyTree(treeBlock, () => {
-                            village.treeLocations.remove(locationToString(foundTree))
-                            for (const key of trunkKeys) {
-                                village.treeLocations.remove(key)
-                                village.saplingLocations.add(key)
-                            }
-                            villager.cancelTask()
-                            villager.waiting = 30
-                            for (const trunkBlock of trunkBlocks) {
-                                if (!trunkBlock.isValid) {
-                                    continue
-                                }
-                                trunkBlock.replace(saplingTypeId)
-                            }
-                        })
-                    }
-                }
-                else {
-                    villager.pathFindTo(foundTree)
-                }
-            }
-            else {
-                village.treeLocations.remove(locationToString(foundTree))
-                villager.cancelTask()
-            }
+        const trunkBlocks = getTrunkBlocks(treeBlock)
+        const trunkCenter = {
+            x: trunkBlocks.reduce((sum, block) => sum + block.location.x + 0.5, 0) / trunkBlocks.length,
+            y: treeBlock.location.y,
+            z: trunkBlocks.reduce((sum, block) => sum + block.location.z + 0.5, 0) / trunkBlocks.length
+        }
+        const treeDist = calculateDistance(trunkCenter, villager.location)
+        if (treeDist <= 5) {
+            villager.holdingItem = "tool"
         }
         else {
-            villager.cancelTask()
+            villager.holdingItem = undefined
         }
+
+        const villagerInventory = this.getInventory()
+        if (villagerInventory === undefined) {
+            villager.cancelTask()
+            return
+        }
+
+        if (treeDist >= 0.5 && (villager.isPathing || treeDist >= 3)) {
+            villager.pathFindTo(foundTree)
+            return
+        }
+
+        villager.setAnimation("chopping")
+        villager.lookAt({ x: trunkCenter.x, y: trunkCenter.y + 0.5, z: trunkCenter.z })
+        villager.taskProgress++
+        villager.stopPath()
+
+        if (villager.taskProgress <= 100) {
+            return
+        }
+
+        const saplingTypeId = treeBlock.typeId.replace(
+            "_log",
+            "_sapling"
+        )
+        villager.waiting = true
+        villager.setAnimation(undefined)
+
+        const trunkKeys = trunkBlocks.map(block => locationToString(block.location))
+        destroyTree(treeBlock, () => {
+            village.treeLocations.remove(locationToString(foundTree))
+            for (const key of trunkKeys) {
+                village.treeLocations.remove(key)
+                village.saplingLocations.add(key)
+            }
+            villager.cancelTask()
+            villager.waiting = 30
+
+            const saplingAmount = trunkBlocks.length
+
+            const successful = villagerInventory.removeItem({ includesTypes: [saplingTypeId] }, saplingAmount, true)
+
+            if (successful) {
+                for (const trunkBlock of trunkBlocks) {
+                    if (!trunkBlock.isValid) {
+                        continue
+                    }
+                    trunkBlock.replace(saplingTypeId)
+                }
+            }
+        })
     }
 
     tickGrowSapling() {
@@ -4017,7 +4247,7 @@ export class Villager {
             villager.dimension.spawnParticle("tektopia:cast_grow_crop_grow", centerVector(foundSapling, true))
         }
 
-        if (villager.taskProgress <= 80 || villager.isWaiting) {
+        if (villager.taskProgress <= 80) {
             return
         }
 
@@ -4070,7 +4300,7 @@ export class Villager {
             villager.dimension.spawnParticle("tektopia:cast_grow_crop_grow", centerVector(foundGrowableCrop, true))
         }
 
-        if (villager.taskProgress <= 80 || villager.isWaiting) {
+        if (villager.taskProgress <= 80) {
             return
         }
 
@@ -4155,7 +4385,7 @@ export class Villager {
                 villager.taskProgress++
                 villager.stopPath()
 
-                if (villager.taskProgress > 100 && !villager.isWaiting) {
+                if (villager.taskProgress > 100) {
                     if (harvestBlock.isHarvestableCrop) {
                         village.plantLocations[harvestLocationString] = harvestBlock.typeId
                         harvestBlock.destroy(true)
@@ -4198,38 +4428,70 @@ export class Villager {
         const foundPlant = villager.taskContext.plant
         const dimension = villager.dimension
 
-        if (foundPlant !== undefined) {
-            const plantBlock = dimension.getBlockSafe(foundPlant.location)
-            const plantLocationString = locationToString(foundPlant.location)
+        if (foundPlant === undefined) {
+            villager.cancelTask()
+            return
+        }
 
-            if (plantBlock?.isAir) {
-                const plantLocationDist = calculateDistance(centerVector(foundPlant.location, true), villager.location)
-                if (plantLocationDist < 1.25) {
-                    villager.setAnimation("planting")
-                    villager.lookAt(centerVector(foundPlant.location))
-                    villager.taskProgress++
+        const plantBlock = dimension.getBlockSafe(foundPlant.location)
+        const plantLocationString = locationToString(foundPlant.location)
+
+        if (!plantBlock?.isAir) {
+            delete village.plantLocations[plantLocationString]
+            villager.cancelTask()
+            return
+        }
+
+        const seedId = CROP_SEEDS[foundPlant.type]
+        if (seedId === undefined) {
+            villager.cancelTask()
+            return
+        }
+
+        const villagerInventory = this.getInventory()
+        if (villagerInventory === undefined) {
+            villager.cancelTask()
+            return
+        }
+
+        if (!villagerInventory.hasItem({ includesTypes: [seedId] })) {
+            // Seeds ran out for this crop: try another spot whose seed we can still get.
+            // The task loop will fetch the new seed from storage if needed.
+            if (!villager.canGetSeedFor(village, foundPlant.type)) {
+                if (villager.findPlantLocation(village)) {
+                    villager.taskProgress = 0
                     villager.stopPath()
-
-                    if (villager.taskProgress > 100 && !villager.isWaiting) {
-                        plantBlock.replace(foundPlant.type)
-
-                        villager.waiting = 20
-                        villager.setAnimation(undefined)
-                        villager.cancelTask()
-                    }
                 }
                 else {
-                    villager.pathFindTo(foundPlant.location)
+                    villager.cancelTask()
                 }
             }
-            else {
-                delete village.plantLocations[plantLocationString]
-                villager.cancelTask()
-            }
+            return
         }
-        else {
-            villager.cancelTask()
+
+        const plantLocationDist = calculateDistance(centerVector(foundPlant.location, true), villager.location)
+        if (plantLocationDist >= 1.25) {
+            villager.pathFindTo(foundPlant.location)
+            return
         }
+
+        villager.setAnimation("planting")
+        villager.lookAt(centerVector(foundPlant.location))
+        villager.taskProgress++
+        villager.stopPath()
+
+        if (villager.taskProgress <= 100) {
+            return
+        }
+
+        const successful = villagerInventory.removeItem({ includesTypes: [seedId] }, 1, true)
+        if (successful) {
+            plantBlock.replace(foundPlant.type)
+        }
+
+        villager.waiting = 20
+        villager.setAnimation(undefined)
+        villager.cancelTask()
     }
 
     tickTill(village: Village) {
@@ -4258,7 +4520,7 @@ export class Villager {
                     villager.stopPath()
 
                     villager.taskProgress++
-                    if (villager.taskProgress > 100 && !villager.isWaiting) {
+                    if (villager.taskProgress > 100) {
                         villager.waiting = 20
                         villager.setAnimation(undefined)
                         villager.cancelTask()
@@ -4606,6 +4868,7 @@ export class Villager {
                     cancelPath()
                     return
                 }
+
                 if (debugFlags.villagerPathParticles && (system.currentTick + villager.index) % 20 === 0) {
                     for (let i = pathNodeIndex; i < pathNodeList.length; i++) {
                         const debugPathNode = pathNodeList[i]
@@ -4656,15 +4919,18 @@ export class Villager {
                     }
                 }
                 villager.nextPathNode = currentPathNode
-                if (calculateDistance(centerVector(pathNode, true), entityLocation) >= 2) {
+
+                if (calculateDistance(centerVector(pathNode, true), entityLocation) >= 2.25) {
                     cancelPath()
                     return
                 }
+
                 const blocker = findPathBlocker(dimensionId, currentPathNode, villager.id, entityLocation, village, targetId)
                 if (blocker?.cancelPath === true) {
                     cancelPath()
                     return
                 }
+
                 let isBlocked = blocker !== undefined
 
                 const blockedByTektopiaVillager = blocker === undefined ? false : Registry.villagerTypes.includes(blocker.typeId)
@@ -4709,6 +4975,7 @@ export class Villager {
                 else {
                     villager.blockedTimer = 0
                 }
+
                 if (isBlocked) {
                     if (!isMoving) {
                         villager.setAnimation(undefined)
