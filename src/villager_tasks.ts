@@ -16,7 +16,7 @@ import type { Village } from "./village"
 
 import type { Villager } from "./villager"
 
-export const CROP_SEEDS: Record<string, string> = {
+export const cropSeeds: Record<string, string> = {
     "minecraft:wheat": "minecraft:wheat_seeds",
     "minecraft:beetroot": "minecraft:beetroot_seeds",
     "minecraft:carrots": "minecraft:carrot",
@@ -25,15 +25,18 @@ export const CROP_SEEDS: Record<string, string> = {
     "minecraft:pumpkin_stem": "minecraft:pumpkin_seeds"
 }
 
-export const SEED_ITEMS: readonly string[] = [...new Set(Object.values(CROP_SEEDS))]
+export const breedItems: Record<string, string[]> = {
+    "minecraft:pig": ["minecraft:carrot", "minecraft:potato", "minecraft:beetroot"],
+    "minecraft:sheep": ["minecraft:wheat"],
+    "minecraft:cow": ["minecraft:wheat"],
+    "minecraft:chicken": ["minecraft:wheat_seeds", "minecraft:beetroot_seeds"]
+}
 
-export const SEED_CARRY_AMOUNT = 8
+export const seedItems: readonly string[] = [...new Set(Object.values(cropSeeds))]
 
-export const SEED_KEEP: Readonly<Record<string, number>> = Object.fromEntries(
-    SEED_ITEMS.map(seed => [seed, SEED_CARRY_AMOUNT])
+export const seedKeep: Readonly<Record<string, number>> = Object.fromEntries(
+    seedItems.map(seed => [seed, 8])
 )
-
-export const SAPLING_CARRY_AMOUNT = 8
 
 export type UpgradableToolType = (typeof upgradableToolTypes)[number]
 
@@ -142,7 +145,7 @@ export interface Task {
     condition: (villager: Villager, village: Village) => boolean
     interruptible?: boolean
     tick?: (villager: Villager, village: Village) => void
-    taskItems: (villager: Villager, village: Village) => Array<{ id: string, amount: number, optional?: boolean, min?: number }> | undefined
+    taskItems: (villager: Villager, village: Village) => Array<{ id: string | string[], amount: number, optional?: boolean, min?: number }> | undefined
     requiresTool: boolean
 }
 
@@ -229,7 +232,7 @@ export const tektopiaVillagers: Record<string, VillagerConfig> = {
                         return undefined
                     }
 
-                    const seedId = CROP_SEEDS[villager.taskContext.plant.type]
+                    const seedId = cropSeeds[villager.taskContext.plant.type]
                     if (seedId === undefined) {
                         return undefined
                     }
@@ -268,7 +271,7 @@ export const tektopiaVillagers: Record<string, VillagerConfig> = {
                 inventory,
                 this.pickupItems,
                 counts => Object.entries(counts).some(([key, count]) => !key.includes("_seeds") && count > 5),
-                SEED_KEEP,
+                seedKeep,
                 CRAFTING_ITEMS
             )
         },
@@ -322,7 +325,7 @@ export const tektopiaVillagers: Record<string, VillagerConfig> = {
                 this.pickupItems,
                 counts => Object.values(counts).some(count => count > 8),
                 Object.fromEntries(
-                    Registry.saplingTypes.map(sapling => [sapling, SAPLING_CARRY_AMOUNT])
+                    Registry.saplingTypes.map(sapling => [sapling, 16])
                 ),
                 CRAFTING_ITEMS
             )
@@ -448,7 +451,19 @@ export const tektopiaVillagers: Record<string, VillagerConfig> = {
                     villager.findBreedableEntity(village),
                 tick: villager => villager.tickBreedEntity(),
                 requiresTool: false,
-                taskItems: () => []
+                taskItems: villager => {
+                    const targetEntity = villager.taskContext.breedableEntity
+                    if (targetEntity === undefined) {
+                        return undefined
+                    }
+
+                    const itemId = breedItems[targetEntity.id]
+                    if (itemId === undefined) {
+                        return undefined
+                    }
+
+                    return [{ id: itemId, amount: 6, min: 2 }]
+                }
             },
             {
                 id: "shear",
@@ -605,7 +620,15 @@ export const tektopiaVillagers: Record<string, VillagerConfig> = {
 
     "tektopia:villager_blacksmith": {
         customTasks: [
-
+            {
+                id: "smith_items",
+                name: "Smith Items",
+                priority: 10,
+                condition: (villager, village) => villager.checkSmithTask(village),
+                tick: (villager, village) => villager.tickSmithTask(village),
+                requiresTool: false,
+                taskItems: () => [{ id: "tektopia:iron_hammer", amount: 1 }]
+            }
         ],
         pickupItems: () => [],
         depositItems: () => undefined,

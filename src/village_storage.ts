@@ -117,6 +117,22 @@ export class VillageStorage implements Iterable<ContainerSlot> {
         return counts
     }
 
+    getItemCount(itemFilter: ItemStackFilter) {
+        let total = 0
+        for (const chest of this.liveChests()) {
+            for (const slot of chest.container) {
+                const item = slot.getItem()
+                if (!item?.matchesFilter(itemFilter)) {
+                    continue
+                }
+
+                total += item.amount
+            }
+        }
+
+        return total
+    }
+
     canCraft(itemId: string, amount = 1, options?: PlanOptions) {
         return canCraft(itemId, this.getItemCounts(), amount, options)
     }

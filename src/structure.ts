@@ -40,6 +40,9 @@ const noFloorLocations: readonly Vector3[] = []
 
 const floorRescanCooldownTicks = 100
 
+const furnaceTypeIds = ["minecraft:furnace", "minecraft:lit_furnace"] as const
+const blastFurnaceTypeIds = ["minecraft:blast_furnace", "minecraft:lit_blast_furnace"] as const
+
 export interface StructureValidationResult {
     result: boolean | undefined
     doorLocation?: Vector3 | undefined
@@ -944,6 +947,29 @@ export class Structure<T extends StructureData = StructureData> {
         return (this.cachedFloorLocations as Vector3[] | undefined) ?? noFloorLocations
     }
 
+    protected findBlocks(
+        match: string | readonly string[] | ((block: Block) => boolean),
+        floorLocations: readonly Vector3[] = this.loadFloorLocations()
+    ): Block[] {
+        const matches = typeof match === "function"
+            ? match
+            : typeof match === "string"
+                ? (block: Block) => block.typeId === match
+                : (block: Block) => match.includes(block.typeId)
+
+        const found: Block[] = []
+
+        for (const floorLocation of floorLocations) {
+            const block = this.dimension.getBlockSafe(floorLocation)
+
+            if (block !== undefined && matches(block)) {
+                found.push(block)
+            }
+        }
+
+        return found
+    }
+
     get type(): T["type"] {
         return this.data.type
     }
@@ -1267,16 +1293,16 @@ export class BlackSmith extends Structure<BlackSmithData> {
         super(locationString, data, dimension, village)
     }
 
-    getAnvils() {
-
+    getAnvils(floorLocations?: readonly Vector3[]) {
+        return this.findBlocks("minecraft:anvil", floorLocations)
     }
 
-    getFurnaces() {
-
+    getFurnaces(floorLocations?: readonly Vector3[]) {
+        return this.findBlocks(furnaceTypeIds, floorLocations)
     }
 
-    getBlastFurnaces() {
-
+    getBlastFurnaces(floorLocations?: readonly Vector3[]) {
+        return this.findBlocks(blastFurnaceTypeIds, floorLocations)
     }
 }
 
@@ -1285,56 +1311,19 @@ export class StorageStructure extends Structure<StorageStructureData> {
         super(locationString, data, dimension, village)
     }
 
-    getChests(floorLocations: readonly Vector3[] = this.loadFloorLocations()): Block[] {
-        const chestList: Block[] = []
-
-        for (const floorLocation of floorLocations) {
-            const chestBlock = this.dimension.getBlockSafe(floorLocation)
-
-            if (chestBlock?.chest !== undefined && chestBlock.chest.variant !== "ender") {
-                chestList.push(chestBlock)
-            }
-        }
-
-        return chestList
+    getChests(floorLocations?: readonly Vector3[]): Block[] {
+        return this.findBlocks(
+            block => block.chest !== undefined && block.chest.variant !== "ender",
+            floorLocations
+        )
     }
 
-    getCraftingTables(floorLocations: readonly Vector3[] = this.loadFloorLocations()): Block[] {
-        const craftingTableList: Block[] = []
-
-        for (const floorLocation of floorLocations) {
-            const craftingTableBlock = this.dimension.getBlockSafe(floorLocation)
-            if (craftingTableBlock === undefined) {
-                continue
-            }
-
-            if (craftingTableBlock.typeId !== "minecraft:crafting_table") {
-                continue
-            }
-
-            craftingTableList.push(craftingTableBlock)
-        }
-
-        return craftingTableList
+    getCraftingTables(floorLocations?: readonly Vector3[]): Block[] {
+        return this.findBlocks("minecraft:crafting_table", floorLocations)
     }
 
-    getFurnaces(floorLocations: readonly Vector3[] = this.loadFloorLocations()) {
-        const furnaceList: Block[] = []
-
-        for (const floorLocation of floorLocations) {
-            const furnaceBlock = this.dimension.getBlockSafe(floorLocation)
-            if (furnaceBlock === undefined) {
-                continue
-            }
-
-            if (furnaceBlock.typeId !== "minecraft:furnace" && furnaceBlock.typeId !== "minecraft:lit_furnace") {
-                continue
-            }
-
-            furnaceList.push(furnaceBlock)
-        }
-
-        return furnaceList
+    getFurnaces(floorLocations?: readonly Vector3[]) {
+        return this.findBlocks(furnaceTypeIds, floorLocations)
     }
 }
 

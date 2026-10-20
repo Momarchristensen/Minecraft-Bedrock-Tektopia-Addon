@@ -279,483 +279,46 @@ export const Registry = defineRegistry({
 
     craftingRecipes: (): Recipe[] => {
         const recipes: Recipe[] = [
-            {
-                input: [{
-                    id: "minecraft:iron_ingot",
-                    amount: 2
-                }],
-                output: {
-                    id: "minecraft:shears",
-                    amount: 1
-                }
-            },
-            {
-                input: [{
-                    id: Registry.plankTypes,
-                    amount: 2
-                }],
-                output: {
-                    id: "minecraft:stick",
-                    amount: 4
-                }
-            },
-            {
-                input: [
-                    {
-                        id: Registry.plankTypes,
-                        amount: 3
-                    },
-                    {
-                        id: "minecraft:stick",
-                        amount: 2
-                    }
-                ],
-                output: {
-                    id: "minecraft:wooden_axe",
-                    amount: 1
-                }
-            },
-            {
-                input: [
-                    {
-                        id: Registry.plankTypes,
-                        amount: 2
-                    },
-                    {
-                        id: "minecraft:stick",
-                        amount: 2
-                    }
-                ],
-                output: {
-                    id: "minecraft:wooden_hoe",
-                    amount: 1
-                }
-            },
-            {
-                input: [
-                    {
-                        id: Registry.plankTypes,
-                        amount: 2
-                    },
-                    {
-                        id: "minecraft:stick",
-                        amount: 1
-                    }
-                ],
-                output: {
-                    id: "minecraft:wooden_sword",
-                    amount: 1
-                }
-            },
-            {
-                input: [
-                    {
-                        id: Registry.plankTypes,
-                        amount: 3
-                    },
-                    {
-                        id: "minecraft:stick",
-                        amount: 2
-                    }
-                ],
-                output: {
-                    id: "minecraft:wooden_pickaxe",
-                    amount: 1
-                }
-            },
-            {
-                input: [
-                    {
-                        id: "minecraft:coal",
-                        amount: 1
-                    },
-                    {
-                        id: "minecraft:stick",
-                        amount: 1
-                    }
-                ],
-                output: {
-                    id: "minecraft:torch",
-                    amount: 4
-                }
-            },
-            {
-                input: [
-                    {
-                        id: "minecraft:charcoal",
-                        amount: 1
-                    },
-                    {
-                        id: "minecraft:stick",
-                        amount: 1
-                    }
-                ],
-                output: {
-                    id: "minecraft:torch",
-                    amount: 4
-                }
-            },
-
-            {
-                input: [
-                    {
-                        id: "minecraft:copper_ingot",
-                        amount: 3
-                    },
-                    {
-                        id: "minecraft:stick",
-                        amount: 2
-                    }
-                ],
-                output: {
-                    id: "minecraft:copper_pickaxe",
-                    amount: 1
-                }
-            },
-            {
-                input: [
-                    {
-                        id: "minecraft:copper_ingot",
-                        amount: 3
-                    },
-                    {
-                        id: "minecraft:stick",
-                        amount: 2
-                    }
-                ],
-                output: {
-                    id: "minecraft:copper_axe",
-                    amount: 1
-                }
-            },
-            {
-                input: [
-                    {
-                        id: "minecraft:copper_ingot",
-                        amount: 1
-                    },
-                    {
-                        id: "minecraft:stick",
-                        amount: 2
-                    }
-                ],
-                output: {
-                    id: "minecraft:copper_hoe",
-                    amount: 1
-                }
-            },
-            {
-                input: [
-                    {
-                        id: "minecraft:copper_ingot",
-                        amount: 2
-                    },
-                    {
-                        id: "minecraft:stick",
-                        amount: 1
-                    }
-                ],
-                output: {
-                    id: "minecraft:copper_sword",
-                    amount: 1
-                }
-            },
-            {
-                input: [
-                    {
-                        id: "minecraft:copper_ingot",
-                        amount: 5
-                    }
-                ],
-                output: {
-                    id: "minecraft:copper_helmet",
-                    amount: 1
-                }
-            },
-            {
-                input: [
-                    {
-                        id: "minecraft:copper_ingot",
-                        amount: 8
-                    }
-                ],
-                output: {
-                    id: "minecraft:copper_chestplate",
-                    amount: 1
-                }
-            },
-            {
-                input: [
-                    {
-                        id: "minecraft:copper_ingot",
-                        amount: 7
-                    }
-                ],
-                output: {
-                    id: "minecraft:copper_leggings",
-                    amount: 1
-                }
-            },
-            {
-                input: [
-                    {
-                        id: "minecraft:copper_ingot",
-                        amount: 4
-                    }
-                ],
-                output: {
-                    id: "minecraft:copper_boots",
-                    amount: 1
-                }
-            },
-
-            {
-                input: [
-                    {
-                        id: "minecraft:iron_ingot",
-                        amount: 3
-                    },
-                    {
-                        id: "minecraft:stick",
-                        amount: 2
-                    }
-                ],
-                output: {
-                    id: "minecraft:iron_pickaxe",
-                    amount: 1
-                }
-            },
-            {
-                input: [
-                    {
-                        id: "minecraft:iron_ingot",
-                        amount: 3
-                    },
-                    {
-                        id: "minecraft:stick",
-                        amount: 2
-                    }
-                ],
-                output: {
-                    id: "minecraft:iron_axe",
-                    amount: 1
-                }
-            },
-            {
-                input: [
-                    {
-                        id: "minecraft:iron_ingot",
-                        amount: 1
-                    },
-                    {
-                        id: "minecraft:stick",
-                        amount: 2
-                    }
-                ],
-                output: {
-                    id: "minecraft:iron_hoe",
-                    amount: 1
-                }
-            },
-            {
-                input: [
-                    {
-                        id: "minecraft:iron_ingot",
-                        amount: 2
-                    },
-                    {
-                        id: "minecraft:stick",
-                        amount: 1
-                    }
-                ],
-                output: {
-                    id: "minecraft:iron_sword",
-                    amount: 1
-                }
-            },
-            {
-                input: [
-                    {
-                        id: "minecraft:iron_ingot",
-                        amount: 5
-                    }
-                ],
-                output: {
-                    id: "minecraft:iron_helmet",
-                    amount: 1
-                }
-            },
-            {
-                input: [
-                    {
-                        id: "minecraft:iron_ingot",
-                        amount: 8
-                    }
-                ],
-                output: {
-                    id: "minecraft:iron_chestplate",
-                    amount: 1
-                }
-            },
-            {
-                input: [
-                    {
-                        id: "minecraft:iron_ingot",
-                        amount: 7
-                    }
-                ],
-                output: {
-                    id: "minecraft:iron_leggings",
-                    amount: 1
-                }
-            },
-            {
-                input: [
-                    {
-                        id: "minecraft:iron_ingot",
-                        amount: 4
-                    }
-                ],
-                output: {
-                    id: "minecraft:iron_boots",
-                    amount: 1
-                }
-            },
-            {
-                input: [
-                    {
-                        id: "minecraft:diamond",
-                        amount: 3
-                    },
-                    {
-                        id: "minecraft:stick",
-                        amount: 2
-                    }
-                ],
-                output: {
-                    id: "minecraft:diamond_pickaxe",
-                    amount: 1
-                }
-            },
-            {
-                input: [
-                    {
-                        id: "minecraft:diamond",
-                        amount: 3
-                    },
-                    {
-                        id: "minecraft:stick",
-                        amount: 2
-                    }
-                ],
-                output: {
-                    id: "minecraft:diamond_axe",
-                    amount: 1
-                }
-            },
-            {
-                input: [
-                    {
-                        id: "minecraft:diamond",
-                        amount: 1
-                    },
-                    {
-                        id: "minecraft:stick",
-                        amount: 2
-                    }
-                ],
-                output: {
-                    id: "minecraft:diamond_hoe",
-                    amount: 1
-                }
-            },
-            {
-                input: [
-                    {
-                        id: "minecraft:diamond",
-                        amount: 2
-                    },
-                    {
-                        id: "minecraft:stick",
-                        amount: 1
-                    }
-                ],
-                output: {
-                    id: "minecraft:diamond_sword",
-                    amount: 1
-                }
-            },
-            {
-                input: [
-                    {
-                        id: "minecraft:diamond",
-                        amount: 5
-                    }
-                ],
-                output: {
-                    id: "minecraft:diamond_helmet",
-                    amount: 1
-                }
-            },
-            {
-                input: [
-                    {
-                        id: "minecraft:diamond",
-                        amount: 8
-                    }
-                ],
-                output: {
-                    id: "minecraft:diamond_chestplate",
-                    amount: 1
-                }
-            },
-            {
-                input: [
-                    {
-                        id: "minecraft:diamond",
-                        amount: 7
-                    }
-                ],
-                output: {
-                    id: "minecraft:diamond_leggings",
-                    amount: 1
-                }
-            },
-            {
-                input: [
-                    {
-                        id: "minecraft:diamond",
-                        amount: 4
-                    }
-                ],
-                output: {
-                    id: "minecraft:diamond_boots",
-                    amount: 1
-                }
-            },
-            {
-                input: [
-                    {
-                        id: "minecraft:iron_ingot",
-                        amount: 2
-                    }
-                ],
-                output: {
-                    id: "minecraft:shears",
-                    amount: 1
-                }
-            },
-            {
-                input: {
-                    id: "minecraft:raw_iron",
-                    amount: 1
-                },
-                output: {
-                    id: "minecraft:iron_ingot",
-                    amount: 1
-                },
-                usesFurnace: true
-            }
+            { input: [{ id: "minecraft:iron_ingot", amount: 2 }], output: { id: "minecraft:shears", amount: 1 } },
+            { input: [{ id: Registry.plankTypes, amount: 2 }], output: { id: "minecraft:stick", amount: 4 } },
+            { input: [ { id: Registry.plankTypes, amount: 3 }, { id: "minecraft:stick", amount: 2 } ], output: { id: "minecraft:wooden_axe", amount: 1 } },
+            { input: [ { id: Registry.plankTypes, amount: 2 }, { id: "minecraft:stick", amount: 2 } ], output: { id: "minecraft:wooden_hoe", amount: 1 } },
+            { input: [ { id: Registry.plankTypes, amount: 2 }, { id: "minecraft:stick", amount: 1 } ], output: { id: "minecraft:wooden_sword", amount: 1 } },
+            { input: [ { id: Registry.plankTypes, amount: 3 }, { id: "minecraft:stick", amount: 2 } ], output: { id: "minecraft:wooden_pickaxe", amount: 1 } },
+            { input: [ { id: "minecraft:leather", amount: 5 } ], output: { id: "minecraft:leather_helmet", amount: 1 } },
+            { input: [ { id: "minecraft:leather", amount: 8 } ], output: { id: "minecraft:leather_chestplate", amount: 1 } },
+            { input: [ { id: "minecraft:leather", amount: 7 } ], output: { id: "minecraft:leather_leggings", amount: 1 } },
+            { input: [ { id: "minecraft:leather", amount: 4 } ], output: { id: "minecraft:leather_boots", amount: 1 } },
+            { input: [ { id: ["minecraft:coal", "minecraft:charcoal"], amount: 1 }, { id: "minecraft:stick", amount: 1 } ], output: { id: "minecraft:torch", amount: 4 } },
+            { input: [ { id: "minecraft:copper_ingot", amount: 3 }, { id: "minecraft:stick", amount: 2 } ], output: { id: "minecraft:copper_pickaxe", amount: 1 } },
+            { input: [ { id: "minecraft:copper_ingot", amount: 3 }, { id: "minecraft:stick", amount: 2 } ], output: { id: "minecraft:copper_axe", amount: 1 } },
+            { input: [ { id: "minecraft:copper_ingot", amount: 1 }, { id: "minecraft:stick", amount: 2 } ], output: { id: "minecraft:copper_hoe", amount: 1 } },
+            { input: [ { id: "minecraft:copper_ingot", amount: 2 }, { id: "minecraft:stick", amount: 1 } ], output: { id: "minecraft:copper_sword", amount: 1 } },
+            { input: [ { id: "minecraft:copper_ingot", amount: 5 } ], output: { id: "minecraft:copper_helmet", amount: 1 } },
+            { input: [ { id: "minecraft:copper_ingot", amount: 8 } ], output: { id: "minecraft:copper_chestplate", amount: 1 } },
+            { input: [ { id: "minecraft:copper_ingot", amount: 7 } ], output: { id: "minecraft:copper_leggings", amount: 1 } },
+            { input: [ { id: "minecraft:copper_ingot", amount: 4 } ], output: { id: "minecraft:copper_boots", amount: 1 } },
+            { input: [ { id: "minecraft:iron_ingot", amount: 3 }, { id: "minecraft:stick", amount: 2 } ], output: { id: "minecraft:iron_pickaxe", amount: 1 } },
+            { input: [ { id: "minecraft:iron_ingot", amount: 3 }, { id: "minecraft:stick", amount: 2 } ], output: { id: "minecraft:iron_axe", amount: 1 } },
+            { input: [ { id: "minecraft:iron_ingot", amount: 1 }, { id: "minecraft:stick", amount: 2 } ], output: { id: "minecraft:iron_hoe", amount: 1 } },
+            { input: [ { id: "minecraft:iron_ingot", amount: 2 }, { id: "minecraft:stick", amount: 1 } ], output: { id: "minecraft:iron_sword", amount: 1 } },
+            { input: [ { id: "minecraft:iron_ingot", amount: 5 } ], output: { id: "minecraft:iron_helmet", amount: 1 } },
+            { input: [ { id: "minecraft:iron_ingot", amount: 8 } ], output: { id: "minecraft:iron_chestplate", amount: 1 } },
+            { input: [ { id: "minecraft:iron_ingot", amount: 7 } ], output: { id: "minecraft:iron_leggings", amount: 1 } },
+            { input: [ { id: "minecraft:iron_ingot", amount: 4 } ], output: { id: "minecraft:iron_boots", amount: 1 } },
+            { input: [ { id: "minecraft:diamond", amount: 3 }, { id: "minecraft:stick", amount: 2 } ], output: { id: "minecraft:diamond_pickaxe", amount: 1 } },
+            { input: [ { id: "minecraft:diamond", amount: 3 }, { id: "minecraft:stick", amount: 2 } ], output: { id: "minecraft:diamond_axe", amount: 1 } },
+            { input: [ { id: "minecraft:diamond", amount: 1 }, { id: "minecraft:stick", amount: 2 } ], output: { id: "minecraft:diamond_hoe", amount: 1 } },
+            { input: [ { id: "minecraft:diamond", amount: 2 }, { id: "minecraft:stick", amount: 1 } ], output: { id: "minecraft:diamond_sword", amount: 1 } },
+            { input: [ { id: "minecraft:diamond", amount: 5 } ], output: { id: "minecraft:diamond_helmet", amount: 1 } },
+            { input: [ { id: "minecraft:diamond", amount: 8 } ], output: { id: "minecraft:diamond_chestplate", amount: 1 } },
+            { input: [ { id: "minecraft:diamond", amount: 7 } ], output: { id: "minecraft:diamond_leggings", amount: 1 } },
+            { input: [ { id: "minecraft:diamond", amount: 4 } ], output: { id: "minecraft:diamond_boots", amount: 1 } },
+            { input: [ { id: "minecraft:iron_ingot", amount: 2 } ], output: { id: "minecraft:shears", amount: 1 } },
+            { input: { id: "minecraft:raw_iron", amount: 1 }, output: { id: "minecraft:iron_ingot", amount: 1 }, usesFurnace: true },
+            { input: [{ id: Registry.woolTypes, amount: 1 }], output: { id: "minecraft:string", amount: 2 } },
+            { input: [{ id: "minecraft:stick", amount: 3 }, { id: "minecraft:string", amount: 2 }], output: { id: "minecraft:fishing_rod", amount: 1 } },
+            { input: [{ id: "minecraft:stick", amount: 2 }, { id: "minecraft:iron_ingot", amount: 2 }], output: { id: "tektopia:iron_hammer", amount: 1 } }
         ]
 
         for (const id of Registry.logTypes.concat(Registry.woodTypes)) {
@@ -765,7 +328,7 @@ export const Registry = defineRegistry({
                     amount: 1
                 }],
                 output: {
-                    id: `${id.replace("stripped_", "").replace("_log", "")}_planks`,
+                    id: `${id.replace("stripped_", "").replace(/_(log|wood)$/, "")}_planks`,
                     amount: 4
                 }
             })
