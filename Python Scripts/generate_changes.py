@@ -5,7 +5,7 @@ from pathlib import Path
 script_dir = Path(__file__).parent
 
 commands = [
-    ["git", "diff", "HEAD", "--name-only"],
+    ["git", "status", "--short"],
     ["git", "diff", "HEAD"],
 ]
 

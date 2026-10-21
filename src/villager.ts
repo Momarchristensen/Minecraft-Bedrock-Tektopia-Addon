@@ -1199,7 +1199,7 @@ export class Villager {
             if (bestOwnedIndex === -1) {
                 return [{ itemIds, count: 0 }]
             }
-            const count = availableCounts[itemIds[bestOwnedIndex]] ?? 0
+            const count = availableCounts[itemIds[bestOwnedIndex] ?? 0] ?? 0
             if (count >= MAX_SMITHED_PER_ITEM) {
                 return []
             }
