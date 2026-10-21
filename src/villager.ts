@@ -6,6 +6,7 @@ import {
     Entity,
     EntityComponentTypes,
     EntityDamageCause,
+    ItemComponentTypes,
     ItemStack,
     MolangVariableMap,
     system,
@@ -36,6 +37,7 @@ import {
 import {
     CraftingStep,
     type CraftStep,
+    getCraftingPlan,
     getRequiredItems
 } from "./recipes"
 
@@ -85,6 +87,7 @@ import {
 } from "./utils"
 
 import {
+    armorSlotNames,
     type ArmorType,
     armorTypes,
     cropSeeds,
@@ -228,6 +231,7 @@ interface TaskFound {
         ores: LocationString[]
     }
     guardPost?: Vector3
+    abandonedFurnace?: Vector3
     fullAnimalPen?: Vector3
     butcherStructure?: Vector3
     killingEntity?: string
@@ -238,14 +242,26 @@ interface TaskFound {
     craftedTaskItems?: string[]
     smithing?: {
         recipes: SmithingRecipe[]
-        currentRecipe?: SmithingRecipe & { index: number }
+        hasItems?: boolean
+        items?: Record<string, number>
     }
 }
 
 interface SmithingRecipe {
     plan: CraftStep[]
     waitingForSmelt?: { amount: number, outputId: string, furnace: Vector3, ticks: number, maxTicks: number }
-    doneSteps?: number[] }
+    doneSteps?: number[]
+}
+
+// Furnaces a villager couldn't reach, mapped to the tick when they may be tried again
+const unreachableFurnaces = new Map<string, number>()
+
+const UNREACHABLE_FURNACE_RETRY_TICKS = 1200
+
+// Furnace slots: input, fuel, output
+const FURNACE_SLOTS = [0, 1, 2] as const
+
+const SMITH_FURNACE_TYPES = ["minecraft:furnace", "minecraft:lit_furnace", "minecraft:blast_furnace", "minecraft:lit_blast_furnace"]
 
 interface VillagerTask {
     id: string
@@ -261,6 +277,21 @@ function getHighestRankedTool<T extends ItemFilterResult>(itemFilterResults: T[]
         undefined
     )
 }
+
+// Most of any one smithed item (best tier in storage only) before the blacksmith stops making more
+const MAX_SMITHED_PER_ITEM = 5
+
+const smithingCraftingIds = [
+    ["minecraft:diamond_chestplate", "minecraft:iron_chestplate", "minecraft:copper_chestplate"],
+    ["minecraft:diamond_leggings", "minecraft:iron_leggings", "minecraft:copper_leggings"],
+    ["minecraft:diamond_helmet", "minecraft:iron_helmet", "minecraft:copper_helmet"],
+    ["minecraft:diamond_boots", "minecraft:iron_boots", "minecraft:copper_boots"],
+    ["minecraft:diamond_sword", "minecraft:iron_sword", "minecraft:copper_sword"],
+    ["minecraft:diamond_pickaxe", "minecraft:iron_pickaxe", "minecraft:copper_pickaxe"],
+    ["minecraft:diamond_axe", "minecraft:iron_axe", "minecraft:copper_axe"],
+    ["minecraft:diamond_hoe", "minecraft:iron_hoe", "minecraft:copper_hoe"],
+    ["minecraft:shears"]
+]
 
 export class Villager {
     public isBlocked = false
@@ -280,6 +311,7 @@ export class Villager {
         lastActiveTick: number
     }
 
+    private readonly lastEquipment = new Map<number, string>()
     private nextPathNode?: Vector3
     private taskProgress = 0
     private sitChair?: Vector3
@@ -1152,30 +1184,54 @@ export class Villager {
     checkSmithTask(village: Village) {
         const villageStorage = village.storage
 
-        const smithingCraftingIds = [
-            ["minecraft:diamond_chestplate", "minecraft:iron_chestplate"],
-            ["minecraft:diamond_leggings", "minecraft:iron_leggings"],
-            ["minecraft:diamond_helmet", "minecraft:iron_helmet"],
-            ["minecraft:diamond_boots", "minecraft:iron_boots"],
-            ["minecraft:diamond_sword", "minecraft:iron_sword"],
-            ["minecraft:diamond_pickaxe", "minecraft:iron_pickaxe"],
-            ["minecraft:diamond_axe", "minecraft:iron_axe"],
-            ["minecraft:diamond_hoe", "minecraft:iron_hoe"]
-        ]
+        const blacksmithStructure = village.findStructures({ includedTypes: ["blacksmith"] })[0]
+        if (blacksmithStructure === undefined) {
+            this.cancelTask()
+            return false
+        }
 
-        const sortedCounts = smithingCraftingIds.map(itemIds => ({
-            itemIds,
-            count: villageStorage.getItemCount({ includesTypes: itemIds })
-        })).sort((itemIds1, itemIds2) => itemIds1.count - itemIds2.count).map(itemIds => itemIds.itemIds)
+        const availableCounts = villageStorage.getItemCounts()
+
+        // smithingCraftingIds lists each group's tiers from best to worst.
+        // Only the best tier already in storage is counted, and only that tier or better may be crafted.
+        const counts = smithingCraftingIds.flatMap(itemIds => {
+            const bestOwnedIndex = itemIds.findIndex(itemId => (availableCounts[itemId] ?? 0) > 0)
+            if (bestOwnedIndex === -1) {
+                return [{ itemIds, count: 0 }]
+            }
+            const count = availableCounts[itemIds[bestOwnedIndex]] ?? 0
+            if (count >= MAX_SMITHED_PER_ITEM) {
+                return []
+            }
+            // Drop every tier worse than the best one owned
+            return [{ itemIds: itemIds.slice(0, bestOwnedIndex + 1), count }]
+        }).sort((a, b) => a.count - b.count)
+
+        const lowestCount = counts[0]?.count
+
+        if (lowestCount === undefined) {
+            return false
+        }
 
         const craftingPlans: Array<{
             plan: CraftStep[]
         }> | undefined = []
 
-        outer: for (const itemIds of sortedCounts) {
+        const hasFurnace = blacksmithStructure.getFurnaces().length > 0
+
+        outer: for (const item of counts) {
+            if (item.count - lowestCount > 2) {
+                continue
+            }
+
+            const itemIds = item.itemIds
             for (const itemId of itemIds) {
-                const craftingPlan = villageStorage.getCraftingPlan(itemId)
-                if (craftingPlan !== undefined) {
+                // Plan against what is left after earlier plans, so they can't all claim the same materials
+                const craftingPlan = getCraftingPlan(itemId, { ...availableCounts, [itemId]: 0 }, 1, { smelting: hasFurnace })
+                if (craftingPlan !== undefined && craftingPlan.length > 0) {
+                    for (const [requiredId, amount] of Object.entries(getRequiredItems(craftingPlan))) {
+                        availableCounts[requiredId] = (availableCounts[requiredId] ?? 0) - amount
+                    }
                     craftingPlans.push({ plan: craftingPlan })
                     if (craftingPlans.length >= 5) {
                         break outer
@@ -1854,7 +1910,7 @@ export class Villager {
         if (pathError !== undefined) {
             villager.pathError = undefined
         }
-        villager.updateHoldingItem()
+        villager.updateEquipment()
         villager.updateAnimation()
         villager.updateDebugNameTag(village, pathError)
     }
@@ -2200,17 +2256,16 @@ export class Villager {
             }
         }
         else if (!villager.isPathing) {
-            const offset = {
-                x: randomInt(-10, 10),
-                y: 0,
-                z: randomInt(-10, 10)
-            }
-            const randomLocation = addVectors(villagerLocation, offset)
             if (villager.taskProgress > 0) {
                 villager.taskProgress--
             }
             else {
-                villager.taskProgress = randomInt(IDLE_WAIT_MIN_TICKS, IDLE_WAIT_MAX_TICKS)
+                const offset = {
+                    x: randomInt(-10, 10),
+                    y: 0,
+                    z: randomInt(-10, 10)
+                }
+                const randomLocation = addVectors(villagerLocation, offset)
                 let block = dimension.getBlockSafe(randomLocation)
                 if (block !== undefined) {
                     while (block?.isAir) {
@@ -2226,6 +2281,7 @@ export class Villager {
                             3
                         )
                         if (pathNode !== undefined) {
+                            villager.taskProgress = randomInt(IDLE_WAIT_MIN_TICKS, IDLE_WAIT_MAX_TICKS)
                             villager.pathFindTo(pathNode)
                         }
                     }
@@ -2410,12 +2466,14 @@ export class Villager {
     private isFurnaceInUse(furnaceLocation: Vector3) {
         const key = locationToString(furnaceLocation)
         for (const villager of world.getVillagers()) {
-            if (villager.id === this.id) {
-                continue
+            const smelts = [villager.taskContext.toolCrafts?.[0]?.crafting?.waitingForSmelt]
+            for (const recipe of villager.taskContext.smithing?.recipes ?? []) {
+                smelts.push(recipe.waitingForSmelt)
             }
-            const smelt = villager.taskContext.toolCrafts?.[0]?.crafting?.waitingForSmelt
-            if (smelt !== undefined && locationToString(smelt.furnace) === key) {
-                return true
+            for (const smelt of smelts) {
+                if (smelt !== undefined && locationToString(smelt.furnace) === key) {
+                    return true
+                }
             }
         }
         return false
@@ -2455,7 +2513,7 @@ export class Villager {
 
         const recipeContext = craftTask.crafting
 
-        if (!recipeContext.haveItems) {
+        if (!recipeContext.hasItems) {
             const villagerItemCounts = villagerInventory.getItemCounts()
 
             for (const [itemId, amount] of Object.entries(recipeContext.items)) {
@@ -2495,7 +2553,7 @@ export class Villager {
             }
         }
 
-        recipeContext.haveItems = true
+        recipeContext.hasItems = true
 
         recipeContext.doneSteps ??= []
 
@@ -2770,6 +2828,8 @@ export class Villager {
             }
 
             this.taskProgress = 0
+            this.setAnimation(undefined)
+            this.holdingItem = undefined
 
             const successful = villagerInventory.removeItems(currentCraftingStep.input.map(input => ({ itemFilter: { includesTypes: [input.id] }, amount: input.amount })), true)
 
@@ -2783,6 +2843,8 @@ export class Villager {
             this.giveItem(village, villagerInventory, outputItem)
 
             recipeContext.doneSteps[currentCraftingStep.index] = (recipeContext.doneSteps[currentCraftingStep.index] ?? 0) + 1
+
+            this.waiting = 20
         }
     }
 
@@ -4203,12 +4265,12 @@ export class Villager {
                 }
 
                 const possibleBlockWeights = {
-                    "minecraft:stone": 30,
-                    "minecraft:granite": 12,
-                    "minecraft:diorite": 12,
-                    "minecraft:andesite": 12,
-                    "minecraft:coal_ore": 16,
-                    "minecraft:copper_ore": 10,
+                    "minecraft:stone": 12,
+                    "minecraft:granite": 4,
+                    "minecraft:diorite": 4,
+                    "minecraft:andesite": 4,
+                    "minecraft:coal_ore": 10,
+                    "minecraft:copper_ore": 4,
                     "minecraft:gold_ore": 4,
                     "minecraft:iron_ore": 8,
                     "minecraft:redstone_ore": 3,
@@ -4315,6 +4377,139 @@ export class Villager {
         })
     }
 
+    checkCollectFurnaceTask(village: Village) {
+        const blacksmithStructure = village.findStructures({ includedTypes: ["blacksmith"] })[0]
+        if (blacksmithStructure === undefined) {
+            return false
+        }
+
+        const now = system.currentTick
+
+        // Furnaces another villager is already on their way to empty
+        const claimed = new Set<string>()
+        for (const villager of world.getVillagers()) {
+            if (villager.id === this.id) {
+                continue
+            }
+            const claimedFurnace = villager.taskContext.abandonedFurnace
+            if (claimedFurnace !== undefined) {
+                claimed.add(locationToString(claimedFurnace))
+            }
+        }
+
+        let closestFurnace: Block | undefined
+        let bestDistance = Infinity
+        for (const furnace of blacksmithStructure.getFurnaces()) {
+            const key = locationToString(furnace.location)
+
+            if (claimed.has(key) || this.isFurnaceInUse(furnace.location)) {
+                continue
+            }
+
+            const retryTick = unreachableFurnaces.get(key)
+            if (retryTick !== undefined) {
+                if (retryTick > now) {
+                    continue
+                }
+                unreachableFurnaces.delete(key)
+            }
+
+            // Anything left in the input, fuel or output slot counts as abandoned
+            const furnaceContainer = furnace.getComponent(BlockComponentTypes.Inventory)?.container
+            if (furnaceContainer === undefined || !FURNACE_SLOTS.some(slotIndex => furnaceContainer.getSlot(slotIndex).getItem() !== undefined)) {
+                continue
+            }
+
+            const distance = calculateDistance(furnace.bottomCenter(), this.location)
+            if (distance < bestDistance) {
+                bestDistance = distance
+                closestFurnace = furnace
+            }
+        }
+
+        if (closestFurnace === undefined) {
+            return false
+        }
+
+        this.taskContext.abandonedFurnace = closestFurnace.location
+        return true
+    }
+
+    tickCollectFurnaceTask(village: Village) {
+        const furnaceLocation = this.taskContext.abandonedFurnace
+        if (furnaceLocation === undefined) {
+            this.cancelTask()
+            return
+        }
+
+        const furnace = village.dimension.getBlock(furnaceLocation)
+        if (!furnace?.isValid) {
+            this.cancelTask()
+            return
+        }
+
+        // A villager started a smelt in it since this task was picked, so the output is theirs
+        if (this.isFurnaceInUse(furnaceLocation)) {
+            this.cancelTask()
+            return
+        }
+
+        const furnaceInventory = furnace.getComponent(BlockComponentTypes.Inventory)?.container
+        const villagerInventory = this.getInventory()
+        if (furnaceInventory === undefined || villagerInventory === undefined) {
+            this.cancelTask()
+            return
+        }
+
+        const filledSlots = FURNACE_SLOTS.map(slotIndex => furnaceInventory.getSlot(slotIndex)).filter(slot => slot.getItem() !== undefined)
+        if (filledSlots.length === 0) {
+            this.cancelTask()
+            return
+        }
+
+        if (calculateDistance(furnace.bottomCenter(), this.location) > 1.5) {
+            if (this.pathError !== undefined) {
+                unreachableFurnaces.set(locationToString(furnaceLocation), system.currentTick + UNREACHABLE_FURNACE_RETRY_TICKS)
+                this.cancelTask()
+                return
+            }
+            this.pathFindTo(furnaceLocation)
+            return
+        }
+
+        this.stopPath()
+        this.lookAt(furnace.center())
+
+        // Whatever doesn't fit stays in the furnace rather than being dropped on the floor
+        let anythingLeft = false
+        let tookAnything = false
+        for (const slot of filledSlots) {
+            const item = slot.getItem()
+            if (item === undefined) {
+                continue
+            }
+            const leftover = villagerInventory.addItem(item)
+            if (leftover === undefined) {
+                slot.setItem(undefined)
+                tookAnything = true
+            }
+            else if (leftover.amount < item.amount) {
+                slot.amount = leftover.amount
+                anythingLeft = true
+                tookAnything = true
+            }
+            else {
+                anythingLeft = true
+            }
+        }
+
+        if (anythingLeft && !tookAnything) {
+            unreachableFurnaces.set(locationToString(furnaceLocation), system.currentTick + UNREACHABLE_FURNACE_RETRY_TICKS)
+        }
+
+        this.cancelTask()
+    }
+
     tickSmithTask(village: Village) {
         const smithingContext = this.taskContext.smithing
         if (smithingContext === undefined) {
@@ -4322,348 +4517,392 @@ export class Villager {
             return
         }
 
+        const villageStorage = village.storage
+
         const villagerInventory = this.getInventory()
         if (villagerInventory === undefined) {
             return
         }
 
-        for (let i = 0; i < smithingContext.recipes.length; i++) {
-            const recipe = smithingContext.recipes[i]
-            if (recipe === undefined) {
-                continue
+        // Step 1: gather everything every recipe needs from the village storage
+        if (!smithingContext.hasItems) {
+            const villagerItemCounts = villagerInventory.getItemCounts()
+
+            if (smithingContext.items === undefined) {
+                const items: Record<string, number> = {}
+                for (const recipe of smithingContext.recipes) {
+                    for (const [itemId, amount] of Object.entries(getRequiredItems(recipe.plan))) {
+                        items[itemId] = (items[itemId] ?? 0) + amount
+                    }
+                }
+
+                smithingContext.items = items
             }
 
-            function cancelRecipe() {
-                smithingContext?.recipes.splice(i, 1)
+            for (const [itemId, amount] of Object.entries(smithingContext.items)) {
+                const amountNeeded = amount - (villagerItemCounts[itemId] ?? 0)
+                if (amountNeeded > 0) {
+                    const itemResults = villageStorage.findItems({ includesTypes: [itemId] }, amountNeeded)
+                    const targetItem = itemResults[0]
+                    if (targetItem === undefined) {
+                        this.cancelTask()
+                        return
+                    }
+
+                    const chestLocation = targetItem.chest.location
+                    const chestDistance = calculateDistance(centerVector(chestLocation, true), this.location)
+
+                    if (chestDistance > 1.5) {
+                        this.pathFindTo(chestLocation)
+                        return
+                    }
+
+                    this.stopPath()
+                    if (!this.openChest(chestLocation)) {
+                        return
+                    }
+
+                    const moved = targetItem.chest.container.transferItemStack(targetItem.slotIndex, villagerInventory, targetItem.item.amount)
+                    this.closeChest()
+
+                    if (moved <= 0) {
+                        // Nothing fit in the villager's inventory (or the stack vanished), retrying would loop forever
+                        this.cancelTask()
+                        return
+                    }
+
+                    return
+                }
             }
 
+            smithingContext.hasItems = true
+        }
+
+        const blacksmithStructure = village.findStructures({ includedTypes: ["blacksmith"] })[0]
+        if (blacksmithStructure === undefined) {
+            this.cancelTask()
+            return
+        }
+
+        const dropRecipe = (recipe: SmithingRecipe) => {
+            const index = smithingContext.recipes.indexOf(recipe)
+            if (index !== -1) {
+                smithingContext.recipes.splice(index, 1)
+            }
+        }
+
+        const nextStep = (recipe: SmithingRecipe) => {
+            recipe.doneSteps ??= []
+            for (const [index, step] of recipe.plan.entries()) {
+                const doneStep = recipe.doneSteps[index]
+                if (doneStep === undefined || doneStep < step.times) {
+                    return { ...step, index }
+                }
+            }
+            return undefined
+        }
+
+        // Step 2: check every furnace in use. Time passes for all of them, whether or not the villager is nearby
+        let finishedRecipe: SmithingRecipe | undefined
+        for (const recipe of [...smithingContext.recipes]) {
             const waitingForSmelt = recipe.waitingForSmelt
-
             if (waitingForSmelt === undefined) {
                 continue
             }
 
-            const furnaceLocation = waitingForSmelt.furnace
-
-            const furnaceDistance = calculateDistance(centerVector(furnaceLocation, true), this.location)
-            if (furnaceDistance > 1.5) {
-                this.pathFindTo(furnaceLocation)
-                continue
-            }
-
-            const furnace = village.dimension.getBlock(furnaceLocation)
-            if (furnace === undefined || (furnace.typeId !== "minecraft:furnace" && furnace.typeId !== "minecraft:lit_furnace")) {
-                cancelRecipe()
+            const furnace = village.dimension.getBlock(waitingForSmelt.furnace)
+            // The blacksmith prefers blast furnaces, so those count as valid smelting furnaces here too
+            if (furnace === undefined || !SMITH_FURNACE_TYPES.includes(furnace.typeId)) {
+                dropRecipe(recipe)
                 continue
             }
 
             const furnaceInventory = furnace.getComponent(BlockComponentTypes.Inventory)?.container
             if (furnaceInventory === undefined) {
-                cancelRecipe()
+                dropRecipe(recipe)
                 continue
             }
 
             waitingForSmelt.ticks++
+
+            const outputItem = furnaceInventory.getSlot(2).getItem()
+
+            if (outputItem !== undefined && outputItem.typeId !== waitingForSmelt.outputId) {
+                // Something else is in the output slot, so the furnace is blocked
+                dropRecipe(recipe)
+                continue
+            }
+
+            if (outputItem !== undefined && outputItem.amount >= waitingForSmelt.amount) {
+                finishedRecipe ??= recipe
+                continue
+            }
+
             if (waitingForSmelt.ticks > waitingForSmelt.maxTicks) {
                 // The furnace never produced the output (out of fuel, or something else is using it)
-                cancelRecipe()
-                continue
+                dropRecipe(recipe)
+            }
+        }
+
+        if (smithingContext.recipes.length === 0) {
+            this.cancelTask()
+            return
+        }
+
+        // Step 3: start smelting everything that needs a furnace, as long as a free furnace is available
+        const pendingSmelt = smithingContext.recipes.find(recipe => {
+            if (recipe.waitingForSmelt !== undefined) {
+                return false
+            }
+            return nextStep(recipe)?.smelt === true
+        })
+
+        if (pendingSmelt !== undefined) {
+            const smeltStep = nextStep(pendingSmelt)
+            if (smeltStep?.smelt === true) {
+                const furnaces = blacksmithStructure.getFurnaces()
+
+                if (furnaces.length === 0) {
+                    dropRecipe(pendingSmelt)
+                    return
+                }
+
+                const freeFurnaces = furnaces.filter(furnace => !this.isFurnaceInUse(furnace.location)).map(block => ({ block, isBlastFurnace: block.typeId === "minecraft:blast_furnace" || block.typeId === "minecraft:lit_blast_furnace" }))
+
+                if (freeFurnaces.length > 0) {
+                    const closestFurnace = freeFurnaces.reduce((closest, table) =>
+                        (table.isBlastFurnace && !closest.isBlastFurnace)
+    || (table.isBlastFurnace === closest.isBlastFurnace
+        && calculateDistance(table.block.bottomCenter(), this.location)
+        < calculateDistance(closest.block.bottomCenter(), this.location))
+                            ? table
+                            : closest
+                    ).block
+
+                    const furnaceDistance = calculateDistance(closestFurnace.bottomCenter(), this.location)
+                    if (furnaceDistance > 1.5) {
+                        this.pathFindTo(closestFurnace.location)
+                        return
+                    }
+
+                    const furnaceInventory = closestFurnace.getComponent(BlockComponentTypes.Inventory)?.container
+                    if (furnaceInventory === undefined) {
+                        dropRecipe(pendingSmelt)
+                        return
+                    }
+
+                    this.stopPath()
+                    this.lookAt(closestFurnace.center())
+
+                    const inputSlot = furnaceInventory.getSlot(0)
+                    const fuelSlot = furnaceInventory.getSlot(1)
+
+                    // Anything already in the furnace is taken out first (old output would be mistaken for the new result)
+                    for (const slot of [furnaceInventory.getSlot(2), inputSlot, fuelSlot]) {
+                        const item = slot.getItem()
+                        if (item === undefined) {
+                            continue
+                        }
+                        if (villagerInventory.isFull) {
+                            dropRecipe(pendingSmelt)
+                            return
+                        }
+                        this.giveItem(village, villagerInventory, item)
+                        slot.setItem(undefined)
+                    }
+
+                    // The whole step is loaded at once. The plan is only read here, never modified
+                    const inputNeeded = smeltStep.input.amount * smeltStep.times
+                    const fuelNeeded = smeltStep.fuel.amount
+
+                    const inputResults = villagerInventory.findItems({ includesTypes: [smeltStep.input.id] }, inputNeeded)
+                    const fuelResults = villagerInventory.findItems({ includesTypes: [smeltStep.fuel.id] }, fuelNeeded)
+
+                    const inputAvailable = inputResults.reduce((sum, result) => sum + result.item.amount, 0)
+                    const fuelAvailable = fuelResults.reduce((sum, result) => sum + result.item.amount, 0)
+
+                    // Furnace slots hold one stack, so a step that doesn't fit in a single stack can't be loaded in one go
+                    const inputMax = inputResults[0]?.item.maxAmount ?? 0
+                    const fuelMax = fuelResults[0]?.item.maxAmount ?? 0
+
+                    if (inputAvailable < inputNeeded || fuelAvailable < fuelNeeded || inputNeeded > inputMax || fuelNeeded > fuelMax) {
+                        dropRecipe(pendingSmelt)
+                        return
+                    }
+
+                    const loadSlot = (results: typeof inputResults, target: typeof inputSlot) => {
+                        for (const result of results) {
+                            const slot = villagerInventory.getSlot(result.slotIndex)
+                            const item = slot.getItem()
+                            if (item === undefined) {
+                                continue
+                            }
+
+                            const existing = target.getItem()
+                            if (existing !== undefined && !existing.isStackableWith(item)) {
+                                continue
+                            }
+
+                            const decreaseResult = slot.decreaseAmount(result.item.amount)
+                            if (decreaseResult === undefined) {
+                                continue
+                            }
+
+                            if (existing !== undefined) {
+                                target.amount += decreaseResult.item.amount
+                            }
+                            else {
+                                target.setItem(decreaseResult.item)
+                            }
+                        }
+                    }
+
+                    loadSlot(inputResults, inputSlot)
+                    loadSlot(fuelResults, fuelSlot)
+
+                    if (!inputSlot.hasItem()) {
+                        dropRecipe(pendingSmelt)
+                        return
+                    }
+
+                    pendingSmelt.doneSteps ??= []
+
+                    pendingSmelt.doneSteps[smeltStep.index] = smeltStep.times
+                    pendingSmelt.waitingForSmelt = {
+                        amount: smeltStep.output.amount * smeltStep.times,
+                        outputId: smeltStep.output.id,
+                        furnace: closestFurnace.location,
+                        ticks: 0,
+                        // A furnace smelts one item per 200 ticks
+                        maxTicks: (inputNeeded * 200) + 400
+                    }
+                    return
+                }
+                // No free furnace right now: carry on with crafting or collecting below and come back later
+            }
+        }
+
+        // Step 4: collect smelted items that are finished, so the recipe can continue
+        if (finishedRecipe?.waitingForSmelt !== undefined) {
+            const waitingForSmelt = finishedRecipe.waitingForSmelt
+
+            const furnaceDistance = calculateDistance(centerVector(waitingForSmelt.furnace, true), this.location)
+            if (furnaceDistance > 1.5) {
+                this.pathFindTo(waitingForSmelt.furnace)
+                return
+            }
+
+            const furnaceInventory = village.dimension.getBlock(waitingForSmelt.furnace)?.getComponent(BlockComponentTypes.Inventory)?.container
+            if (furnaceInventory === undefined) {
+                dropRecipe(finishedRecipe)
+                return
             }
 
             const outputSlot = furnaceInventory.getSlot(2)
             const outputItem = outputSlot.getItem()
-
             if (outputItem === undefined) {
-                continue
-            }
-
-            if (outputItem.typeId !== waitingForSmelt.outputId) {
-                // Something else is in the output slot, so the furnace is blocked
-                cancelRecipe()
-                continue
-            }
-
-            if (outputSlot.amount >= waitingForSmelt.amount) {
-                if (villagerInventory.isFull) {
-                    cancelRecipe()
-                    continue
-                }
-
-                this.giveItem(village, villagerInventory, outputItem)
-
-                outputSlot.setItem(undefined)
-                delete recipe.waitingForSmelt
-            }
-
-            break
-        }
-
-        let currentRecipe = smithingContext.currentRecipe
-        let currentIndex = 0
-
-        if (currentRecipe === undefined) {
-            for (const [index, recipe] of smithingContext.recipes.entries()) {
-                if (recipe.waitingForSmelt !== undefined) {
-                    continue
-                }
-
-                currentIndex = index
-            }
-
-            const current = smithingContext.recipes[currentIndex]
-
-            currentRecipe = current !== undefined ? { ...current, index: currentIndex } : undefined
-
-            smithingContext.currentRecipe = currentRecipe
-        }
-        else {
-            currentIndex = currentRecipe.index
-        }
-
-        if (currentRecipe === undefined) {
-            this.cancelTask()
-            return
-        }
-
-        const villageBlacksmithStructure = village.findStructures({ includedTypes: ["blacksmith"] })[0]
-        if (villageBlacksmithStructure === undefined) {
-            this.cancelTask()
-            return
-        }
-
-        currentRecipe.doneSteps ??= []
-
-        let currentCraftingStep
-
-        for (const [index, step] of currentRecipe.plan.entries()) {
-            const doneStep = currentRecipe.doneSteps[index]
-            if (doneStep === undefined || doneStep < step.times) {
-                currentCraftingStep = { ...step, index }
-                break
-            }
-        }
-
-        function cancelCraftingTask() {
-            smithingContext?.recipes.splice(currentIndex, 1)
-        }
-
-        if (currentCraftingStep === undefined) {
-            cancelCraftingTask()
-            return
-        }
-
-        if (currentCraftingStep.smelt) {
-            const furnaces = villageBlacksmithStructure.getFurnaces()
-
-            if (furnaces.length === 0) {
-                cancelCraftingTask()
                 return
             }
 
-            // Another villager's smelt is still running in a furnace, so loading it would steal that villager's items.
-            // Wait for a free one. Claims are derived from waitingForSmelt, so they release when that villager finishes or gives up
-            const freeFurnaces = furnaces.filter(furnace => !this.isFurnaceInUse(furnace.location))
-            if (freeFurnaces.length === 0) {
-                this.stopPath()
-                return
-            }
-
-            const closestFurnace = freeFurnaces.reduce((closest, table) =>
-                calculateDistance(table.bottomCenter(), this.location)
-                    < calculateDistance(closest.bottomCenter(), this.location)
-                    ? table
-                    : closest
-            )
-
-            const furnaceDistance = calculateDistance(closestFurnace.bottomCenter(), this.location)
-            if (furnaceDistance > 1.5) {
-                this.pathFindTo(closestFurnace.location)
-                return
-            }
-
-            const furnaceInventory = closestFurnace.getComponent(BlockComponentTypes.Inventory)?.container
-            if (furnaceInventory === undefined) {
-                cancelCraftingTask()
+            if (villagerInventory.isFull) {
+                dropRecipe(finishedRecipe)
                 return
             }
 
             this.stopPath()
-            this.lookAt(closestFurnace.center())
-
-            const inputSlot = furnaceInventory.getSlot(0)
-            const fuelSlot = furnaceInventory.getSlot(1)
-            const leftoverOutputSlot = furnaceInventory.getSlot(2)
-
-            // Old output would be mistaken for the new smelt result (or block it if it is a different item)
-            if (leftoverOutputSlot.hasItem()) {
-                const item = leftoverOutputSlot.getItem()
-                if (item !== undefined) {
-                    if (villagerInventory.isFull) {
-                        cancelCraftingTask()
-                        return
-                    }
-                    this.giveItem(village, villagerInventory, item)
-                }
-                leftoverOutputSlot.setItem(undefined)
-            }
-
-            if (inputSlot.hasItem()) {
-                const item = inputSlot.getItem()
-                if (item !== undefined) {
-                    if (villagerInventory.isFull) {
-                        cancelCraftingTask()
-                        return
-                    }
-                    this.giveItem(village, villagerInventory, item)
-                }
-                inputSlot.setItem(undefined)
-            }
-
-            if (fuelSlot.hasItem()) {
-                const item = fuelSlot.getItem()
-                if (item !== undefined) {
-                    if (villagerInventory.isFull) {
-                        cancelCraftingTask()
-                        return
-                    }
-                    this.giveItem(village, villagerInventory, item)
-                }
-                fuelSlot.setItem(undefined)
-            }
-
-            // The whole step is loaded at once. The plan is only read here, never modified
-            const inputNeeded = currentCraftingStep.input.amount * currentCraftingStep.times
-            const fuelNeeded = currentCraftingStep.fuel.amount
-
-            const inputResults = villagerInventory.findItems({ includesTypes: [currentCraftingStep.input.id] }, inputNeeded)
-            const fuelResults = villagerInventory.findItems({ includesTypes: [currentCraftingStep.fuel.id] }, fuelNeeded)
-
-            const inputAvailable = inputResults.reduce((sum, result) => sum + result.item.amount, 0)
-            const fuelAvailable = fuelResults.reduce((sum, result) => sum + result.item.amount, 0)
-
-            // Furnace slots hold one stack, so a step that doesn't fit in a single stack can't be loaded in one go
-            const inputMax = inputResults[0]?.item.maxAmount ?? 0
-            const fuelMax = fuelResults[0]?.item.maxAmount ?? 0
-
-            if (inputAvailable < inputNeeded || fuelAvailable < fuelNeeded || inputNeeded > inputMax || fuelNeeded > fuelMax) {
-                cancelCraftingTask()
-                return
-            }
-
-            for (const result of inputResults) {
-                const slot = villagerInventory.getSlot(result.slotIndex)
-                const item = slot.getItem()
-                if (item === undefined) {
-                    cancelCraftingTask()
-                    return
-                }
-
-                const existingInput = inputSlot.getItem()
-                if (existingInput !== undefined && !existingInput.isStackableWith(item)) {
-                    continue
-                }
-
-                const decreaseResult = slot.decreaseAmount(result.item.amount)
-                if (decreaseResult === undefined) {
-                    continue
-                }
-
-                if (existingInput !== undefined) {
-                    inputSlot.amount += decreaseResult.item.amount
-                }
-                else {
-                    inputSlot.setItem(decreaseResult.item)
-                }
-            }
-
-            for (const result of fuelResults) {
-                const slot = villagerInventory.getSlot(result.slotIndex)
-                const item = slot.getItem()
-                if (item === undefined) {
-                    cancelCraftingTask()
-                    return
-                }
-
-                const existingFuel = fuelSlot.getItem()
-                if (existingFuel !== undefined && !existingFuel.isStackableWith(item)) {
-                    continue
-                }
-
-                const decreaseResult = slot.decreaseAmount(result.item.amount)
-                if (decreaseResult === undefined) {
-                    continue
-                }
-
-                if (existingFuel !== undefined) {
-                    fuelSlot.amount += decreaseResult.item.amount
-                }
-                else {
-                    fuelSlot.setItem(decreaseResult.item)
-                }
-            }
-
-            if (!inputSlot.hasItem()) {
-                cancelCraftingTask()
-                return
-            }
-
-            currentRecipe.doneSteps[currentCraftingStep.index] = currentCraftingStep.times
-            currentRecipe.waitingForSmelt = {
-                amount: currentCraftingStep.output.amount * currentCraftingStep.times,
-                outputId: currentCraftingStep.output.id,
-                furnace: closestFurnace.location,
-                ticks: 0,
-                // A furnace smelts one item per 200 ticks
-                maxTicks: (inputNeeded * 200) + 400
-            }
-        }
-        else {
-            const anvils = villageBlacksmithStructure.getAnvils()
-
-            if (anvils.length === 0) {
-                cancelCraftingTask()
-                return
-            }
-
-            const anvilTable = anvils.reduce((closest, table) =>
-                calculateDistance(table.bottomCenter(), this.location)
-                    < calculateDistance(closest.bottomCenter(), this.location)
-                    ? table
-                    : closest
-            )
-
-            const anvilDistance = calculateDistance(anvilTable.bottomCenter(), this.location)
-            if (anvilDistance > 1.5) {
-                this.pathFindTo(anvilTable.location)
-                return
-            }
-
-            this.stopPath()
-            this.setAnimation("crafting")
-            this.lookAt(anvilTable.center())
-            this.holdingItem = currentCraftingStep.output.id
-
-            this.taskProgress++
-
-            if (this.taskProgress <= 100) {
-                return
-            }
-
-            this.taskProgress = 0
-
-            const successful = villagerInventory.removeItems(currentCraftingStep.input.map(input => ({ itemFilter: { includesTypes: [input.id] }, amount: input.amount })), true)
-
-            if (!successful) {
-                cancelCraftingTask()
-                return
-            }
-
-            const outputItem = new ItemStack(currentCraftingStep.output.id, currentCraftingStep.output.amount)
-            outputItem.makeVillagerItem()
+            this.lookAt(centerVector(waitingForSmelt.furnace, true))
             this.giveItem(village, villagerInventory, outputItem)
-
-            currentRecipe.doneSteps[currentCraftingStep.index] = (currentRecipe.doneSteps[currentCraftingStep.index] ?? 0) + 1
+            outputSlot.setItem(undefined)
+            delete finishedRecipe.waitingForSmelt
+            return
         }
+
+        // Step 5: craft whatever is ready (recipes still waiting on a furnace are skipped)
+        const readyRecipe = smithingContext.recipes.find(recipe => {
+            if (recipe.waitingForSmelt !== undefined) {
+                return false
+            }
+            const step = nextStep(recipe)
+            return step !== undefined && !step.smelt
+        })
+
+        if (readyRecipe === undefined) {
+            // Remove recipes that are completely done
+            for (const recipe of [...smithingContext.recipes]) {
+                if (recipe.waitingForSmelt === undefined && nextStep(recipe) === undefined) {
+                    dropRecipe(recipe)
+                }
+            }
+
+            if (smithingContext.recipes.length === 0) {
+                this.cancelTask()
+                return
+            }
+
+            // Everything left is waiting for a furnace to finish (or to become free)
+            this.stopPath()
+            this.setAnimation(undefined)
+            return
+        }
+
+        const craftingStep = nextStep(readyRecipe)
+        if (craftingStep === undefined || craftingStep.smelt) {
+            return
+        }
+
+        const useAnvil = smithingCraftingIds.flat().includes(craftingStep.output.id)
+
+        const craftingBlock = useAnvil ? blacksmithStructure.getAnvils() : blacksmithStructure.getCraftingTables()
+
+        if (craftingBlock.length === 0) {
+            dropRecipe(readyRecipe)
+            return
+        }
+
+        const anvilTable = craftingBlock.reduce((closest, table) =>
+            calculateDistance(table.bottomCenter(), this.location)
+                < calculateDistance(closest.bottomCenter(), this.location)
+                ? table
+                : closest
+        )
+
+        const anvilDistance = calculateDistance(anvilTable.bottomCenter(), this.location)
+        if (anvilDistance > 1.5) {
+            this.pathFindTo(anvilTable.location)
+            return
+        }
+
+        this.stopPath()
+        this.setAnimation(useAnvil ? "forging" : "crafting")
+        this.lookAt(anvilTable.center())
+        this.holdingItem = useAnvil ? "tektopia:iron_hammer" : craftingStep.output.id
+
+        this.taskProgress++
+
+        if (this.taskProgress <= 100) {
+            return
+        }
+
+        this.taskProgress = 0
+        this.setAnimation(undefined)
+        this.holdingItem = undefined
+
+        const successful = villagerInventory.removeItems(craftingStep.input.map(input => ({ itemFilter: { includesTypes: [input.id] }, amount: input.amount })), true)
+
+        if (!successful) {
+            dropRecipe(readyRecipe)
+            return
+        }
+
+        const outputItem = new ItemStack(craftingStep.output.id, craftingStep.output.amount)
+        outputItem.makeVillagerItem()
+        this.giveItem(village, villagerInventory, outputItem)
+
+        readyRecipe.doneSteps ??= []
+
+        readyRecipe.doneSteps[craftingStep.index] = (readyRecipe.doneSteps[craftingStep.index] ?? 0) + 1
+
+        this.waiting = 20
     }
 
     tickGrowSapling() {
@@ -5028,6 +5267,7 @@ export class Villager {
                 const guardLocation = guardPost.getRandomGuardLocation()
 
                 if (guardLocation === undefined) {
+                    this.taskProgress = randomInt(20, 200)
                     return
                 }
 
@@ -5040,14 +5280,21 @@ export class Villager {
 
     tickGuardVillage(village: Village) {
         if (!this.isPathing) {
+            if (this.taskProgress > 0) {
+                this.taskProgress--
+                return
+            }
+
             const otherVillagers = village.getVillagers().filter(otherVillager => otherVillager.id !== this.id)
             const randomVillager = randomItem(otherVillagers)
 
             if (randomVillager === undefined) {
+                this.taskProgress = randomInt(20, 200)
                 return
             }
 
             this.pathFindTo(randomVillager)
+            this.taskProgress = randomInt(20, 100)
         }
     }
 
@@ -5162,13 +5409,33 @@ export class Villager {
         return this.holdingItem
     }
 
-    updateHoldingItem() {
+    updateEquipment() {
         const holdingItem = this.getHoldingItemId()
         if (this.lastHoldingItem !== holdingItem) {
             this.lastHoldingItem = holdingItem
-            this.entity.runCommand(
-                holdingItem !== undefined ? `replaceitem entity @s slot.weapon.offhand 0 ${holdingItem}` : "replaceitem entity @s slot.weapon.offhand 0 air"
-            )
+            this.entity.runCommand( `replaceitem entity @s slot.weapon.offhand 0 ${holdingItem ?? "air"}`)
+        }
+
+        const villagerConfig = this.getConfig()
+        if (!villagerConfig?.wearsArmor) {
+            return
+        }
+
+        for (const [index, toolType] of armorTypes.entries()) {
+            const itemId = this.getBestTool(toolType)?.item.typeId
+            const slotName = armorSlotNames[index]
+            if (slotName === undefined) {
+                continue
+            }
+
+            const equipmentId = itemId ?? "air"
+            if (this.lastEquipment.get(index) === equipmentId) {
+                continue
+            }
+
+            this.lastEquipment.set(index, equipmentId)
+
+            this.entity.runCommand(`replaceitem entity @s slot.armor.${slotName} 0 ${equipmentId}`)
         }
     }
 

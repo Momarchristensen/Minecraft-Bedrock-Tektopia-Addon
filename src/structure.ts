@@ -1297,12 +1297,12 @@ export class BlackSmith extends Structure<BlackSmithData> {
         return this.findBlocks("minecraft:anvil", floorLocations)
     }
 
-    getFurnaces(floorLocations?: readonly Vector3[]) {
-        return this.findBlocks(furnaceTypeIds, floorLocations)
+    getCraftingTables(floorLocations?: readonly Vector3[]): Block[] {
+        return this.findBlocks("minecraft:crafting_table", floorLocations)
     }
 
-    getBlastFurnaces(floorLocations?: readonly Vector3[]) {
-        return this.findBlocks(blastFurnaceTypeIds, floorLocations)
+    getFurnaces(floorLocations?: readonly Vector3[]) {
+        return this.findBlocks(blastFurnaceTypeIds, floorLocations).concat(this.findBlocks(furnaceTypeIds, floorLocations))
     }
 }
 
@@ -1536,8 +1536,10 @@ export class Barracks extends BedStructure<BarracksData> {
         return villager.typeId === GUARD_TYPE_ID
     }
 
-    protected override shouldTransferBed() {
-        return true
+    protected override shouldTransferBed(_villager: BedVillager, claimed: BedInfo) {
+        // Only pull guards out of non-barracks homes; otherwise guards bounce between barracks.
+        return !this.village.findStructures({ includedTypes: ["barracks"] })
+            .some(barracks => barracks.locationString === claimed.home)
     }
 
     getFreeBedCount(floorLocations: readonly Vector3[] = this.loadFloorLocations()) {
@@ -1639,6 +1641,7 @@ Structure.register("home_6", (locationString, data, dimension, village) => new H
 Structure.register("barracks", (locationString, data, dimension, village) => new Barracks(locationString, data as BarracksData, dimension, village))
 
 Structure.register("storage", (locationString, data, dimension, village) => new StorageStructure(locationString, data as StorageStructureData, dimension, village))
+Structure.register("blacksmith", (locationString, data, dimension, village) => new BlackSmith(locationString, data as BlackSmithData, dimension, village))
 
 function tickScanStructures() {
     system.runJob(scanStructures(() => system.runTimeout(tickScanStructures, 100)))

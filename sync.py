@@ -68,7 +68,7 @@ pack_dir = script_dir.parent
 # 'path' may be a string or a pathlib.Path (or any os.PathLike).
 DIRECTORIES: List[Dict[str, Any]] = [
     {
-        "path": pack_dir / "resource_packs" / "TekTopia" / "entity",
+        "path": pack_dir / "resource_packs" / "TekTopia" / "entity"/ "tektopia_villager",
         "properties": [
             ["minecraft:client_entity", "description", "sound_effects"],
             ["minecraft:client_entity", "description", "particle_effects"],
@@ -77,7 +77,7 @@ DIRECTORIES: List[Dict[str, Any]] = [
         ],
     },
     {
-        "path": pack_dir / "behavior_packs" / "TekTopia" / "entities" / "tektopia",
+        "path": pack_dir / "behavior_packs" / "TekTopia" / "entities" / "tektopia_villager",
         "properties": [
             ["minecraft:entity", "components"],
             ["minecraft:entity", "description", "properties"]

@@ -45,6 +45,8 @@ export type ArmorType = (typeof armorTypes)[number]
 export type VillagerToolType = ArmorType | UpgradableToolType | "shears"
 
 export const upgradableToolTypes = ["axe", "hoe", "sword", "pickaxe"] as const
+
+export const armorSlotNames = ["head", "chest", "legs", "feet"]
 export const armorTypes = ["helmet", "chestplate", "leggings", "boots"] as const
 
 export type DepositPlan = Record<string, number>
@@ -61,7 +63,7 @@ export interface ToolCraftPlan {
         plan: CraftStep[]
         items: Record<string, number>
         doneSteps?: number[]
-        haveItems?: boolean
+        hasItems?: boolean
         waitingForSmelt?: { amount: number, outputId: string, furnace: Vector3, ticks: number, maxTicks: number }
     }
 }
@@ -136,6 +138,7 @@ interface VillagerConfig {
         working: number
     }
     tool: VillagerToolType | VillagerToolType[] | undefined
+    wearsArmor?: boolean
 }
 
 export interface Task {
@@ -203,6 +206,8 @@ function createDepositPlan(
 }
 
 const NEARBY_ORE_STAND_DISTANCE = 5
+
+const SMITHING_HAMMER = "tektopia:iron_hammer"
 
 export const tektopiaVillagers: Record<string, VillagerConfig> = {
     "tektopia:villager_farmer": {
@@ -505,6 +510,7 @@ export const tektopiaVillagers: Record<string, VillagerConfig> = {
                 id: "guard_post",
                 name: "Guard Post",
                 priority: 20,
+                interruptible: true,
                 condition: (villager, village) =>
                     villager.findGuardPost(village),
                 tick: (villager, village) =>
@@ -532,7 +538,8 @@ export const tektopiaVillagers: Record<string, VillagerConfig> = {
             endSleep: 13000,
             working: 13600
         },
-        tool: ["sword", "helmet", "chestplate", "leggings", "boots"]
+        tool: ["sword", "helmet", "chestplate", "leggings", "boots"],
+        wearsArmor: true
     },
 
     "tektopia:villager_butcher": {
@@ -621,17 +628,39 @@ export const tektopiaVillagers: Record<string, VillagerConfig> = {
     "tektopia:villager_blacksmith": {
         customTasks: [
             {
+                id: "collect_furnace_output",
+                name: "Collect Furnace Contents",
+                priority: 75,
+                condition: (villager, village) => villager.checkCollectFurnaceTask(village),
+                tick: (villager, village) => villager.tickCollectFurnaceTask(village),
+                requiresTool: false,
+                taskItems: () => undefined
+            },
+            {
                 id: "smith_items",
                 name: "Smith Items",
                 priority: 10,
                 condition: (villager, village) => villager.checkSmithTask(village),
                 tick: (villager, village) => villager.tickSmithTask(village),
                 requiresTool: false,
-                taskItems: () => [{ id: "tektopia:iron_hammer", amount: 1 }]
+                taskItems: () => [{ id: SMITHING_HAMMER, amount: 1 }]
             }
         ],
         pickupItems: () => [],
-        depositItems: () => undefined,
+        depositItems(inventory: Container): DepositPlan | undefined {
+            // Everything the smith carries goes back to storage (finished gear and leftover materials), except the hammer.
+            // Tasks only start between other tasks, so this never pulls materials out of a smithing job in progress
+            const counts = inventory.getItemCounts({ excludesTypes: [SMITHING_HAMMER] })
+
+            const plan: DepositPlan = {}
+            for (const [typeId, count] of Object.entries(counts)) {
+                if (count > 0) {
+                    plan[typeId] = count
+                }
+            }
+
+            return Object.keys(plan).length > 0 ? plan : undefined
+        },
         sleepTime: {
             tired: 11400,
             startSleep: 13000,

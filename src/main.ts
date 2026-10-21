@@ -54,6 +54,8 @@ import {
     getTrunkBlocks
 } from "./tree"
 
+import "./view_inventory"
+
 system.beforeEvents.watchdogTerminate.subscribe(event => {
     event.cancel = true
     world.sendMessage(`§cWatch dog tried to terminate: ${event.terminateReason}`)
@@ -530,6 +532,51 @@ system.beforeEvents.startup.subscribe(event => {
             return {
                 status: CustomCommandStatus.Success,
                 message: `${action === "open" ? "Opened" : "Closed"} chest at ${block.x}, ${block.y}, ${block.z}.`
+            }
+        }
+    )
+
+    registerCommand(
+        {
+            name: "tektopia:make_villager_item",
+            description: "Make the item you are holding a villager item",
+            permissionLevel: CommandPermissionLevel.GameDirectors
+        },
+        origin => {
+            const player = origin.sourceEntity
+            if (!(player instanceof Player)) {
+                return { status: CustomCommandStatus.Failure, message: "This command must be run by a player." }
+            }
+
+            const container = player.getComponent("minecraft:inventory")?.container
+            if (container === undefined) {
+                return { status: CustomCommandStatus.Failure, message: "Could not access your inventory." }
+            }
+
+            const slotIndex = player.selectedSlotIndex
+            const item = container.getItem(slotIndex)
+            if (item === undefined) {
+                return { status: CustomCommandStatus.Failure, message: "You are not holding an item." }
+            }
+            if (item.isVillagerItem) {
+                return { status: CustomCommandStatus.Failure, message: "That item is already a villager item." }
+            }
+
+            system.run(() => {
+                if (!player.isValid) {
+                    return
+                }
+                const currentItem = container.getItem(slotIndex)
+                if (currentItem === undefined) {
+                    return
+                }
+                currentItem.makeVillagerItem()
+                container.setItem(slotIndex, currentItem)
+            })
+
+            return {
+                status: CustomCommandStatus.Success,
+                message: `Made ${item.amount} x ${item.typeId} a villager item.`
             }
         }
     )

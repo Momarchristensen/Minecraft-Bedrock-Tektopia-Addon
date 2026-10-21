@@ -13,7 +13,8 @@
                 "value": "Iron Hammer"
             },
             "minecraft:icon": "iron_hammer",
-            "minecraft:max_stack_size": 1
+            "minecraft:max_stack_size": 1,
+            "minecraft:hand_equipped": true
         }
     }
 }
