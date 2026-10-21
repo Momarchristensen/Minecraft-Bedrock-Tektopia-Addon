@@ -16,7 +16,8 @@
                 "sleep": "animation.tektopia_villager.sleep",
                 "sitting": "animation.tektopia_villager.sit",
                 "forging": "animation.tektopia_villager.forge",
-                "crafting": "animation.tektopia_villager.craft"
+                "crafting": "animation.tektopia_villager.craft",
+                "cooking": "animation.tektopia_villager.cook"
             },
             "scripts": {
                 "animate": [

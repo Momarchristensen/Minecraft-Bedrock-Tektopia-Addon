@@ -20,7 +20,8 @@
                         "sleeping",
                         "sitting",
                         "forging",
-                        "crafting"
+                        "crafting",
+                        "enchanting"
                     ],
                     "default": "none"
                 }

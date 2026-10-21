@@ -35,6 +35,9 @@
 						},
 						{
 							"crafting": "query.property('property:animation') == 'crafting'"
+						},
+						{
+							"cooking": "query.property('property:animation') == 'cooking'"
 						}
 					],
 					"transitions": [

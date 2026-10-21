@@ -42,6 +42,7 @@ const floorRescanCooldownTicks = 100
 
 const furnaceTypeIds = ["minecraft:furnace", "minecraft:lit_furnace"] as const
 const blastFurnaceTypeIds = ["minecraft:blast_furnace", "minecraft:lit_blast_furnace"] as const
+const smokerTypeIds = ["minecraft:lit_smoker", "minecraft:smoker"] as const
 
 export interface StructureValidationResult {
     result: boolean | undefined
@@ -767,6 +768,7 @@ export interface StructureTypeMap {
     mineshaft: Mineshaft
     storage: StorageStructure
     blacksmith: BlackSmith
+    kitchen: Kitchen
     butcher: Structure
     townhall: Structure
     pig_pen: AnimalPen
@@ -821,6 +823,10 @@ export interface StorageStructureData extends StructureData {
 
 export interface BlackSmithData extends BlackSmith {
     type: "blacksmith"
+}
+
+export interface KitchenData extends Kitchen {
+    type: "kitchen"
 }
 
 type StructureFactory = (locationString: LocationString, data: StructureData, dimension: Dimension, village: Village) => Structure
@@ -1288,6 +1294,20 @@ export class AnimalPen extends Structure<AnimalPenData> {
     }
 }
 
+export class Kitchen extends Structure<KitchenData> {
+    constructor(locationString: LocationString, data: KitchenData, dimension: Dimension, village: Village) {
+        super(locationString, data, dimension, village)
+    }
+
+    getCraftingTables(floorLocations?: readonly Vector3[]): Block[] {
+        return this.findBlocks("minecraft:crafting_table", floorLocations)
+    }
+
+    getFurnaces(floorLocations?: readonly Vector3[]) {
+        return this.findBlocks(smokerTypeIds, floorLocations).concat(this.findBlocks(furnaceTypeIds, floorLocations))
+    }
+}
+
 export class BlackSmith extends Structure<BlackSmithData> {
     constructor(locationString: LocationString, data: BlackSmithData, dimension: Dimension, village: Village) {
         super(locationString, data, dimension, village)
@@ -1630,18 +1650,15 @@ Structure.register("pig_pen", animalPenFactory)
 Structure.register("cow_pen", animalPenFactory)
 Structure.register("sheep_pen", animalPenFactory)
 Structure.register("chicken_coop", animalPenFactory)
-
 Structure.register("guard_post", (locationString, data, dimension, village) => new StationPost(locationString, data as StationPostData, dimension, village))
 Structure.register("merchant_stall", (locationString, data, dimension, village) => new StationPost(locationString, data as StationPostData, dimension, village))
-
 Structure.register("home_2", (locationString, data, dimension, village) => new HomeStructure(locationString, data as HomeStructureData, dimension, village))
 Structure.register("home_4", (locationString, data, dimension, village) => new HomeStructure(locationString, data as HomeStructureData, dimension, village))
 Structure.register("home_6", (locationString, data, dimension, village) => new HomeStructure(locationString, data as HomeStructureData, dimension, village))
-
 Structure.register("barracks", (locationString, data, dimension, village) => new Barracks(locationString, data as BarracksData, dimension, village))
-
 Structure.register("storage", (locationString, data, dimension, village) => new StorageStructure(locationString, data as StorageStructureData, dimension, village))
 Structure.register("blacksmith", (locationString, data, dimension, village) => new BlackSmith(locationString, data as BlackSmithData, dimension, village))
+Structure.register("kitchen", (locationString, data, dimension, village) => new Kitchen(locationString, data as KitchenData, dimension, village))
 
 function tickScanStructures() {
     system.runJob(scanStructures(() => system.runTimeout(tickScanStructures, 100)))

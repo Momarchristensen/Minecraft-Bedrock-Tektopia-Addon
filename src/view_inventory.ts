@@ -4,7 +4,7 @@ import {
     CustomCommandStatus,
     EntityComponentTypes,
     ItemComponentTypes,
-    ItemStack,
+    type ItemStack,
     Player,
     system,
     world,
@@ -84,7 +84,7 @@ system.runInterval(() => {
             continue
         }
 
-        if (target === undefined || !target.isValid) {
+        if (!target?.isValid) {
             stopView(playerId, true)
             player.sendMessage("§eThe viewed entity is gone; your inventory was restored.")
             continue

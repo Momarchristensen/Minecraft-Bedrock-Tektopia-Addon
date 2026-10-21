@@ -668,6 +668,72 @@ export const tektopiaVillagers: Record<string, VillagerConfig> = {
             working: 600
         },
         tool: undefined
+    },
+    "tektopia:villager_chef": {
+        customTasks: [
+            {
+                id: "cook_food",
+                name: "Cook Food",
+                priority: 10,
+                condition: (villager, village) => villager.checkCookTask(village),
+                tick: (villager, village) => villager.tickCookTask(village),
+                requiresTool: false,
+                taskItems: () => undefined
+            }
+        ],
+        pickupItems: () => [],
+        depositItems(inventory: Container): DepositPlan | undefined {
+            const counts = inventory.getItemCounts({ excludesTypes: [] })
+
+            const plan: DepositPlan = {}
+            for (const [typeId, count] of Object.entries(counts)) {
+                if (count > 0) {
+                    plan[typeId] = count
+                }
+            }
+
+            return Object.keys(plan).length > 0 ? plan : undefined
+        },
+        sleepTime: {
+            tired: 11400,
+            startSleep: 13000,
+            endSleep: 0,
+            working: 600
+        },
+        tool: undefined
+    },
+    "tektopia:enchanter": {
+        customTasks: [
+            {
+                id: "enchant_item",
+                name: "Enchant Item",
+                priority: 10,
+                condition: (villager, village) => villager.checkCookTask(village),
+                tick: (villager, village) => villager.tickCookTask(village),
+                requiresTool: false,
+                taskItems: () => [{ id: "minecraft:lapis_lazuli", amount: 16, min: 3 }]
+            }
+        ],
+        pickupItems: () => [],
+        depositItems(inventory: Container): DepositPlan | undefined {
+            const counts = inventory.getItemCounts({ excludesTypes: [] })
+
+            const plan: DepositPlan = {}
+            for (const [typeId, count] of Object.entries(counts)) {
+                if (count > 0) {
+                    plan[typeId] = count
+                }
+            }
+
+            return Object.keys(plan).length > 0 ? plan : undefined
+        },
+        sleepTime: {
+            tired: 11400,
+            startSleep: 13000,
+            endSleep: 0,
+            working: 600
+        },
+        tool: undefined
     }
 }
 

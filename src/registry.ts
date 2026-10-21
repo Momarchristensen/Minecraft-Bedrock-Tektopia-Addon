@@ -320,7 +320,20 @@ export const Registry = defineRegistry({
             { input: { id: "minecraft:raw_gold", amount: 1 }, output: { id: "minecraft:gold_ingot", amount: 1 }, usesFurnace: true },
             { input: [{ id: Registry.woolTypes, amount: 1 }], output: { id: "minecraft:string", amount: 2 } },
             { input: [{ id: "minecraft:stick", amount: 3 }, { id: "minecraft:string", amount: 2 }], output: { id: "minecraft:fishing_rod", amount: 1 } },
-            { input: [{ id: "minecraft:stick", amount: 2 }, { id: "minecraft:iron_ingot", amount: 2 }], output: { id: "tektopia:iron_hammer", amount: 1 } }
+            { input: [{ id: "minecraft:stick", amount: 2 }, { id: "minecraft:iron_ingot", amount: 2 }], output: { id: "tektopia:iron_hammer", amount: 1 } },
+            { input: [{ id: "minecraft:apple", amount: 1 }, { id: "minecraft:gold_ingot", amount: 8 }], output: { id: "minecraft:golden_apple", amount: 1 } },
+            { input: [{ id: "minecraft:carrot", amount: 1 }, { id: "minecraft:gold_nugget", amount: 8 }], output: { id: "minecraft:golden_carrot", amount: 1 } },
+            { input: [{ id: Registry.plankTypes, amount: 3 }], output: { id: "minecraft:bowl", amount: 4 } },
+            { input: [{ id: "minecraft:beetroot", amount: 6 }, { id: "minecraft:bowl", amount: 1 }], output: { id: "minecraft:beetroot_soup", amount: 1 } },
+            { input: { id: "minecraft:potato", amount: 1 }, output: { id: "minecraft:baked_potato", amount: 1 }, usesFurnace: true },
+            { input: { id: "minecraft:beef", amount: 1 }, output: { id: "minecraft:cooked_beef", amount: 1 }, usesFurnace: true },
+            { input: { id: "minecraft:chicken", amount: 1 }, output: { id: "minecraft:cooked_chicken", amount: 1 }, usesFurnace: true },
+            { input: { id: "minecraft:porkchop", amount: 1 }, output: { id: "minecraft:cooked_porkchop", amount: 1 }, usesFurnace: true },
+            { input: { id: "minecraft:mutton", amount: 1 }, output: { id: "minecraft:cooked_mutton", amount: 1 }, usesFurnace: true },
+            { input: [{ id: "minecraft:wheat", amount: 3 }], output: { id: "minecraft:bread", amount: 3 } },
+            { input: [{ id: "minecraft:wheat", amount: 2 }, { id: "minecraft:cocoa_beans", amount: 1 }], output: { id: "minecraft:cookie", amount: 8 } },
+            { input: [{ id: "minecraft:pumpkin", amount: 1 }, { id: "minecraft:sugar", amount: 1 }, { id: Registry.eggTypes, amount: 1 }], output: { id: "minecraft:pumpkin_pie", amount: 1 } },
+            { input: [{ id: "minecraft:wheat", amount: 3 }, { id: "minecraft:milk_bucket", amount: 3 }, { id: Registry.eggTypes, amount: 1 }, { id: "minecraft:sugar", amount: 2 }], output: { id: "minecraft:cake", amount: 1 } }
         ]
 
         for (const id of Registry.logTypes.concat(Registry.woodTypes)) {
