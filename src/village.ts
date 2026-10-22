@@ -182,6 +182,10 @@ export class Village {
         this.treeLocations = new LocationList(data.treeLocations)
         this.oreLocations = new LocationList(data.oreLocations)
         this.storage = new VillageStorage(this)
+
+        for (const [locationString, chestLocationStringList] of Object.entries(data.chestLocations)) {
+            this.storage.restoreContainers(locationString as LocationString, chestLocationStringList)
+        }
     }
 
     static from(data: VillageSaveData): Village {
@@ -209,8 +213,8 @@ export class Village {
             sweetBerryLocations: [],
             treeLocations: [],
             oreLocations: [],
-            structures: {}
-        }
+            structures: {},
+            chestLocations: {} }
     }
 
     static compress(data: VillageSaveData): Generator<void, CompressedVillage, void> {
@@ -275,6 +279,7 @@ export class Village {
         delete this.data.structures[locationString]
         this.releaseFloorClaims(locationString)
         this.storage.clearContainers(locationString)
+        delete this.data.chestLocations[locationString]
     }
 
     getFloorClaims(selfKey: LocationString): FloorClaims {

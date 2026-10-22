@@ -4,7 +4,8 @@ import {
     type Block,
     type Vector3,
     BlockComponentTypes,
-    type ContainerSlot
+    type ContainerSlot,
+    system
 } from "@minecraft/server"
 
 import {
@@ -14,7 +15,10 @@ import {
     type PlanOptions
 } from "./recipes"
 
-import { locationToString } from "./utils"
+import {
+    locationToString,
+    stringToLocation
+} from "./utils"
 
 import type {
     ItemFilterResult,
@@ -55,9 +59,80 @@ export class VillageStorage implements Iterable<ContainerSlot> {
 
     private chestsByStructure = new Map<LocationString, StorageChest[]>()
 
+    // Saved chest locations whose chunks weren't loaded when restoring; retried lazily.
+    private pendingByStructure = new Map<LocationString, LocationString[]>()
+
+    private nextPendingTick = 0
+
     constructor(readonly village: Village) { }
 
-    setContainers(structureKey: LocationString, blocks: Block[]) {
+    /**
+     * Restores chests from saved locations. Locations in unloaded chunks are kept
+     * as pending and retried later instead of being dropped.
+     */
+    restoreContainers(structureKey: LocationString, locations: readonly LocationString[]) {
+        const blocks: Block[] = []
+        const pending: LocationString[] = []
+
+        for (const location of locations) {
+            const block = this.village.dimension.getBlockSafe(stringToLocation(location))
+            if (block === undefined) {
+                pending.push(location)
+            }
+            else {
+                blocks.push(block)
+            }
+        }
+
+        this.setContainers(structureKey, blocks)
+        if (pending.length > 0) {
+            this.pendingByStructure.set(structureKey, pending)
+        }
+    }
+
+    private resolvePending() {
+        if (this.pendingByStructure.size === 0 || system.currentTick < this.nextPendingTick) {
+            return
+        }
+        this.nextPendingTick = system.currentTick + 20
+
+        for (const [structureKey, locations] of [...this.pendingByStructure]) {
+            const stillPending: LocationString[] = []
+            const resolved: LocationString[] = []
+
+            for (const location of locations) {
+                if (this.village.dimension.getBlockSafe(stringToLocation(location)) === undefined) {
+                    stillPending.push(location)
+                }
+                else {
+                    resolved.push(location)
+                }
+            }
+
+            if (resolved.length === 0) {
+                continue
+            }
+
+            const existing = (this.chestsByStructure.get(structureKey) ?? []).map(chest => locationToString(chest.location))
+            const blocks: Block[] = []
+            for (const location of [...existing, ...resolved]) {
+                const block = this.village.dimension.getBlockSafe(stringToLocation(location))
+                if (block !== undefined) {
+                    blocks.push(block)
+                }
+            }
+
+            this.setContainers(structureKey, blocks)
+            if (stillPending.length > 0) {
+                this.pendingByStructure.set(structureKey, stillPending)
+            }
+        }
+    }
+
+    /** Returns the chests that were kept (double chests deduplicated, out-of-bounds dropped). */
+    setContainers(structureKey: LocationString, blocks: Block[]): StorageChest[] {
+        this.pendingByStructure.delete(structureKey)
+
         const chests: StorageChest[] = []
         const otherHalves = new Set<LocationString>()
 
@@ -84,13 +159,17 @@ export class VillageStorage implements Iterable<ContainerSlot> {
         }
 
         this.chestsByStructure.set(structureKey, chests)
+        return chests
     }
 
     clearContainers(structureKey: LocationString) {
         this.chestsByStructure.delete(structureKey)
+        this.pendingByStructure.delete(structureKey)
     }
 
     private *liveChests(): Generator<StorageChest> {
+        this.resolvePending()
+
         for (const chests of this.chestsByStructure.values()) {
             for (const chest of chests) {
                 if (!chest.container.isValid) {

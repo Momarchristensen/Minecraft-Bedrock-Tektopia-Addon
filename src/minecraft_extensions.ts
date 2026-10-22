@@ -9,7 +9,7 @@ import type {
 
 import type { SoundEvents } from "./generated"
 
-import type { EntityData } from "./saves"
+import type { EntityData as EntitySaveData } from "./saves"
 
 import type {
     StructureType,
@@ -74,8 +74,8 @@ declare module "@minecraft/server" {
         setType(typeId: string, pickupDelay?: number): Entity
     }
 
-    interface Entity extends EntityData {
-        saveData<K extends keyof EntityData>(propertyId: K): void
+    interface Entity extends EntitySaveData {
+        saveData<K extends keyof EntitySaveData>(propertyId: K): void
         loadData(): void
         getWoolItem(): ItemStack | undefined
         getHitboxSize(): {

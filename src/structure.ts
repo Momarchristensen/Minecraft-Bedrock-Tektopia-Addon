@@ -856,12 +856,6 @@ export class Structure<T extends StructureData = StructureData> {
         Structure.factories.set(type, factory)
     }
 
-    static from(locationString: LocationString, data: MineshaftData, dimension: Dimension, village: Village): Mineshaft
-    static from(locationString: LocationString, data: AnimalPenData, dimension: Dimension, village: Village): AnimalPen
-    static from(locationString: LocationString, data: StationPostData, dimension: Dimension, village: Village): StationPost
-    static from(locationString: LocationString, data: HomeStructureData, dimension: Dimension, village: Village): HomeStructure
-    static from(locationString: LocationString, data: BarracksData, dimension: Dimension, village: Village): Barracks
-    static from(locationString: LocationString, data: StructureData, dimension: Dimension, village: Village): Structure
     static from(locationString: LocationString, data: StructureData, dimension: Dimension, village: Village): Structure {
         let structure = Structure.cache.get(data)
         if (structure === undefined) {

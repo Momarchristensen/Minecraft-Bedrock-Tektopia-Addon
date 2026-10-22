@@ -1,6 +1,5 @@
 import {
     ItemStack,
-    type Vector3,
     type Container
 } from "@minecraft/server"
 
@@ -9,8 +8,6 @@ import { Registry } from "./registry"
 import { bigTreeSaplings } from "./tree"
 
 import { randomInt } from "./utils"
-
-import type { CraftStep } from "./recipes"
 
 import type { Village } from "./village"
 
@@ -54,18 +51,6 @@ export type DepositPlan = Record<string, number>
 export interface ToolUpgradePlan {
     newId: string
     oldId: string | undefined
-}
-
-export interface ToolCraftPlan {
-    itemId: string
-    amount?: number
-    crafting?: {
-        plan: CraftStep[]
-        items: Record<string, number>
-        doneSteps?: number[]
-        hasItems?: boolean
-        waitingForSmelt?: { amount: number, outputId: string, furnace: Vector3, ticks: number, maxTicks: number }
-    }
 }
 
 const toolMaterials = [
@@ -738,6 +723,15 @@ export const tektopiaVillagers: Record<string, VillagerConfig> = {
 }
 
 export const globalTasks: Task[] = [
+    {
+        id: "eat",
+        name: "Eat",
+        priority: 100,
+        condition: (villager, village) => villager.checkEatFood(village),
+        tick: (villager, village) => villager.tickEatFood(village),
+        requiresTool: false,
+        taskItems: () => undefined
+    },
     {
         id: "sleep",
         name: "Sleep",

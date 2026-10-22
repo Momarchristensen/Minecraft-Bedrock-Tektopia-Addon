@@ -140,7 +140,8 @@ function* scanItemFrames(callback?: () => void) {
                             }
                             else if (structure instanceof StorageStructure) {
                                 if (floorLocations !== undefined) {
-                                    village.storage.setContainers(structure.locationString, structure.getChests(structure.loadFloorLocations()))
+                                    const keptChests = village.storage.setContainers(structure.locationString, structure.getChests())
+                                    village.data.chestLocations[structure.locationString] = keptChests.map(chest => locationToString(chest.location))
                                 }
                             }
                             else if (structure instanceof BedStructure) {
@@ -159,6 +160,7 @@ function* scanItemFrames(callback?: () => void) {
                             village.getStructure(stringToLocation(previousKey))?.cacheFloorLocations(undefined)
                             village.releaseFloorClaims(previousKey)
                             village.storage.clearContainers(previousKey)
+                            delete village.data.chestLocations[previousKey]
                         }
                     }
                     structureLocationsByItemFrame.delete(itemFrame)

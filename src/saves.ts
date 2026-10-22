@@ -21,10 +21,14 @@ import { Village } from "./village"
 
 import type { BreedingSaveData } from "./breed"
 
+import type { LocationString } from "./types"
+
 import type {
     CompressedVillage,
     VillageSaveData
 } from "./village_serialization"
+
+import type { VillagerTask } from "./villager"
 
 export const worldSaveDataList = [
     {
@@ -306,6 +310,14 @@ export interface EntityData {
     villagerEntity?: boolean
     eggLayTimer?: number
     pickupDelay?: number
+}
+
+export interface VillagerData {
+    currentTask?: VillagerTask
+    openedDoors?: LocationString[]
+    happiness?: number
+    knowledge?: number
+    hunger?: number
 }
 
 Entity.prototype.saveData = function <K extends keyof EntityData>(

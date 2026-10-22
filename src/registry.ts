@@ -2,6 +2,8 @@ import {
     BlockTypes,
     DimensionTypes,
     EntityTypes,
+    ItemComponent,
+    ItemComponentTypes,
     ItemStack,
     ItemTypes
 } from "@minecraft/server"
@@ -44,19 +46,20 @@ const entities = (test: (id: string) => boolean) =>
 export const Registry = defineRegistry({
     blockTypes: (): string[] => BlockTypes.getAll().map(blockType => blockType.id),
     entityTypes: (): string[] => EntityTypes.getAll().map(entityType => entityType.id),
+    itemTypes: (): string[] => ItemTypes.getAll().map(itemType => itemType.id),
 
     itemTagItems: (): Partial<Record<TagId, string[]>> => {
         const result: Partial<Record<TagId, string[]>> = {}
-        for (const itemType of ItemTypes.getAll()) {
+        for (const itemId of Registry.itemTypes) {
             let tags: string[]
             try {
-                tags = new ItemStack(itemType).getTags()
+                tags = new ItemStack(itemId).getTags()
             }
             catch {
                 continue
             }
             for (const tag of tags as TagId[]) {
-                (result[tag] ??= []).push(itemType.id)
+                (result[tag] ??= []).push(itemId)
             }
         }
         return result
@@ -276,6 +279,8 @@ export const Registry = defineRegistry({
         "minecraft:material_reducer"
     ])],
     nonSolidBlocksSet: (): Set<string> => new Set(Registry.nonSolidBlocks),
+
+    edibleTypes: (): string[] => Registry.itemTypes.filter(itemId => new ItemStack(itemId).hasComponent(ItemComponentTypes.Food)),
 
     craftingRecipes: (): Recipe[] => {
         const recipes: Recipe[] = [

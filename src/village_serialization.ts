@@ -29,15 +29,8 @@ export interface VillageSaveData {
     treeLocations: LocationString[]
     oreLocations: LocationString[]
     structures: Record<LocationString, StructureData>
+    chestLocations: Record<LocationString, LocationString[]>
 }
-
-const SAVE_PATH_NODES: boolean = true
-
-const SAVE_RESOURCE_LOCATIONS: boolean = true
-
-const SAVE_DERIVED_LOCATIONS: boolean = false
-
-const NAMESPACE = "minecraft:"
 
 type Triple = [number, number, number]
 
@@ -68,9 +61,7 @@ export type CompressedVillage = [
     saplingLocations?: string,
     farmLocations?: string,
     treeLocations?: string,
-    harvestLocations?: string,
     sweetBerryLocations?: string,
-    tillLocations?: string,
     plantLocations?: string,
     nodeLocations?: string,
     neighborMaskPalette?: string,
@@ -83,7 +74,7 @@ export type CompressedVillage = [
     connectionRequirements?: CompressedRequirement[] | undefined,
     edgeMode?: 1 | undefined,
     oreLocations?: string,
-    growLocations?: string
+    chestLocations?: unknown
 ]
 
 type DecompressibleVillage = CompressedVillage & [
@@ -116,6 +107,23 @@ function isTriple(value: unknown): value is Triple {
     return Array.isArray(value)
         && value.length === 3
         && value.every(component => typeof component === "number" && Number.isFinite(component))
+}
+
+function sanitizeChestLocations(value: unknown): Record<LocationString, LocationString[]> {
+    const result: Record<LocationString, LocationString[]> = {}
+
+    // Older saves stored a packed string here; those (and anything malformed) are dropped
+    // and repopulated when the storage structure is next validated.
+    if (typeof value !== "object" || value === null || Array.isArray(value)) {
+        return result
+    }
+
+    for (const [key, list] of Object.entries(value)) {
+        if (Array.isArray(list)) {
+            result[key as LocationString] = list.filter((entry): entry is LocationString => typeof entry === "string")
+        }
+    }
+    return result
 }
 
 function isDecompressibleVillage(value: unknown): value is DecompressibleVillage {
@@ -340,7 +348,7 @@ function* packTypedLocations(locationRecord: Record<LocationString, string>, ori
         let typeIndex = typeIndexByType.get(entry.type)
         if (typeIndex === undefined) {
             typeIndex = types.length
-            types.push(entry.type.startsWith(NAMESPACE) ? entry.type.slice(NAMESPACE.length) : entry.type)
+            types.push(entry.type.startsWith("minecraft:") ? entry.type.slice("minecraft:".length) : entry.type)
             typeIndexByType.set(entry.type, typeIndex)
         }
         typeIndices.push(typeIndex)
@@ -376,7 +384,7 @@ function unpackTypedLocations(text: string, types: string[] | undefined, typeInd
         }
         const type = types[typeIndex]
         if (type !== undefined) {
-            result[locationToString(point)] = type.includes(":") ? type : NAMESPACE + type
+            result[locationToString(point)] = type.includes(":") ? type : `minecraft:${ type}`
         }
     }
     return result
@@ -574,14 +582,12 @@ export function* compressVillage(data: VillageSaveData): Generator<void, Compres
     const center = data.center
     const origin = originOf(center)
     const nodeEntries: Array<{ key: LocationString, location: Vector3 }> = []
-    if (SAVE_PATH_NODES) {
-        const nodeKeys = Object.keys(data.pathNodes) as LocationString[]
-        for (let i = 0; i < nodeKeys.length; i++) {
-            const key = arrayItem(nodeKeys, i)
-            nodeEntries.push({ key, location: stringToLocation(key) })
-            if (yieldAfterBatch(i)) {
-                yield
-            }
+    const nodeKeys = Object.keys(data.pathNodes) as LocationString[]
+    for (let i = 0; i < nodeKeys.length; i++) {
+        const key = arrayItem(nodeKeys, i)
+        nodeEntries.push({ key, location: stringToLocation(key) })
+        if (yieldAfterBatch(i)) {
+            yield
         }
     }
     yield* sortInTicks(nodeEntries, (a, b) => comparePoints(a.location, b.location))
@@ -722,19 +728,15 @@ export function* compressVillage(data: VillageSaveData): Generator<void, Compres
         }
     }
 
-    const [packedPlantLocations, plantTypes, plantTypeIndices] = SAVE_RESOURCE_LOCATIONS
-        ? yield* packTypedLocations(data.plantLocations, origin)
-        : ["", [], ""]
+    const [packedPlantLocations, plantTypes, plantTypeIndices] = yield* packTypedLocations(data.plantLocations, origin)
 
-    const packedSugarCaneLocations = SAVE_RESOURCE_LOCATIONS ? yield* packLocations(data.sugarCaneLocations, origin) : ""
-    const packedSaplingLocations = SAVE_RESOURCE_LOCATIONS ? yield* packLocations(data.saplingLocations, origin) : ""
-    const packedFarmLocations = SAVE_RESOURCE_LOCATIONS ? yield* packLocations(data.farmLocations, origin) : ""
-    const packedTreeLocations = SAVE_RESOURCE_LOCATIONS ? yield* packLocations(data.treeLocations, origin) : ""
-    const packedHarvestLocations = SAVE_RESOURCE_LOCATIONS && SAVE_DERIVED_LOCATIONS ? yield* packLocations(data.harvestLocations, origin) : ""
-    const packedGrowLocations = SAVE_RESOURCE_LOCATIONS && SAVE_DERIVED_LOCATIONS ? yield* packLocations(data.growLocations, origin) : ""
-    const packedSweetBerryLocations = SAVE_RESOURCE_LOCATIONS ? yield* packLocations(data.sweetBerryLocations, origin) : ""
-    const packedTillLocations = SAVE_RESOURCE_LOCATIONS && SAVE_DERIVED_LOCATIONS ? yield* packLocations(data.tillLocations, origin) : ""
-    const packedOreLocations = SAVE_RESOURCE_LOCATIONS ? yield* packLocations(data.oreLocations, origin) : ""
+    const packedSugarCaneLocations = yield* packLocations(data.sugarCaneLocations, origin)
+    const packedSaplingLocations = yield* packLocations(data.saplingLocations, origin)
+    const packedFarmLocations = yield* packLocations(data.farmLocations, origin)
+    const packedTreeLocations = yield* packLocations(data.treeLocations, origin)
+    const packedSweetBerryLocations = yield* packLocations(data.sweetBerryLocations, origin)
+    const packedOreLocations = yield* packLocations(data.oreLocations, origin)
+
     const packedNodeLocations = yield* packPoints(nodeLocations, origin)
 
     const packedMaskPalette = yield* packUnsigned(maskStreams.palette)
@@ -744,16 +746,14 @@ export function* compressVillage(data: VillageSaveData): Generator<void, Compres
     const dimensionId = data.dimensionId
     const door = data.doorLocation
     return [
-        dimensionId.startsWith(NAMESPACE) ? dimensionId.slice(NAMESPACE.length) : dimensionId,
+        dimensionId.startsWith("minecraft:") ? dimensionId.slice("minecraft:".length) : dimensionId,
         [center.x, center.y, center.z],
         [door.x - origin.x, door.y - origin.y, door.z - origin.z],
         packedSugarCaneLocations,
         packedSaplingLocations,
         packedFarmLocations,
         packedTreeLocations,
-        packedHarvestLocations,
         packedSweetBerryLocations,
-        packedTillLocations,
         packedPlantLocations,
         packedNodeLocations,
         packedMaskPalette,
@@ -766,7 +766,7 @@ export function* compressVillage(data: VillageSaveData): Generator<void, Compres
         connectionRequirements,
         useExceptions ? 1 : undefined,
         packedOreLocations,
-        packedGrowLocations
+        data.chestLocations
     ]
 }
 
@@ -783,9 +783,7 @@ export function decompressVillage(compressed: unknown): VillageSaveData | undefi
         packedSaplingLocations = "",
         packedFarmLocations = "",
         packedTreeLocations = "",
-        packedHarvestLocations = "",
         packedSweetBerryLocations = "",
-        packedTillLocations = "",
         packedPlantLocations = "",
         packedNodeLocations = "",
         packedMaskPalette = "",
@@ -798,7 +796,7 @@ export function decompressVillage(compressed: unknown): VillageSaveData | undefi
         compressedConnectionRequirements,
         edgeMode,
         packedOreLocations,
-        packedGrowLocations = ""
+        rawChestLocations
     ] = compressed
 
     const center: Vector3 = { x: centerCoords[0], y: centerCoords[1], z: centerCoords[2] }
@@ -919,7 +917,7 @@ export function decompressVillage(compressed: unknown): VillageSaveData | undefi
     }
 
     return {
-        dimensionId: dimensionId.includes(":") ? dimensionId : NAMESPACE + dimensionId,
+        dimensionId: dimensionId.includes(":") ? dimensionId : `minecraft:${ dimensionId}`,
         center,
         doorLocation: {
             x: doorOffset[0] + origin.x,
@@ -932,11 +930,12 @@ export function decompressVillage(compressed: unknown): VillageSaveData | undefi
         farmLocations: unpackLocations(packedFarmLocations, origin),
         treeLocations: unpackLocations(packedTreeLocations, origin),
         oreLocations: unpackLocations(packedOreLocations ?? "", origin),
-        harvestLocations: unpackLocations(packedHarvestLocations, origin),
-        growLocations: unpackLocations(packedGrowLocations, origin),
+        harvestLocations: [],
+        growLocations: [],
         sweetBerryLocations: unpackLocations(packedSweetBerryLocations, origin),
         plantLocations: unpackTypedLocations(packedPlantLocations, plantTypes, plantTypeIndices, origin),
-        tillLocations: unpackLocations(packedTillLocations, origin),
-        structures: Array.isArray(structures) ? decompressStructures(structures, origin) : structures ?? {}
+        tillLocations: [],
+        structures: Array.isArray(structures) ? decompressStructures(structures, origin) : structures ?? {},
+        chestLocations: sanitizeChestLocations(rawChestLocations)
     }
 }
