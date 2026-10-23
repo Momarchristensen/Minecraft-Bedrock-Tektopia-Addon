@@ -89,6 +89,7 @@ declare module "@minecraft/server" {
         loadedData: boolean
         villagerEntityProperty?: boolean
         readonly isShearable: boolean
+        readonly isMilkable: boolean
         readonly isVillager: boolean
         readonly breeding: EntityBreeding | undefined
     }

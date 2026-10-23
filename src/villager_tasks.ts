@@ -465,6 +465,17 @@ export const tektopiaVillagers: Record<string, VillagerConfig> = {
                     villager.tickShearEntity(),
                 requiresTool: true,
                 taskItems: () => undefined
+            },
+            {
+                id: "milk",
+                name: "Milk",
+                priority: 20,
+                condition: (villager, village) =>
+                    villager.findMilkableEntity(village),
+                tick: villager =>
+                    villager.tickMilkEntity(),
+                requiresTool: true,
+                taskItems: () => [{ id: "minecraft:bucket", amount: 3, min: 1 }]
             }
         ],
         pickupItems: () => [
@@ -474,8 +485,11 @@ export const tektopiaVillagers: Record<string, VillagerConfig> = {
         depositItems(inventory: Container): DepositPlan | undefined {
             return createDepositPlan(
                 inventory,
-                this.pickupItems,
-                counts => Object.values(counts).some(count => count > 6),
+                () => {
+                    const pickupItems = typeof this.pickupItems === "function" ? this.pickupItems() : this.pickupItems
+                    return pickupItems.concat(["minecraft:milk_bucket"])
+                },
+                counts => Object.entries(counts).some(([itemId, count]) => itemId === "minecraft:milk_bucket" ? true : count > 6),
                 undefined,
                 CRAFTING_ITEMS
             )
@@ -727,17 +741,17 @@ export const globalTasks: Task[] = [
         id: "eat",
         name: "Eat",
         priority: 100,
-        condition: (villager, village) => villager.checkEatFood(village),
-        tick: (villager, village) => villager.tickEatFood(village),
+        condition: (villager, village) => false /*villager.checkEatFood(village)*/,
+        tick: (villager, village) => undefined /*villager.tickEatFood(village)*/,
         requiresTool: false,
         taskItems: () => undefined
     },
     {
-        id: "sleep",
-        name: "Sleep",
+        id: "deposit",
+        name: "Deposit Items",
         priority: 90,
-        condition: villager => villager.bedTime() !== "working",
-        tick: villager => villager.tickSleep(),
+        condition: (villager, village) => villager.checkDepositTask(village),
+        tick: (villager, village) => villager.tickDepositTask(village),
         requiresTool: false,
         taskItems: () => undefined
     },
@@ -751,11 +765,11 @@ export const globalTasks: Task[] = [
         taskItems: () => undefined
     },
     {
-        id: "deposit",
-        name: "Deposit Items",
+        id: "sleep",
+        name: "Sleep",
         priority: 70,
-        condition: (villager, village) => villager.checkDepositTask(village),
-        tick: (villager, village) => villager.tickDepositTask(village),
+        condition: villager => villager.bedTime() !== "working",
+        tick: villager => villager.tickSleep(),
         requiresTool: false,
         taskItems: () => undefined
     },

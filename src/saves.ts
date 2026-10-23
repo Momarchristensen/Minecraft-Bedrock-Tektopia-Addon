@@ -337,11 +337,13 @@ Entity.prototype.loadData = function (this: Entity) {
 
     const target = this as unknown as Record<string, unknown>
 
-    for (const propertyId of this.getDynamicPropertyIds()) {
-        const valueString = this.getDynamicProperty(`tektopia:${propertyId}`)
+    for (const key of this.getDynamicPropertyIds()) {
+        const valueString = this.getDynamicProperty(key)
         if (typeof valueString !== "string") {
             continue
         }
+
+        const propertyId = key.replace("tektopia:", "")
 
         try {
             target[propertyId] = JSON.parse(valueString)

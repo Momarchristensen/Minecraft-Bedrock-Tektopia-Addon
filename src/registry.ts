@@ -338,7 +338,9 @@ export const Registry = defineRegistry({
             { input: [{ id: "minecraft:wheat", amount: 3 }], output: { id: "minecraft:bread", amount: 3 } },
             { input: [{ id: "minecraft:wheat", amount: 2 }, { id: "minecraft:cocoa_beans", amount: 1 }], output: { id: "minecraft:cookie", amount: 8 } },
             { input: [{ id: "minecraft:pumpkin", amount: 1 }, { id: "minecraft:sugar", amount: 1 }, { id: Registry.eggTypes, amount: 1 }], output: { id: "minecraft:pumpkin_pie", amount: 1 } },
-            { input: [{ id: "minecraft:wheat", amount: 3 }, { id: "minecraft:milk_bucket", amount: 3 }, { id: Registry.eggTypes, amount: 1 }, { id: "minecraft:sugar", amount: 2 }], output: { id: "minecraft:cake", amount: 1 } }
+            { input: [{ id: "minecraft:wheat", amount: 3 }, { id: "minecraft:milk_bucket", amount: 3 }, { id: Registry.eggTypes, amount: 1 }, { id: "minecraft:sugar", amount: 2 }], output: { id: "minecraft:cake", amount: 1 } },
+            { input: [{ id: "minecraft:sugar_cane", amount: 1 }], output: { id: "minecraft:sugar", amount: 1 } },
+            { input: [{ id: "minecraft:iron_ingot", amount: 3 }], output: { id: "minecraft:bucket", amount: 1 } },
         ]
 
         for (const id of Registry.logTypes.concat(Registry.woodTypes)) {

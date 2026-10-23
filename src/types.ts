@@ -36,4 +36,5 @@ export interface VillageRanchEntity {
     breedable: boolean
     villagerEntity: boolean
     isShearable: boolean
+    isMilkable: boolean
 }

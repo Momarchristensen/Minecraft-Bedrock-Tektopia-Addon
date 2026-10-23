@@ -6,8 +6,6 @@ import {
     Entity,
     EntityComponentTypes,
     EntityDamageCause,
-    ItemComponent,
-    ItemComponentTypes,
     ItemStack,
     MolangVariableMap,
     system,
@@ -38,6 +36,7 @@ import {
 import {
     type CraftStep,
     getCraftingPlan,
+    getMaxCrafts,
     getRequiredItems
 } from "./recipes"
 
@@ -247,6 +246,7 @@ interface TaskContext {
     breedableEntity?: VillageRanchEntity & { id: string }
     breedableMate?: VillageRanchEntity & { id: string }
     shearableEntity?: VillageRanchEntity & { id: string }
+    milkableEntity?: VillageRanchEntity & { id: string }
     openGate?: Vector3
     mine?: {
         location: Vector3
@@ -272,7 +272,10 @@ interface TaskContext {
     // (not the cache) means they are dropped together with the task, which releases the furnace claim
     smelts?: Record<string, SmeltWait>
     smithing?: string[]
+    // How many of each item to craft this task, keyed by item id. A missing entry means one, as in older saves
+    smithingAmounts?: Record<string, number>
     cooking?: string[]
+    cookingAmounts?: Record<string, number>
 }
 
 interface SmeltWait {
@@ -285,6 +288,8 @@ interface SmeltWait {
 
 interface CraftingJob {
     itemId: string
+    // How many of the item this job crafts (the plan already covers all of them)
+    amount: number
     plan: CraftStep[]
     doneSteps?: number[]
 }
@@ -327,8 +332,151 @@ const smithingCraftingIds = [
     ["minecraft:diamond_pickaxe", "minecraft:iron_pickaxe", "minecraft:copper_pickaxe"],
     ["minecraft:diamond_axe", "minecraft:iron_axe", "minecraft:copper_axe"],
     ["minecraft:diamond_hoe", "minecraft:iron_hoe", "minecraft:copper_hoe"],
-    ["minecraft:shears"]
+    ["minecraft:shears"],
+    ["minecraft:bucket"],
+    ["minecraft:gold_ingot"]
 ]
+
+// Most of any one cooked item the cook crafts in a single task
+const MAX_COOKED_BATCH = 8
+
+// Most of any one smithed item the blacksmith crafts in a single task (also never past MAX_SMITHED_PER_ITEM in storage)
+const MAX_SMITHED_BATCH = 5
+
+const stackSizes = new Map<string, number>()
+
+function getMaxStackSize(itemId: string): number {
+    let size = stackSizes.get(itemId)
+    if (size === undefined) {
+        try {
+            size = new ItemStack(itemId, 1).maxAmount
+        }
+        catch {
+            size = 64
+        }
+        stackSizes.set(itemId, size)
+    }
+    return size
+}
+
+function countSlots(items: Record<string, number>): number {
+    let slots = 0
+    for (const [itemId, amount] of Object.entries(items)) {
+        if (amount > 0) {
+            slots += Math.ceil(amount / getMaxStackSize(itemId))
+        }
+    }
+    return slots
+}
+
+// A furnace slot holds one stack, so every smelt step has to fit in a single stack of input, fuel and output
+function fitsFurnace(plan: CraftStep[]): boolean {
+    return plan.every(step => !step.smelt || (
+        step.input.amount * step.times <= getMaxStackSize(step.input.id)
+        && step.fuel.amount <= getMaxStackSize(step.fuel.id)
+        && step.output.amount * step.times <= getMaxStackSize(step.output.id)
+    ))
+}
+
+function getPlanOutputs(plan: CraftStep[], itemId: string): Record<string, number> {
+    let amount = 0
+    for (const step of plan) {
+        if (step.output.id === itemId) {
+            amount += step.output.amount * step.times
+        }
+    }
+    return { [itemId]: amount }
+}
+
+interface BatchJob {
+    itemId: string
+    amount: number
+    maxAmount: number
+    required: Record<string, number>
+    outputs: Record<string, number>
+}
+
+function createBatchJob(itemId: string, maxAmount: number, plan: CraftStep[], required: Record<string, number>): BatchJob {
+    return {
+        itemId,
+        amount: 1,
+        maxAmount: Math.max(1, Math.floor(maxAmount)),
+        required,
+        outputs: getPlanOutputs(plan, itemId)
+    }
+}
+
+// Inventory slots the villager needs to carry everything the jobs use up and produce
+function getBatchSlots(jobs: BatchJob[]): number {
+    const inputs: Record<string, number> = {}
+    const outputs: Record<string, number> = {}
+    for (const job of jobs) {
+        for (const [itemId, amount] of Object.entries(job.required)) {
+            inputs[itemId] = (inputs[itemId] ?? 0) + amount
+        }
+        for (const [itemId, amount] of Object.entries(job.outputs)) {
+            outputs[itemId] = (outputs[itemId] ?? 0) + amount
+        }
+    }
+    return countSlots(inputs) + countSlots(outputs)
+}
+
+// Raises the amount each job crafts, a doubling round at a time so that no single item eats all of the materials.
+// `remaining` is what storage still holds after one craft of every job was reserved, and is kept up to date.
+// Amounts stop growing once the villager's free inventory slots or a furnace stack can't hold more
+function growBatches(jobs: BatchJob[], remaining: Record<string, number>, smelting: boolean, freeSlots: number) {
+    const largest = Math.max(...jobs.map(job => job.maxAmount))
+    let target = 1
+
+    while (target < largest) {
+        target = Math.min(target * 2, largest)
+
+        for (const job of jobs) {
+            const wanted = Math.min(target, job.maxAmount)
+            if (wanted <= job.amount) {
+                continue
+            }
+
+            // Storage as it would be without this job's own reservation
+            const counts: Record<string, number> = { ...remaining }
+            for (const [itemId, amount] of Object.entries(job.required)) {
+                counts[itemId] = (counts[itemId] ?? 0) + amount
+            }
+            counts[job.itemId] = 0
+
+            const amount = getMaxCrafts(job.itemId, counts, wanted, { smelting })
+            if (amount <= job.amount) {
+                continue
+            }
+
+            const plan = getCraftingPlan(job.itemId, counts, amount, { smelting })
+            if (plan === undefined || plan.length === 0 || !fitsFurnace(plan)) {
+                continue
+            }
+
+            const previous = { amount: job.amount, required: job.required, outputs: job.outputs }
+            job.amount = amount
+            job.required = getRequiredItems(plan)
+            job.outputs = getPlanOutputs(plan, job.itemId)
+
+            if (getBatchSlots(jobs) > freeSlots) {
+                Object.assign(job, previous)
+                continue
+            }
+
+            for (const [itemId, count] of Object.entries(previous.required)) {
+                remaining[itemId] = (remaining[itemId] ?? 0) + count
+            }
+            for (const [itemId, count] of Object.entries(job.required)) {
+                remaining[itemId] = (remaining[itemId] ?? 0) - count
+            }
+        }
+    }
+}
+
+function hasStationsFor(plan: CraftStep[] | undefined, hasCraftingTable: boolean): plan is CraftStep[] {
+    return plan !== undefined && plan.length > 0 && (hasCraftingTable || plan.every(step => step.smelt === true))
+}
 
 export class Villager {
     public isBlocked = false
@@ -390,19 +538,20 @@ export class Villager {
             return
         }
 
-        const keys: Array<keyof VillagerData> = ["currentTask", "openedDoors"]
-        for (const key of keys) {
-            const valueString = this.entity.getDynamicProperty(`tektopia:${key}`)
+        for (const key of this.entity.getDynamicPropertyIds()) {
+            const valueString = this.entity.getDynamicProperty(key)
             if (typeof valueString !== "string") {
                 continue
             }
 
+            const propertyId = key.replace("tektopia:", "")
+
             try {
                 const value: unknown = JSON.parse(valueString)
-                Object.assign(this.data, { [key]: value })
+                Object.assign(this.data, { [propertyId]: value })
             }
             catch (error) {
-                console.warn(`Failed to read villager property ${key}:`, error)
+                console.warn(`Failed to read villager property ${propertyId}:`, error)
             }
         }
 
@@ -628,7 +777,11 @@ export class Villager {
     }
 
     set happiness(value) {
+        if (this.data.happiness === value) {
+            return
+        }
         this.data.happiness = value
+        this.saveVillagerData("happiness")
     }
 
     get knowledge() {
@@ -637,7 +790,11 @@ export class Villager {
     }
 
     set knowledge(value) {
+        if (this.data.knowledge === value) {
+            return
+        }
         this.data.knowledge = value
+        this.saveVillagerData("knowledge")
     }
 
     get hunger() {
@@ -646,7 +803,11 @@ export class Villager {
     }
 
     set hunger(value) {
+        if (this.data.hunger === value) {
+            return
+        }
         this.data.hunger = value
+        this.saveVillagerData("hunger")
     }
 
     set currentTask(value: VillagerTask | undefined) {
@@ -1352,12 +1513,11 @@ export class Villager {
         ]
 
         const hasFurnace = kitchenStructure.getFurnaces().length > 0
+        const hasCraftingTable = kitchenStructure.getCraftingTables().length > 0
 
-        // Only items that can actually be crafted right now count towards the lowest count,
-        // otherwise one uncraftable item with a low count would stop the cook crafting everything else
         const counts = cookingCraftingIds.flatMap(itemId => {
             const craftingPlan = getCraftingPlan(itemId, { ...availableCounts, [itemId]: 0 }, 1, { smelting: hasFurnace })
-            if (craftingPlan === undefined || craftingPlan.length === 0) {
+            if (!hasStationsFor(craftingPlan, hasCraftingTable)) {
                 return []
             }
 
@@ -1370,7 +1530,7 @@ export class Villager {
             return false
         }
 
-        const recipeItemIds = []
+        const jobs: BatchJob[] = []
 
         outer: for (const item of counts) {
             if (item.count - lowestCount > 16) {
@@ -1380,22 +1540,28 @@ export class Villager {
             const itemId = item.itemId
             // Plan against what is left after earlier plans, so they can't all claim the same materials
             const craftingPlan = getCraftingPlan(itemId, { ...availableCounts, [itemId]: 0 }, 1, { smelting: hasFurnace })
-            if (craftingPlan !== undefined && craftingPlan.length > 0) {
-                for (const [requiredId, amount] of Object.entries(getRequiredItems(craftingPlan))) {
+            if (hasStationsFor(craftingPlan, hasCraftingTable)) {
+                const required = getRequiredItems(craftingPlan)
+                for (const [requiredId, amount] of Object.entries(required)) {
                     availableCounts[requiredId] = (availableCounts[requiredId] ?? 0) - amount
                 }
-                recipeItemIds.push(itemId)
-                if (recipeItemIds.length >= 5) {
+                // Items that are already well stocked get smaller batches, so the cook keeps the stock balanced
+                const maxAmount = Math.min(MAX_COOKED_BATCH, lowestCount + 16 - item.count)
+                jobs.push(createBatchJob(itemId, maxAmount, craftingPlan, required))
+                if (jobs.length >= 5) {
                     break outer
                 }
             }
         }
 
-        if (recipeItemIds.length === 0) {
+        if (jobs.length === 0) {
             return false
         }
 
-        this.taskContext.cooking = recipeItemIds
+        growBatches(jobs, availableCounts, hasFurnace, this.getInventory()?.emptySlotsCount ?? Infinity)
+
+        this.taskContext.cooking = jobs.map(job => job.itemId)
+        this.taskContext.cookingAmounts = Object.fromEntries(jobs.map(job => [job.itemId, job.amount]))
 
         return true
     }
@@ -1439,7 +1605,12 @@ export class Villager {
             }
 
             return [{ itemIds: allowedIds, count }]
-        }).sort((a, b) => a.count - b.count)
+        }).map(entry => ({ ...entry, tie: Math.random() })).sort((a, b) => {
+            if (a.count !== b.count) {
+                return a.count - b.count
+            }
+            return a.tie - b.tie
+        })
 
         const lowestCount = counts[0]?.count
 
@@ -1447,7 +1618,9 @@ export class Villager {
             return false
         }
 
-        const recipeItemIds = []
+        // Stock as it is now, because availableCounts shrinks as materials get reserved below
+        const stockCounts = { ...availableCounts }
+        const jobs: BatchJob[] = []
 
         outer: for (const item of counts) {
             if (item.count - lowestCount > 2) {
@@ -1458,11 +1631,14 @@ export class Villager {
             for (const itemId of itemIds) {
                 const craftingPlan = getCraftingPlan(itemId, { ...availableCounts, [itemId]: 0 }, 1, { smelting: hasFurnace })
                 if (craftingPlan !== undefined && craftingPlan.length > 0) {
-                    for (const [requiredId, amount] of Object.entries(getRequiredItems(craftingPlan))) {
+                    const required = getRequiredItems(craftingPlan)
+                    for (const [requiredId, amount] of Object.entries(required)) {
                         availableCounts[requiredId] = (availableCounts[requiredId] ?? 0) - amount
                     }
-                    recipeItemIds.push(itemId)
-                    if (recipeItemIds.length >= 5) {
+                    // Never craft past the stock limit for this item
+                    const maxAmount = Math.min(MAX_SMITHED_BATCH, MAX_SMITHED_PER_ITEM - (stockCounts[itemId] ?? 0))
+                    jobs.push(createBatchJob(itemId, maxAmount, craftingPlan, required))
+                    if (jobs.length >= 5) {
                         break outer
                     }
                     break
@@ -1470,11 +1646,14 @@ export class Villager {
             }
         }
 
-        if (recipeItemIds.length === 0) {
+        if (jobs.length === 0) {
             return false
         }
 
-        this.taskContext.smithing = recipeItemIds
+        growBatches(jobs, availableCounts, hasFurnace, this.getInventory()?.emptySlotsCount ?? Infinity)
+
+        this.taskContext.smithing = jobs.map(job => job.itemId)
+        this.taskContext.smithingAmounts = Object.fromEntries(jobs.map(job => [job.itemId, job.amount]))
 
         return true
     }
@@ -1637,6 +1816,46 @@ export class Villager {
         }
 
         this.taskContext.shearableEntity = closestEntity
+        return true
+    }
+
+    findMilkableEntity(village: Village) {
+        const takenRanchEntities = new Set<string>()
+        for (const villager of world.getVillagers()) {
+            if (villager.id === this.id) {
+                continue
+            }
+            const ranchEntity = villager.taskContext.milkableEntity
+            if (ranchEntity !== undefined) {
+                takenRanchEntities.add(ranchEntity.id)
+            }
+        }
+
+        let closestEntity
+        let closestDistance = Infinity
+
+        for (const [entityId, entityData] of Object.entries(village.ranchEntities)) {
+            if (takenRanchEntities.has(entityId) || !entityData.isMilkable || !entityData.inPen) {
+                continue
+            }
+
+            if (entityData.structure !== undefined && this.isPenSkipped(entityData.structure)) {
+                continue
+            }
+
+            const distance = calculateDistance(entityData.location, this.location)
+
+            if (distance < closestDistance) {
+                closestDistance = distance
+                closestEntity = { ...entityData, id: entityId }
+            }
+        }
+
+        if (closestEntity === undefined) {
+            return false
+        }
+
+        this.taskContext.milkableEntity = closestEntity
         return true
     }
 
@@ -1885,11 +2104,11 @@ export class Villager {
             return false
         }
 
-        const foodItem = villagerInventory.findItem({includesTypes: Registry.edibleTypes})
+        const foodItem = villagerInventory.findItem({ includesTypes: Registry.edibleTypes })
         if (foodItem !== undefined) {
             this.holdingItem = foodItem.item.typeId
             this.stopPath()
-            return
+
         }
     }
 
@@ -2274,7 +2493,7 @@ export class Villager {
         }
 
         const nameTag = village === undefined ? "No Village" : [
-            `Villager: ${formatTypeId(this.typeId)}`,
+            formatTypeId(this.typeId),
             `Task: ${taskName}`,
             `Progress: ${this.taskProgress}`,
             `Waiting: ${waiting}`,
@@ -3210,6 +3429,61 @@ export class Villager {
         this.taskContext.breedableEntity = undefined
         this.taskContext.breedableMate = undefined
         this.cancelTask()
+    }
+
+    tickMilkEntity() {
+        const villager = this
+
+        const villagerInventory = villager.getInventory()
+        if (villagerInventory === undefined) {
+            villager.cancelTask()
+            return
+        }
+
+        if (villager.taskContext.milkableEntity === undefined) {
+            villager.cancelTask()
+            return
+        }
+
+        if (!villagerInventory.hasItem({ includesTypes: ["minecraft:bucket"] })) {
+            villager.cancelTask()
+            return
+        }
+
+        const ranchEntity = world.getEntity(villager.taskContext.milkableEntity.id)
+        if (ranchEntity === undefined) {
+            villager.cancelTask()
+            return
+        }
+
+        if (!ranchEntity.isMilkable) {
+            villager.cancelTask()
+            return
+        }
+
+        const ranchEntityLocation = ranchEntity.location
+
+        const ranchEntityDistance = calculateDistance(ranchEntityLocation, villager.location)
+        if (ranchEntityDistance > 3) {
+            villager.pathFindTo(ranchEntity)
+            return
+        }
+
+        villager.playAnimation("animation.tektopia_villager.take")
+        villager.holdingItem = "minecraft:bucket"
+
+        const successful = villagerInventory.removeItem({ includesTypes: ["minecraft:bucket"] }, 1, true)
+        if (!successful) {
+            villager.cancelTask()
+            return
+        }
+
+        villagerInventory.addItem(new ItemStack("minecraft:milk_bucket"))
+
+        ranchEntity.dimension.playSound("mob.cow.milk", ranchEntity.location)
+
+        villager.waiting = 20
+        villager.cancelTask()
     }
 
     tickShearEntity() {
@@ -4789,7 +5063,7 @@ export class Villager {
         this.cancelTask()
     }
 
-    getRecipes(village: Village, itemIds: string[], structureType: keyof StructureTypeMap) {
+    getRecipes(village: Village, itemIds: string[], structureType: keyof StructureTypeMap, amounts: Record<string, number> = {}) {
         const villageStorage = village.storage
 
         const structure = village.findStructures({ includedTypes: [structureType] })[0]
@@ -4804,16 +5078,25 @@ export class Villager {
         const availableCounts = villageStorage.getItemCounts()
 
         const hasFurnace = structure.getFurnaces().length > 0
+        // Only the kitchen needs this check: the blacksmith's anvil/crafting table choice is made per step later on
+        const hasCraftingTable = !(structure instanceof Kitchen) || structure.getCraftingTables().length > 0
 
         const craftingPlans: CraftingJob[] = []
 
         outer: for (const itemId of itemIds) {
-            const craftingPlan = getCraftingPlan(itemId, { ...availableCounts, [itemId]: 0 }, 1, { smelting: hasFurnace })
-            if (craftingPlan !== undefined && craftingPlan.length > 0) {
-                for (const [requiredId, amount] of Object.entries(getRequiredItems(craftingPlan))) {
-                    availableCounts[requiredId] = (availableCounts[requiredId] ?? 0) - amount
+            const counts = { ...availableCounts, [itemId]: 0 }
+            // Storage may have changed since the task was picked, so craft as many as are still possible
+            const amount = getMaxCrafts(itemId, counts, Math.max(1, amounts[itemId] ?? 1), { smelting: hasFurnace })
+            if (amount < 1) {
+                continue
+            }
+
+            const craftingPlan = getCraftingPlan(itemId, counts, amount, { smelting: hasFurnace })
+            if (hasStationsFor(craftingPlan, hasCraftingTable)) {
+                for (const [requiredId, requiredAmount] of Object.entries(getRequiredItems(craftingPlan))) {
+                    availableCounts[requiredId] = (availableCounts[requiredId] ?? 0) - requiredAmount
                 }
-                craftingPlans.push({ itemId, plan: craftingPlan })
+                craftingPlans.push({ itemId, amount, plan: craftingPlan })
                 if (craftingPlans.length >= 5) {
                     break outer
                 }
@@ -4825,7 +5108,6 @@ export class Villager {
         }
 
         return craftingPlans
-
     }
 
     tickCookTask(village: Village) {
@@ -4836,7 +5118,7 @@ export class Villager {
             return
         }
 
-        cookingCache.recipes ??= this.getRecipes(village, cookingRecipeIds, "kitchen")
+        cookingCache.recipes ??= this.getRecipes(village, cookingRecipeIds, "kitchen", this.taskContext.cookingAmounts)
 
         const smelts = this.taskContext.smelts ??= {}
 
@@ -5238,7 +5520,7 @@ export class Villager {
             return
         }
 
-        smithingCache.recipes ??= this.getRecipes(village, smithingRecipeIds, "blacksmith")
+        smithingCache.recipes ??= this.getRecipes(village, smithingRecipeIds, "blacksmith", this.taskContext.smithingAmounts)
 
         const smelts = this.taskContext.smelts ??= {}
 
@@ -5805,49 +6087,51 @@ export class Villager {
 
         const harvestLocationString = locationToString(foundHarvest)
 
-        if (harvestBlock.isHarvestable) {
-            const harvestLocationDist = calculateDistance(centerVector(foundHarvest, true), villager.location)
-            if (harvestLocationDist < 1 || (!villager.isPathing && harvestLocationDist < 2)) {
-                villager.setAnimation("harvesting")
-                villager.lookAt(centerVector(foundHarvest))
-                villager.taskProgress++
-                villager.stopPath()
-
-                if (villager.taskProgress > 100) {
-                    if (harvestBlock.isHarvestableCrop) {
-                        village.plantLocations[harvestLocationString] = harvestBlock.typeId
-                        harvestBlock.destroy(true)
-                    }
-                    else if (harvestBlock.isHarvestableGourd) {
-                        harvestBlock.destroy(true)
-                    }
-                    else if (harvestBlock.isHarvestableSugarCane) {
-                        const blockList = [harvestBlock.aboveSafe(2), harvestBlock.aboveSafe()]
-                        for (const block of blockList) {
-                            block?.destroy(true)
-                        }
-                    }
-                    else if (harvestBlock.isHarvestableSweetBerryBush) {
-                        const savedPermutation = harvestBlock.permutation.withState("growth", 1)
-                        harvestBlock.destroy(true)
-                        harvestBlock.setPermutation(savedPermutation)
-                    }
-
-                    updatePathNodes([harvestBlock, harvestBlock.aboveSafe(), harvestBlock.belowSafe()].filter(checkBlock => checkBlock !== undefined))
-
-                    villager.waiting = 20
-                    villager.setAnimation(undefined)
-                    villager.cancelTask()
-                }
-            }
-            else {
-                villager.pathFindTo(foundHarvest)
-            }
-        }
-        else {
+        if (!harvestBlock.isHarvestable) {
             village.harvestLocations.remove(harvestLocationString)
             villager.cancelTask()
+            return
         }
+
+        const harvestLocationDist = calculateDistance(centerVector(foundHarvest, true), villager.location)
+        if (harvestLocationDist >= 1 && (villager.isPathing || harvestLocationDist >= 2)) {
+            villager.pathFindTo(foundHarvest)
+            return
+        }
+
+        villager.setAnimation("harvesting")
+        villager.lookAt(centerVector(foundHarvest))
+        villager.taskProgress++
+        villager.stopPath()
+
+        if (villager.taskProgress <= 100) {
+            return
+        }
+
+        if (harvestBlock.isHarvestableCrop) {
+            village.plantLocations[harvestLocationString] = harvestBlock.typeId
+            harvestBlock.destroy(true)
+        }
+        else if (harvestBlock.isHarvestableGourd) {
+            harvestBlock.destroy(true)
+        }
+        else if (harvestBlock.isHarvestableSugarCane) {
+            const blockList = [harvestBlock.aboveSafe(2), harvestBlock.aboveSafe()]
+            for (const block of blockList) {
+                block?.destroy(true)
+            }
+        }
+        else if (harvestBlock.isHarvestableSweetBerryBush) {
+            const savedPermutation = harvestBlock.permutation.withState("growth", 1)
+            harvestBlock.destroy(true)
+            harvestBlock.setPermutation(savedPermutation)
+        }
+
+        updatePathNodes([harvestBlock, harvestBlock.aboveSafe(), harvestBlock.belowSafe()].filter(checkBlock => checkBlock !== undefined))
+
+        villager.waiting = 30
+        villager.setAnimation(undefined)
+        villager.cancelTask()
     }
 
     tickPlant(village: Village) {
@@ -6530,6 +6814,16 @@ Object.defineProperty(Entity.prototype, "isShearable", {
         }
 
         return !this.hasComponent(EntityComponentTypes.IsSheared) && !this.hasComponent(EntityComponentTypes.IsBaby)
+    }
+})
+
+Object.defineProperty(Entity.prototype, "isMilkable", {
+    get(this: Entity): boolean {
+        if (this.typeId !== "minecraft:cow") {
+            return false
+        }
+
+        return !this.hasComponent(EntityComponentTypes.IsBaby)
     }
 })
 

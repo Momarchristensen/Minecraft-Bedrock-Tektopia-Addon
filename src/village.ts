@@ -1694,7 +1694,8 @@ function* refreshRanchEntities(villageList: Village[], callback: () => void): Ge
                         structure,
                         breedable,
                         villagerEntity,
-                        isShearable: rancherEntity.isShearable
+                        isShearable: rancherEntity.isShearable,
+                        isMilkable: rancherEntity.isMilkable
                     }
                 }
                 else {
@@ -1705,6 +1706,7 @@ function* refreshRanchEntities(villageList: Village[], callback: () => void): Ge
                     existingRanchEntity.breedable = breedable
                     existingRanchEntity.villagerEntity = villagerEntity
                     existingRanchEntity.isShearable = rancherEntity.isShearable
+                    existingRanchEntity.isMilkable = rancherEntity.isMilkable
                 }
                 seenRanchEntityIds.add(rancherEntity.id)
 

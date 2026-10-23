@@ -21,7 +21,8 @@
                         "sitting",
                         "forging",
                         "crafting",
-                        "enchanting"
+                        "enchanting",
+                        "cooking"
                     ],
                     "default": "none"
                 }

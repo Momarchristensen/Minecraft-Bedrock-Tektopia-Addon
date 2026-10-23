@@ -1302,28 +1302,31 @@ Block.prototype.isValidPath = function (villageBounds?: Bounds) {
         return false
     }
 
-    if (block.typeId === BED_BLOCK_TYPE || below.typeId === BED_BLOCK_TYPE) {
-        return false
-    }
-    if (below.isDangerous()) {
-        return false
-    }
-    if (
-        below.destroyableLeaf() && (block.destroyableLeaf() || above.destroyableLeaf())
-    ) {
+    if (block.typeId === BED_BLOCK_TYPE) {
         return false
     }
 
-    const belowIsSolid = below.getIsSolid()
+    if (below.isDangerous()) {
+        return false
+    }
+
+    if (below.destroyableLeaf() && (block.destroyableLeaf() || above.destroyableLeaf())) {
+        return false
+    }
+
+    const belowIsSolid = below.getIsSolid() || below.typeId === BED_BLOCK_TYPE
     if (!belowIsSolid) {
         return false
     }
+
     if (!above.canPathThrough()) {
         return false
     }
+
     if (villageBounds !== undefined && !isVectorBetween(block, villageBounds.start, villageBounds.end, true)) {
         return false
     }
+
     return true
 }
 
