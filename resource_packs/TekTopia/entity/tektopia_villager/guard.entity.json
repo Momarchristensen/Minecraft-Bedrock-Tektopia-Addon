@@ -31,7 +31,9 @@
                 "hit.wood": "hit.wood",
                 "hit.stone": "hit.stone",
                 "entity.tektopia_villager.harvest": "entity.tektopia_villager.harvest",
-                "random.anvil_land": "random.anvil_land"
+                "random.anvil_land": "random.anvil_land",
+                "random.eat": "random.eat",
+                "entity.tektopia_villager.burp": "entity.tektopia_villager.burp"
             },
             "particle_effects": {
                 "cast_forward_ground": "tektopia:cast_forward_ground",

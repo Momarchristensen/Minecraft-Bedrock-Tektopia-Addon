@@ -2,7 +2,6 @@ import {
     BlockTypes,
     DimensionTypes,
     EntityTypes,
-    ItemComponent,
     ItemComponentTypes,
     ItemStack,
     ItemTypes
@@ -280,6 +279,27 @@ export const Registry = defineRegistry({
     ])],
     nonSolidBlocksSet: (): Set<string> => new Set(Registry.nonSolidBlocks),
 
+    eatableTypes: (): Record<string, { hunger: number, happiness: number }> => ({
+        "minecraft:apple": { hunger: 12, happiness: -1 },
+        "minecraft:baked_potato": { hunger: 35, happiness: 1 },
+        "minecraft:beetroot": { hunger: 7, happiness: -1 },
+        "minecraft:beetroot_soup": { hunger: 50, happiness: 6 },
+        "minecraft:bread": { hunger: 55, happiness: 4 },
+        "minecraft:cake": { hunger: 7, happiness: 25 },
+        "minecraft:carrot": { hunger: 12, happiness: -1 },
+        "minecraft:sweet_berries": { hunger: 4, happiness: 2 },
+        "minecraft:cooked_beef": { hunger: 70, happiness: 14 },
+        "minecraft:cooked_chicken": { hunger: 60, happiness: 6 },
+        "minecraft:cooked_mutton": { hunger: 66, happiness: 4 },
+        "minecraft:cooked_porkchop": { hunger: 70, happiness: 14 },
+        "minecraft:cookie": { hunger: 5, happiness: 16 },
+        "minecraft:golden_carrot": { hunger: 70, happiness: 20 },
+        "minecraft:melon": { hunger: 6, happiness: 3 },
+        "minecraft:mushroom_stew": { hunger: 50, happiness: 4 },
+        "minecraft:potato": { hunger: 7, happiness: -1 },
+        "minecraft:pumpkin_pie": { hunger: 35, happiness: 18 }
+    }),
+
     edibleTypes: (): string[] => Registry.itemTypes.filter(itemId => new ItemStack(itemId).hasComponent(ItemComponentTypes.Food)),
 
     craftingRecipes: (): Recipe[] => {
@@ -340,7 +360,7 @@ export const Registry = defineRegistry({
             { input: [{ id: "minecraft:pumpkin", amount: 1 }, { id: "minecraft:sugar", amount: 1 }, { id: Registry.eggTypes, amount: 1 }], output: { id: "minecraft:pumpkin_pie", amount: 1 } },
             { input: [{ id: "minecraft:wheat", amount: 3 }, { id: "minecraft:milk_bucket", amount: 3 }, { id: Registry.eggTypes, amount: 1 }, { id: "minecraft:sugar", amount: 2 }], output: { id: "minecraft:cake", amount: 1 } },
             { input: [{ id: "minecraft:sugar_cane", amount: 1 }], output: { id: "minecraft:sugar", amount: 1 } },
-            { input: [{ id: "minecraft:iron_ingot", amount: 3 }], output: { id: "minecraft:bucket", amount: 1 } },
+            { input: [{ id: "minecraft:iron_ingot", amount: 3 }], output: { id: "minecraft:bucket", amount: 1 } }
         ]
 
         for (const id of Registry.logTypes.concat(Registry.woodTypes)) {

@@ -741,8 +741,8 @@ export const globalTasks: Task[] = [
         id: "eat",
         name: "Eat",
         priority: 100,
-        condition: (villager, village) => false /*villager.checkEatFood(village)*/,
-        tick: (villager, village) => undefined /*villager.tickEatFood(village)*/,
+        condition: (villager, village) => villager.checkEatFood(village),
+        tick: (villager, village) => villager.tickEatFood(village),
         requiresTool: false,
         taskItems: () => undefined
     },

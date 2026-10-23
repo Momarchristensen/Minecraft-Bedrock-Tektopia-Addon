@@ -776,10 +776,32 @@ export class Villager {
         return this.data.happiness
     }
 
-    set happiness(value) {
+    addHappiness(value: number) {
+        this.setHappiness((this.data.happiness ?? 100) + value)
+    }
+
+    setHappiness(value: number) {
         if (this.data.happiness === value) {
             return
         }
+        const change = value - (this.data.happiness ?? 100)
+        if (change < 0) {
+            if (randomInt(0, 2) == 0) {
+                this.playSound(ModSoundEvents.villagerAngry);
+            }
+        }
+        else {
+            if (randomInt(0, 6) == 0) {
+                this.playSound(ModSoundEvents.villagerHappy);
+            }
+        }
+        if (change < 0) {
+            this.dimension.spawnParticle("minecraft:villager_angry", addVector(this.location, "y", 2.5))
+        }
+        else {
+            this.dimension.spawnParticle("minecraft:villager_happy", addVector(this.location, "y", 2.5))
+        }
+
         this.data.happiness = value
         this.saveVillagerData("happiness")
     }
@@ -2094,7 +2116,7 @@ export class Villager {
         return true
     }
 
-    checkEatItem(village: Village) {
+    checkEatFood(village: Village) {
         if (this.hunger > 30) {
             return false
         }
@@ -2104,12 +2126,40 @@ export class Villager {
             return false
         }
 
-        const foodItem = villagerInventory.findItem({ includesTypes: Registry.edibleTypes })
-        if (foodItem !== undefined) {
-            this.holdingItem = foodItem.item.typeId
-            this.stopPath()
+        const foodItems = villagerInventory.filterItems({
+            includesTypes: Object.keys(Registry.eatableTypes)
+        })
 
+        if (foodItems.length > 0) {
+            return true
         }
+
+        const villageStorage = village.storage
+
+        const storageFoodItems = villageStorage.filterItems({
+            includesTypes: Object.keys(Registry.eatableTypes)
+        })
+
+        return storageFoodItems.length > 0
+    }
+
+    getBestFoodItem(itemList: ItemStack[]) {
+        const bestFood = itemList.reduce((best, current) =>
+            this.getFoodScore(current) > this.getFoodScore(best)
+                ? current
+                : best
+        )
+
+        return bestFood
+    }
+
+    getFoodScore(itemStack: ItemStack) {
+        const foodData = Registry.eatableTypes[itemStack.typeId]
+        if (foodData === undefined) {
+            return -Infinity
+        }
+
+        return foodData.happiness
     }
 
     findItem(village: Village) {
@@ -3316,6 +3366,82 @@ export class Villager {
 
             this.waiting = 20
         }
+    }
+
+    tickEatFood(village: Village) {
+        const villagerInventory = this.getInventory()
+        if (villagerInventory === undefined) {
+            this.cancelTask()
+            return
+        }
+
+        const foodItems = villagerInventory.filterItems({
+            includesTypes: Object.keys(Registry.eatableTypes)
+        })
+
+        if (foodItems.length > 0) {
+            const bestFood = this.getBestFoodItem(foodItems.map(itemResult => itemResult.item))
+            const foodData = Registry.eatableTypes[bestFood.typeId]
+
+            if (foodData === undefined) {
+                this.cancelTask()
+                return
+            }
+
+            this.holdingItem = bestFood.typeId
+            this.stopPath()
+
+            if (this.taskProgress === 0) {
+                this.playAnimation("animation.tektopia_villager.eat")
+            }
+
+            this.taskProgress ++
+            if (this.taskProgress <= 100) {
+                return
+            }
+
+            const successful = villagerInventory.removeItem({ includesTypes: [bestFood.typeId] }, 1, true)
+            if (!successful) {
+                this.cancelTask()
+                return
+            }
+
+            this.addHappiness(foodData.happiness)
+            this.hunger += foodData.hunger
+            this.cancelTask()
+            return
+        }
+
+        const villageStorage = village.storage
+
+        const currentFoodItem = villageStorage.filterItems({
+            includesTypes: Object.keys(Registry.eatableTypes)
+        })[0]
+
+        if (currentFoodItem === undefined) {
+            this.cancelTask()
+            return
+        }
+
+        const chest = currentFoodItem.chest
+        const chestLocation = chest.location
+        const chestDistance = calculateDistance(centerVector(chestLocation, true), this.location)
+
+        if (chestDistance > 1.5) {
+            this.pathFindTo(chestLocation)
+            return
+        }
+
+        this.stopPath()
+        if (!this.openChest(chestLocation)) {
+            return
+        }
+
+        const chestInventory = chest.container
+
+        chestInventory.transferItemStack(currentFoodItem.slotIndex, villagerInventory, currentFoodItem.item.amount)
+
+        this.waiting = 5
     }
 
     tickDepositTask(village: Village) {
@@ -6334,6 +6460,8 @@ export class Villager {
                     villager.cancelTask()
                     villager.animation = undefined
                     villager.stopPath()
+
+                    villager.dimension.playSound("random.pop", villager.location, { volume: 0.3, pitch: randomInt(60, 220) / 100 })
                 }
             }
             else if (pathError !== undefined) {
