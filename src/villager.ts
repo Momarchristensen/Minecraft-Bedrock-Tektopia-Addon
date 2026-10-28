@@ -478,6 +478,10 @@ function hasStationsFor(plan: CraftStep[] | undefined, hasCraftingTable: boolean
     return plan !== undefined && plan.length > 0 && (hasCraftingTable || plan.every(step => step.smelt === true))
 }
 
+Entity.prototype.playSound = function (soundId, soundOptions) {
+    this.dimension.playSound(soundId, this.location, soundOptions)
+}
+
 export class Villager {
     public isBlocked = false
     public blockedTimer = 0
@@ -786,19 +790,13 @@ export class Villager {
         }
         const change = value - (this.data.happiness ?? 100)
         if (change < 0) {
-            if (randomInt(0, 2) == 0) {
-                this.playSound(ModSoundEvents.villagerAngry);
+            if (randomInt(0, 2) === 0) {
+                this.playSound("villager_angry")
+                this.dimension.spawnParticle("minecraft:villager_angry", addVector(this.location, "y", 2.5))
             }
         }
-        else {
-            if (randomInt(0, 6) == 0) {
-                this.playSound(ModSoundEvents.villagerHappy);
-            }
-        }
-        if (change < 0) {
-            this.dimension.spawnParticle("minecraft:villager_angry", addVector(this.location, "y", 2.5))
-        }
-        else {
+        else if (randomInt(0, 6) === 0) {
+            this.playSound("villager_happy")
             this.dimension.spawnParticle("minecraft:villager_happy", addVector(this.location, "y", 2.5))
         }
 
@@ -3606,7 +3604,7 @@ export class Villager {
 
         villagerInventory.addItem(new ItemStack("minecraft:milk_bucket"))
 
-        ranchEntity.dimension.playSound("mob.cow.milk", ranchEntity.location)
+        ranchEntity.playSound("mob.cow.milk")
 
         villager.waiting = 20
         villager.cancelTask()
@@ -3656,7 +3654,7 @@ export class Villager {
         }
 
         ranchEntity.triggerEvent("minecraft:on_sheared")
-        ranchEntity.dimension.playSound("mob.sheep.shear", ranchEntity.location)
+        ranchEntity.playSound("mob.sheep.shear")
 
         villager.waiting = 5
     }
@@ -6461,7 +6459,7 @@ export class Villager {
                     villager.animation = undefined
                     villager.stopPath()
 
-                    villager.dimension.playSound("random.pop", villager.location, { volume: 0.3, pitch: randomInt(60, 220) / 100 })
+                    villager.playSound("random.pop", { volume: 0.3, pitch: randomInt(60, 220) / 100 })
                 }
             }
             else if (pathError !== undefined) {

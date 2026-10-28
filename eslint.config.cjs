@@ -90,7 +90,7 @@ module.exports = [
 
       "@stylistic/indent": ["warn", 4, { ImportDeclaration: 1 }],
 
-      "import-x/no-cycle": ["warn", { maxDepth: Infinity, ignoreExternal: true }],
+      "import-x/no-cycle": ["warn", { maxDepth: 1, ignoreExternal: true }],
 
 
       "@typescript-eslint/no-floating-promises": "warn",

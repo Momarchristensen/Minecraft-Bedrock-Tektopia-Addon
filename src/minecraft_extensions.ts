@@ -84,6 +84,7 @@ declare module "@minecraft/server" {
         }
         getHitbox(): Bounds
         resetEggTimer(): void
+        playSound(soundId: string, soundOptions?: WorldSoundOptions): void
         isDead: boolean
         unreachable: number
         loadedData: boolean
